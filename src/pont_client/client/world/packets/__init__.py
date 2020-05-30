@@ -1,0 +1,1 @@
+from .char_enum import SMSG_CHAR_ENUM

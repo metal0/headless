@@ -1,0 +1,115 @@
+import inspect
+
+import trio
+
+from pont.log import get_logger
+log = get_logger(__name__)
+
+class BaseEmitter:
+	def __init__(self, emitter, scope = None):
+		self._emitter = emitter
+		self._scope = scope
+		self.__events = {}
+
+	def close(self):
+		log.debug(f'{type(self).__name__} uninstall')
+		for event, fn_list in self.__events.items():
+			for fn in fn_list:
+				if fn in self._emitter.listeners(event):
+					self._emitter.remove_listener(event, fn)
+
+	async def aclose(self):
+		log.debug(f'{type(self).__name__} uninstall')
+		for event, fn_list in self.__events.items():
+			await trio.lowlevel.checkpoint()
+			for fn in fn_list:
+				if fn in self._emitter.listeners(event):
+					self._emitter.remove_listener(event, fn)
+
+	def __enter__(self):
+		return self
+
+	async def __aenter__(self):
+		return self
+
+	async def __aexit__(self, exc_type, exc_val, exc_tb):
+		await self.aclose()
+
+	def __exit__(self, exc_type, exc_val, exc_tb):
+		self.close()
+
+	def _append_event(self, event, fn):
+		if event not in self.__events:
+			self.__events[event] = [fn]
+		else:
+			self.__events[event].append(fn)
+
+	def emit(self, event, *args, **kwargs):
+		log.debug(f'[ScopedEmitter.emit]: emitted {event=}, {kwargs}')
+		self._emitter.emit(event, *args, **kwargs)
+
+	def once(self, event, fn = None):
+		def _on(fn):
+			target_fn = fn
+			async def fn_async(*args, **kwargs):
+				await trio.lowlevel.checkpoint()
+				return fn(*args, **kwargs)
+
+			log.debug(f'[ScopedEmitter.once]: installed {event=} {fn=}')
+			if not inspect.iscoroutinefunction(fn):
+				target_fn = fn_async
+
+			return self._emitter.once(event, target_fn)
+
+		if fn is None:
+			return _on
+		else:
+			return _on(fn)
+
+	def on(self, event, fn = None):
+		def _on(fn):
+			target_fn = fn
+			async def fn_async(*args, **kwargs):
+				await trio.lowlevel.checkpoint()
+				return fn(*args, **kwargs)
+
+			log.debug(f'[ScopedEmitter.on]: installed {event=} {fn=}')
+			if not inspect.iscoroutinefunction(fn):
+				target_fn = fn_async
+
+			self._append_event(event, target_fn)
+			return self._emitter.on(event, target_fn)
+
+		if fn is None:
+			return _on
+		else:
+			return _on(fn)
+
+class AsyncScopedEmitter(BaseEmitter):
+	async def aclose(self):
+		log.debug(f'{type(self).__name__} aclose')
+		for event, fn_list in self.__events.items():
+			await trio.lowlevel.checkpoint()
+			for fn in fn_list:
+				if fn in self._emitter.listeners(event):
+					self._emitter.remove_listener(event, fn)
+
+	async def __aenter__(self):
+		return self
+
+	async def __aexit__(self, exc_type, exc_val, exc_tb):
+		await self.aclose()
+
+class ScopedEmitter(BaseEmitter):
+	def close(self):
+		log.debug(f'{type(self).__name__} close')
+		for event, fn_list in self.__events.items():
+			for fn in fn_list:
+				if fn in self._emitter.listeners(event):
+					self._emitter.remove_listener(event, fn)
+
+	def __enter__(self):
+		return self
+
+	def __exit__(self, exc_type, exc_val, exc_tb):
+		self.close()
