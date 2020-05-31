@@ -1,42 +1,14 @@
 import inspect
-
 import trio
 
-from pont.log import get_logger
-log = get_logger(__name__)
+from ..client import log
+log = log.get_logger(__name__)
 
 class BaseEmitter:
 	def __init__(self, emitter, scope = None):
 		self._emitter = emitter
 		self._scope = scope
 		self.__events = {}
-
-	def close(self):
-		log.debug(f'{type(self).__name__} uninstall')
-		for event, fn_list in self.__events.items():
-			for fn in fn_list:
-				if fn in self._emitter.listeners(event):
-					self._emitter.remove_listener(event, fn)
-
-	async def aclose(self):
-		log.debug(f'{type(self).__name__} uninstall')
-		for event, fn_list in self.__events.items():
-			await trio.lowlevel.checkpoint()
-			for fn in fn_list:
-				if fn in self._emitter.listeners(event):
-					self._emitter.remove_listener(event, fn)
-
-	def __enter__(self):
-		return self
-
-	async def __aenter__(self):
-		return self
-
-	async def __aexit__(self, exc_type, exc_val, exc_tb):
-		await self.aclose()
-
-	def __exit__(self, exc_type, exc_val, exc_tb):
-		self.close()
 
 	def _append_event(self, event, fn):
 		if event not in self.__events:

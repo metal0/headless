@@ -4,7 +4,7 @@ from typing import Optional, Tuple
 
 from .errors import AuthError
 from .protocol import AuthProtocol
-from .. import log, auth
+from .. import log
 from ... import cryptography
 
 log = log.get_logger(__name__)
@@ -12,7 +12,7 @@ log = log.get_logger(__name__)
 class AuthSession:
 	def __init__(self, nursery, emitter, proxy: Optional[Tuple[str, int]]=None):
 		self.proxy = proxy
-		self.protocol = AuthProtocol(stream=self._stream)
+		self.protocol: Optional[AuthProtocol] = None
 		self._nursery = nursery
 		self._emitter = emitter
 		self._stream: Optional[trio.abc.HalfCloseableStream] = None
@@ -22,6 +22,7 @@ class AuthSession:
 	async def aclose(self):
 		if self._stream is not None:
 			await self._stream.aclose()
+			self._stream = None
 
 	async def connect(self, auth_server_address, proxy=None, stream=None):
 		if stream is None:
@@ -34,10 +35,11 @@ class AuthSession:
 		else:
 			self._stream = stream
 
+		self.protocol = AuthProtocol(stream=self._stream)
 		await self.protocol.spawn_receiver(self._stream, nursery=self._nursery, emitter=self._emitter)
 
 	async def authenticate(self, username, password):
-		await self.protocol.send_login_challenge(username=username)
+		await self.protocol.send_challenge_request(username=username)
 		challenge_response = await self.protocol.receive_challenge_response()
 		self._srp = cryptography.srp.WowSrpClient(username=username, password=password,
 		    prime=challenge_response.prime,

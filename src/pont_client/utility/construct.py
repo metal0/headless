@@ -1,11 +1,12 @@
 import ipaddress
+from typing import Tuple
+
 import construct
 
-from pont.utility.string import int_to_bytes, bytes_to_int
-
+from .string import int_to_bytes, bytes_to_int
 
 def upper_filter(encoding):
-	def _impl(char: bytes) -> bytes:
+	def _impl(char: bytes):
 		if char.isascii():
 			return char.decode().upper().encode(encoding)
 		return char
@@ -20,7 +21,42 @@ UpperChar = lambda encoding: construct.Transformed(
 	encodeamount=1
 )
 
-UpperPascalString = lambda encoding: construct.StringEncoded(construct.Prefixed(construct.Byte, construct.GreedyRange(UpperChar(encoding))), encoding)
+class UpperPascalStringAdapter(construct.StringEncoded):
+	def __init__(self, subcon, encoding):
+		super().__init__(subcon, encoding)
+		self.encoding = encoding
+		self.filter = upper_filter(encoding)
+
+	def _decode(self, obj, context, path):
+		return obj.decode(self.encoding).upper()
+
+	def _encode(self, obj, context, path):
+		return bytes([len(obj)]) + obj.encode(self.encoding)
+
+UpperPascalString = lambda encoding='ascii': UpperPascalStringAdapter(construct.GreedyBytes, encoding=encoding)
+
+class PaddedStringByteSwappedAdapter(construct.Adapter):
+	def __init__(self, length, encoding='ascii'):
+		super().__init__(subcon=construct.GreedyBytes)
+		self.length = length
+		self.encoding = encoding
+
+	def _encode(self, obj: str, context, path) -> bytes:
+		print(f'_encode: {obj=}')
+		bs = bytes(reversed(obj.encode(self.encoding)))
+		result = bs + bytes([0] * (self.length - len(bs)))
+		print(f'_encode: {result=}')
+		return result
+
+	def _decode(self, obj: bytes, context, path) -> str:
+		subobj = obj[:self.length]
+		print(f'_encode {self.name}: {obj=}, {subobj=}')
+		subobj = bytes(reversed(subobj.replace(b'\x00', b'')))
+		result = subobj.decode(self.encoding)
+		print(f'_encode: {result=}')
+		return result
+
+PaddedStringByteSwapped = PaddedStringByteSwappedAdapter
 
 class IPAddressAdapter(construct.Adapter):
 	def _decode(self, obj, context, path):
@@ -49,14 +85,20 @@ class ConstructEnumAdapter(construct.Enum):
 		self.enum_type = enum_type
 
 	def _decode(self, obj, context, path):
+		print(f'_decode: {obj}')
 		return self.enum_type(super()._decode(obj, context, path))
 
 	def _encode(self, obj, context, path):
+		print(f'_encode: {obj}')
 		try:
 			obj = obj.value
 		except AttributeError:
 			pass
 
+		if isinstance(obj, Tuple):
+			obj = obj[0]
+
+		print(f'{type(self)}: {obj}')
 		return super()._encode(int(obj), context, path)
 
 ConstructEnum = lambda enum_type, subcon=construct.Byte: ConstructEnumAdapter(enum_type=enum_type, subcon=subcon)

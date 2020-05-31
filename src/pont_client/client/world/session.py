@@ -4,7 +4,6 @@ from typing import Optional, Tuple
 
 from .protocol import WorldProtocol
 from .. import log, auth
-import esper
 
 log = log.get_logger(__name__)
 
@@ -16,7 +15,7 @@ class WorldSession:
 		self._emitter = emitter
 		self._stream: Optional[trio.abc.HalfCloseableStream] = None
 		self.__session_key = None
-		self._world = esper.World
+		# self._world = esper.World
 		# self.__encrypt = lambda data: rc4.rc4(data, bytes.fromhex('C2B3723CC6AED9B5343C53EE2F4367CE'))
 		# self.__decrypt = lambda data: rc4.rc4(data, bytes.fromhex('CC98AE04E897EACA12DDC09342915357'))
 
@@ -24,7 +23,7 @@ class WorldSession:
 		if self._stream is not None:
 			await self._stream.aclose()
 
-	async def connect(self, realm: auth.Realm, proxy=None, stream=None):
+	async def enter_world(self, realm: auth.Realm, proxy=None, stream=None):
 		realm_address = realm.address.split(':')
 		if stream is None:
 			if self.proxy is not None or proxy is not None:

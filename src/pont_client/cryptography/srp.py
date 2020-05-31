@@ -2,11 +2,12 @@ import os
 import srptools
 
 from typing import Tuple
-from pont.utility.string import bytes_to_int, int_to_bytes
-from pont.client.auth.packets.parse import AuthError
-from pont.cryptography.sha import sha1, sha1v
 
-from .. import log
+from .sha import sha1, sha1v
+from ..client import log
+from ..client.auth.errors import AuthError
+from ..utility.string import int_to_bytes
+
 log = log.get_logger(__name__)
 
 class WowSrpClient(object):

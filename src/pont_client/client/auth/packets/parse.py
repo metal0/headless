@@ -1,11 +1,12 @@
 import construct
 
-from pont.client.auth.errors import AuthError
-from pont.client.auth.packets import ResponseHeader
-from pont.client.auth.packets.constants import Response, Opcode
 from typing import Dict, Optional
 
-from pont.client import log
+from .header import ResponseHeader
+from .constants import Response
+from ..errors import AuthError
+from ...client import log
+from ...world import Opcode
 
 log = log.get_logger(__name__)
 

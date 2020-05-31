@@ -1,14 +1,15 @@
 import construct
-from pont import utility
-from pont.client.auth import Opcode
-from pont.client.auth.packets.constants import Response
+
+from pont_client.utility.construct import ConstructEnum
+from .constants import Response
+from ...auth.packets.constants import Opcode
 
 ResponseHeader = construct.Struct(
-	'opcode' / utility.construct.ConstructEnum(Opcode),
+	'opcode' / ConstructEnum(Opcode),
 	'response' / construct.Switch(
 		construct.this.opcode, {
-			Opcode.login_challenge: Response,
-			Opcode.login_proof: Response,
+			Opcode.login_challenge: ConstructEnum(Response),
+			Opcode.login_proof: ConstructEnum(Response),
 			Opcode.realm_list: None
 		}
 	)

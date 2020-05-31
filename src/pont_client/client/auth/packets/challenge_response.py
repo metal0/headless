@@ -1,12 +1,12 @@
 import construct
 
+from .parse import parser
 from .constants import Response, Opcode, opcodes
-from pont.client.auth.packets.parse import parser
-from pont.utility.construct import BigInt
+from ....utility.construct import BigInt, ConstructEnum
 
 ChallengeResponse = construct.Struct(
-	'opcode' / construct.Default(construct.Const(opcodes.login_challenge, Opcode), opcodes.login_challenge),
-	'response' / construct.Default(Response, Response.success),
+	'opcode' / construct.Default(construct.Const(opcodes.login_challenge, ConstructEnum(Opcode)), opcodes.login_challenge),
+	'response' / construct.Default(ConstructEnum(Response), Response.success),
 	construct.Padding('1'),
 
 	'server_public' / BigInt(32),

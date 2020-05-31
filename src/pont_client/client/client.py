@@ -3,13 +3,13 @@ import pyee
 from enum import Enum
 
 from . import log, Config
-from .state import ClientState
 from .auth import AuthSession
-from ..utility import AsyncScopedEmitter
+from .world.session import WorldSession
+from ..utility import AsyncScopedEmitter, enum
 
 log = log.get_logger(__name__)
 
-class ClientState(Enum):
+class ClientState(enum.ComparableEnum):
 	not_connected = 1
 	logging_in = 2
 	realmlist = 3
@@ -19,12 +19,9 @@ class ClientState(Enum):
 
 class Client(AsyncScopedEmitter):
 	def __init__(self, proxy=None):
-		self.nursery = trio.open_nursery()
-		emitter = pyee.TrioEventEmitter(nursery=self.nursery)
-		super().__init__(emitter=emitter)
-		self._proxy = proxy
+		super().__init__(emitter=None)
+		self._nursery_mgr = trio.open_nursery()
 		self._reset(proxy)
-		self.framerate = 60
 		self.config = Config(
 			relogger=False,
 			emitter=self
@@ -33,26 +30,22 @@ class Client(AsyncScopedEmitter):
 	def _reset(self, proxy=None):
 		self._proxy = proxy
 		self._state = ClientState.not_connected
-		self.auth = AuthSession(nursery=self.nursery, emitter=self, proxy=proxy)
+		self.auth = None
 		self.world = None
-
-	def _update_auth_info(self, username: str = None, password: str = None, realm_name: str = None):
-		if username is not None:
-			self.config.username = username
-		if password is not None:
-			self.config.password = password
-		if realm_name is not None:
-			self.config.realm_name = realm_name
+		self.framerate = 60
 
 	async def __aenter__(self):
 		await super().__aenter__()
-		await self.nursery.__aenter__()
+		self.nursery = await self._nursery_mgr.__aenter__()
+		self._emitter = pyee.TrioEventEmitter(nursery=self.nursery)
+		self.auth = AuthSession(nursery=self.nursery, emitter=self, proxy=self._proxy)
+		self.world = WorldSession(nursery=self.nursery, emitter=self, proxy=self._proxy)
 		return self
 
 	async def __aexit__(self, exc_type, exc_val, exc_tb):
 		await super().__aexit__(exc_type, exc_val, exc_tb)
 		await self.aclose()
-		await self.nursery.__aexit__(exc_type, exc_val, exc_tb)
+		await self._nursery_mgr.__aexit__(exc_type, exc_val, exc_tb)
 
 	async def aclose(self):
 		if self.auth is not None:
@@ -71,10 +64,16 @@ class Client(AsyncScopedEmitter):
 		return self._state
 
 	def is_at_character_select(self):
-		return False
+		return self.state == ClientState.character_select
+
+	def is_loading(self):
+		return self.state == ClientState.loading_world
+
+	def is_logging_in(self):
+		return self.state == ClientState.logging_in
 
 	def is_ingame(self):
-		return False
+		return self.state == ClientState.character_select
 
 	def is_connected(self):
-		return False
+		return self.state != ClientState.not_connected

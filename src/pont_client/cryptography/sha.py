@@ -1,8 +1,7 @@
 import hashlib
 
-from pont import log
-from pont.utility.string import int_to_bytes, bytes_to_int
-
+from pont_client.utility.string import int_to_bytes
+from pont_client.client import log
 log = log.get_logger(__name__)
 
 def __handle_arg(arg, hash, encoding='latin1'):
