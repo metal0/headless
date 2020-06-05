@@ -1,4 +1,3 @@
-from enum import Enum, unique
 from ...utility import enum
 
 class AuthState(enum.ComparableEnum):

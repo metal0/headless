@@ -12,9 +12,9 @@
 # log = log.get_logger(__name__)
 #
 # _opcode_event_map = {
-# 	pont.client.auth.opcodes.login_challenge: events.auth.received_challenge_response,
-# 	pont.client.auth.opcodes.login_proof: events.auth.received_proof_response,
-# 	pont.client.auth.opcodes.realm_list: events.auth.received_realmlist_response,
+# 	pont.client.auth.Opcode.login_challenge: events.auth.received_challenge_response,
+# 	pont.client.auth.Opcode.login_proof: events.auth.received_proof_response,
+# 	pont.client.auth.Opcode.realm_list: events.auth.received_realmlist_response,
 # }
 #
 # class AuthHandler(ScopedEmitter):

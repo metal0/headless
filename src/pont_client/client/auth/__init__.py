@@ -1,5 +1,4 @@
 from .state import AuthState
-from .realm import Realm
+from .realm import Realm, RealmType, RealmStatus, RealmFlags, RealmPopulation
 from .session import AuthSession
-from .protocol import AuthProtocol
-from . import packets
+from . import net

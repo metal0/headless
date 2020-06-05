@@ -1,6 +1,7 @@
 import trio
 
-from pont import events, log
+from pont_client.client import events
+from .. import log
 log = log.get_logger(__name__)
 
 class Relogger:

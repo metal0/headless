@@ -1,6 +1,6 @@
 import trio
 
-from .. import events, auth, log
+from pont_client.client import events, auth, log
 log = log.get_logger(__name__)
 
 class WorldProtocol:

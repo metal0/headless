@@ -93,5 +93,3 @@ class Opcode(Enum):
 	SMSG_TALENTS_INFO = 0x04C0
 
 	MSG_SET_RAID_DIFFICULTY = 0x04EB
-
-opcodes = Opcode

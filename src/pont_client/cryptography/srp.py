@@ -6,7 +6,7 @@ from typing import Tuple
 from .sha import sha1, sha1v
 from ..client import log
 from ..client.auth.errors import AuthError
-from ..utility.string import int_to_bytes
+from ..utility.string import int_to_bytes, bytes_to_int
 
 log = log.get_logger(__name__)
 
@@ -41,7 +41,7 @@ class WowSrpClient(object):
 		self.session_proof = 0
 		self.session_proof_hash = 0
 
-	def process(self, server_public: int, salt: bytes) -> Tuple[int, int]:
+	def process(self, server_public: int, salt: int) -> Tuple[int, int]:
 		"""Returns: client_public, session_proof"""
 		prehash = sha1(f'{self.__username}:{self.__password}')
 		self.password_hash = sha1(salt, prehash, out=int)
@@ -62,7 +62,7 @@ class WowSrpClient(object):
 		self.session_proof, self.session_proof_hash = self.compute_proof(salt=salt, server_public=server_public)
 		self.__username = None
 		self.__password = None
-		return self.client_public, self.session_proof
+		return bytes_to_int(self.client_public), self.session_proof
 
 	@staticmethod
 	def sha_interleave(value: int) -> bytes:
@@ -89,7 +89,7 @@ class WowSrpClient(object):
 
 		return bytes(result)
 
-	def compute_proof(self, salt: bytes, server_public: int):
+	def compute_proof(self, salt: int, server_public: int) -> Tuple[int, int]:
 		N_sha = sha1(self.prime, out=int)
 		g_sha = sha1(self.generator, out=int)
 
@@ -104,7 +104,7 @@ class WowSrpClient(object):
 		)
 
 		hash = sha1(self.client_public, session_proof, self.session_key)
-		return session_proof, hash
+		return bytes_to_int(session_proof), bytes_to_int(hash)
 
 class SrpChecksumNoGameFiles(Exception):
 	pass

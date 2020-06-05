@@ -3,10 +3,9 @@ import construct
 from typing import Dict, Optional
 
 from .header import ResponseHeader
-from .constants import Response
-from ..errors import AuthError
-from ...client import log
-from ...world import Opcode
+from .constants import Response, Opcode
+from pont_client.client.auth.errors import AuthError
+from .... import log
 
 log = log.get_logger(__name__)
 

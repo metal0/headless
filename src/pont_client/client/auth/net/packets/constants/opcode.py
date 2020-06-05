@@ -14,5 +14,3 @@ class Opcode(Enum):
 	xfer_accept = 0x32
 	xfer_resume = 0x33
 	xfer_cancel = 0x34
-
-opcodes = Opcode

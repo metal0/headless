@@ -2,7 +2,7 @@ import trio
 from trio_socks import socks5
 from typing import Optional, Tuple
 
-from .protocol import WorldProtocol
+from pont_client.client.world.net.protocol import WorldProtocol
 from .. import log, auth
 
 log = log.get_logger(__name__)

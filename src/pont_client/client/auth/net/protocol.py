@@ -1,8 +1,10 @@
+import traceback
+
 import trio
 
-from .packets.constants import Response
-from . import packets
-from .. import events, log
+from pont_client.client.auth.net.packets.constants import Response
+from pont_client.client.auth.net import packets
+from pont_client.client import events, log
 log = log.get_logger(__name__)
 
 class AuthProtocol:
@@ -10,38 +12,13 @@ class AuthProtocol:
 		self.stream = stream
 		self._receiver_started = trio.Event()
 
-	async def _receiver(self, receiver_started: trio.Event, emitter):
-		receiver_started.set()
-		emitter.emit(events.auth.connected, stream=self.stream)
-		log.debug('receiver started')
-
-		try:
-			while True:
-				data = await self.stream.receive_some()
-				log.debug(f'received: {data=}')
-				if not data:
-					await self.stream.send_eof()
-					emitter.emit(events.auth.disconnected, reason=f'EOF received')
-					break
-				emitter.emit(events.auth.data_received, data=data)
-
-		except Exception as e:
-			emitter.emit(events.auth.disconnected, reason=f'{e}')
-			log.error(f'_receiver error: {e}')
-
-	async def spawn_receiver(self, stream, nursery, emitter):
-		receiver_started = trio.Event()
-		nursery.start_soon(self._receiver, receiver_started, emitter)
-		await receiver_started.wait()
-		self.stream = stream
-
-	async def send_challenge_request(self, username: str, country='enUS', arch='x86'):
+	async def send_challenge_request(self, username: str, country='enUS', arch='x86', ip='127.0.0.1'):
 		log.debug('Sending challenge request...')
 		challenge = packets.ChallengeRequest.build({
 			'country': country,
 			'architecture': arch,
 			'account_name': username,
-			'ip': '10.179.204.114',
+			'ip': ip,
 			'packet_size': 34 + len(username),
 		})
 
@@ -83,7 +60,7 @@ class AuthProtocol:
 
 		await self.stream.send_all(proof_request)
 
-	async def send_proof_request(self, client_public, session_proof, checksum=0, num_keys=0, security_flags=0):
+	async def send_proof_request(self, client_public: int, session_proof: int, checksum: int=0, num_keys: int=0, security_flags: int=0):
 		proof_request = packets.ProofRequest.build({
 			'client_public': client_public,
 			'session_proof': session_proof,
@@ -103,18 +80,18 @@ class AuthProtocol:
 		return packets.parser.parse(data)
 
 	async def send_realmlist_request(self):
-		await self.stream.send_all(packets.RealmlistRequest.build())
+		await self.stream.send_all(packets.RealmlistRequest.build({}))
 
 	async def receive_realmlist_request(self) -> packets.RealmlistRequest:
 		data = await self.stream.receive_some()
 		return packets.RealmlistRequest.parse(data)
 
 	async def send_realmlist_response(self, realms):
-		packets.RealmlistResponse.build({
-
-			'num_realms': len(realms),
+		packet = packets.RealmlistResponse.build({
 			'realms': realms,
 		})
+
+		await self.stream.send_all(packet)
 
 	async def receive_realmlist_response(self) -> packets.RealmlistResponse:
 		data = await self.stream.receive_some()

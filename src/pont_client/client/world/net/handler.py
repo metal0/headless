@@ -10,9 +10,9 @@ from pont.client.world import SMSG_CHAR_ENUM
 log = log.get_logger(__name__)
 
 _opcode_event_map = {
-	world.opcodes.SMSG_AUTH_CHALLENGE: events.world.received_auth_challenge,
-    world.opcodes.SMSG_AUTH_RESPONSE: events.world.received_auth_response,
-	world.opcodes.SMSG_NAME_QUERY_RESPONSE: events.world.received_name_query_response
+	world.Opcode.SMSG_AUTH_CHALLENGE: events.world.received_auth_challenge,
+    world.Opcode.SMSG_AUTH_RESPONSE: events.world.received_auth_response,
+	world.Opcode.SMSG_NAME_QUERY_RESPONSE: events.world.received_name_query_response
 }
 
 class WorldHandler(ScopedEmitter):
