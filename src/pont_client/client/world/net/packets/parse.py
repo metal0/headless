@@ -2,14 +2,13 @@ import construct
 
 from typing import Dict, Optional
 
-from .header import ResponseHeader
 from .constants import Response, Opcode
 from pont_client.client.auth.errors import AuthError
 from .... import log
 
 log = log.get_logger(__name__)
 
-class AuthPacketParser:
+class WorldPacketParser:
 	def __init__(self):
 		self._parsers: Dict[Opcode, Optional[construct.Construct]] = {}
 
@@ -30,4 +29,4 @@ class AuthPacketParser:
 
 		return parser.parse(packet)
 
-parser = AuthPacketParser()
+parser = WorldPacketParser()

@@ -1,6 +1,7 @@
 import construct
 from enum import Enum
-from ...utility.construct import ConstructEnum
+from ...utility.construct import PackEnum, AddressPort
+
 
 class RealmType(Enum):
 	normal = 0
@@ -39,11 +40,11 @@ BuildInfo = construct.Struct(
 )
 
 Realm = construct.Struct(
-	'type' / construct.Default(ConstructEnum(RealmType), RealmType.pvp),
-	'status' / construct.Default(ConstructEnum(RealmStatus), RealmStatus.online),
-	'flags' / construct.Default(ConstructEnum(RealmFlags), RealmFlags.none),
+	'type' / construct.Default(PackEnum(RealmType), RealmType.pvp),
+	'status' / construct.Default(PackEnum(RealmStatus), RealmStatus.online),
+	'flags' / construct.Default(PackEnum(RealmFlags), RealmFlags.none),
 	'name' / construct.CString('ascii'),
-	'address' / construct.CString('ascii'),
+	'address' / AddressPort('ascii'),
 	'population' / construct.ByteSwapped(construct.Float32b),
 	'num_characters' / construct.Byte,
 	'timezone' / construct.Default(construct.Byte, 8),

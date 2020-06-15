@@ -6,13 +6,7 @@ class AuthEvent(Enum):
 	connected = uuid.uuid4()
 	data_received = uuid.uuid4()
 
-	# Connection error events
 	disconnected = uuid.uuid4()
-
-	# Auth protocol events
-	received_challenge_response = uuid.uuid4()
-	received_proof_response = uuid.uuid4()
-	received_realmlist_response = uuid.uuid4()
 
 	realmlist_ready = uuid.uuid4()
 

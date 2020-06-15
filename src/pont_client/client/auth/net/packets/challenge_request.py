@@ -1,13 +1,13 @@
 import time
 import construct
 from .constants import Response, Opcode
-from pont_client.utility.construct import UpperPascalString, IPv4Address, ConstructEnum, PaddedStringByteSwapped, \
+from pont_client.utility.construct import UpperPascalString, IPv4Address, PackEnum, PaddedStringByteSwapped, \
 	VersionString
 
 ChallengeRequest = construct.Struct(
-	'opcode' / construct.Default(construct.Const(Opcode.login_challenge, ConstructEnum(Opcode)), Opcode.login_challenge),
-	'response' / construct.Default(ConstructEnum(Response), Response.db_busy),
-	'packet_size' / construct.ByteSwapped(construct.Default(construct.Short, 34 + construct.len_(construct.this.account_name))),
+	'opcode' / construct.Default(construct.Const(Opcode.login_challenge, PackEnum(Opcode)), Opcode.login_challenge),
+	'response' / construct.Default(PackEnum(Response), Response.db_busy),
+	'packet_size' / construct.ByteSwapped(construct.Default(construct.Short, 30 + construct.len_(construct.this.account_name))),
 	'game' / construct.Default(construct.PaddedString(4, 'ascii'), 'WoW'),
 	'version' / construct.Default(VersionString(num_bytes=3), '3.3.5'),
 	'build' / construct.Default(construct.ByteSwapped(construct.Short), 12340),

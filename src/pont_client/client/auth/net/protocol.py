@@ -14,15 +14,17 @@ class AuthProtocol:
 
 	async def send_challenge_request(self, username: str, country='enUS', arch='x86', ip='127.0.0.1'):
 		log.debug('Sending challenge request...')
-		challenge = packets.ChallengeRequest.build({
+		packet = packets.ChallengeRequest.build({
 			'country': country,
 			'architecture': arch,
 			'account_name': username,
 			'ip': ip,
-			'packet_size': 34 + len(username),
+			'packet_size': 30 + len(username),
 		})
 
-		await self.stream.send_all(challenge)
+		log.debug(f'[send_challenge_request] packet: {packets.ChallengeRequest.parse(packet)}')
+		log.debug(f'[send_challenge_request] packet: {packet.hex()}')
+		await self.stream.send_all(packet)
 
 	async def send_challenge_response(self, prime, server_public, salt, response: Response=Response.success,
 			generator_length=1, generator=7, prime_length=32, checksum_salt=0, security_flag=0):
@@ -80,7 +82,8 @@ class AuthProtocol:
 		return packets.parser.parse(data)
 
 	async def send_realmlist_request(self):
-		await self.stream.send_all(packets.RealmlistRequest.build({}))
+		packet = packets.RealmlistRequest.build({})
+		await self.stream.send_all(packet)
 
 	async def receive_realmlist_request(self) -> packets.RealmlistRequest:
 		data = await self.stream.receive_some()

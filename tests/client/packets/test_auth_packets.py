@@ -21,7 +21,6 @@ def test_challenge_request_packet1():
 	assert challenge_request.account_name == 'ADMIN'
 	assert packets.ChallengeRequest.build(challenge_request) == packet
 
-
 def test_challenge_request_packet2():
 	packet = bytes.fromhex('00002800576f57000303053430363878006e69570053556e65d4feffff000000000a4c4f4e474d414e594553')
 	challenge_request = packets.ChallengeRequest.parse(packet)
@@ -54,7 +53,7 @@ def test_challenge_request_named_args():
 	assert challenge_request.timezone_bias == int(-time.timezone / 60)
 	assert challenge_request.build == 12340
 	assert challenge_request.ip == '127.0.0.1'
-	assert challenge_request.packet_size == 34 + len(challenge_request.account_name)
+	assert challenge_request.packet_size == 30 + len(challenge_request.account_name)
 	assert packets.ChallengeRequest.build(challenge_request) == packet
 
 def test_challenge_response_packet1():

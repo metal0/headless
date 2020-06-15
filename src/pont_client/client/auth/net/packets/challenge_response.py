@@ -2,11 +2,11 @@ import construct
 
 from .parse import parser
 from .constants import Response, Opcode
-from pont_client.utility.construct import ConstructEnum
+from pont_client.utility.construct import PackEnum
 
 ChallengeResponse = construct.Struct(
-	'opcode' / construct.Default(construct.Const(Opcode.login_challenge, ConstructEnum(Opcode)), Opcode.login_challenge),
-	'response' / construct.Default(ConstructEnum(Response), Response.success),
+	'opcode' / construct.Default(construct.Const(Opcode.login_challenge, PackEnum(Opcode)), Opcode.login_challenge),
+	'response' / construct.Default(PackEnum(Response), Response.success),
 	construct.Padding(1),
 
 	'server_public' / construct.BytesInteger(32, swapped=True),

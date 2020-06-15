@@ -14,7 +14,7 @@ class WorldSession:
 		self._nursery = nursery
 		self._emitter = emitter
 		self._stream: Optional[trio.abc.HalfCloseableStream] = None
-		self.__session_key = None
+		self._session_key = None
 		# self._world = esper.World
 		# self.__encrypt = lambda data: rc4.rc4(data, bytes.fromhex('C2B3723CC6AED9B5343C53EE2F4367CE'))
 		# self.__decrypt = lambda data: rc4.rc4(data, bytes.fromhex('CC98AE04E897EACA12DDC09342915357'))
@@ -23,21 +23,26 @@ class WorldSession:
 		if self._stream is not None:
 			await self._stream.aclose()
 
-	async def enter_world(self, realm: auth.Realm, proxy=None, stream=None):
-		realm_address = realm.address.split(':')
+	async def test(self):
+		return await self._stream.receive_some()
+
+	async def characters(self):
+		pass
+
+	async def connect(self, realm: auth.Realm, session_key, proxy=None, stream=None):
 		if stream is None:
 			if self.proxy is not None or proxy is not None:
-				self._stream = socks5.Socks5Stream(destination=realm_address,
+				self._stream = socks5.Socks5Stream(destination=realm.address,
 				                                   proxy=proxy or self.proxy or None)
 				await self._stream.negotiate()
 
 			else:
-				self._stream = await trio.open_tcp_stream(*realm_address)
+				self._stream = await trio.open_tcp_stream(*realm.address)
 		else:
 			self._stream = stream
 
 		self.protocol = WorldProtocol(stream=self._stream)
-		await self.protocol.spawn_receiver(self._stream, nursery=self._nursery, emitter=self._emitter)
+		self._session_key = session_key
 
 # class WorldSession(ScopedEmitter):
 # 	def __init__(self, context):

@@ -1,0 +1,6 @@
+from pont_client.client import world
+
+def test_world_auth_packet():
+	data = b"\x00*\xec\x01\x01\x00\x00\x00\xcb'\xfa\xe6\xd9\xf3f9\x8f.\xee\x95\xdf1C\xe6\xee]\xca\x8d%*\xc1^\x1f\x02\x8a[\xd3\xa7\x95\x8eP\xaf\xfd\xb4"
+	auth_challenge = world.net.packets.SMSG_AUTH_CHALLENGE.parse(data)
+	print(auth_challenge)

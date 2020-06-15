@@ -1,11 +1,11 @@
 import construct
 from .parse import parser
 from .constants import Response, Opcode
-from pont_client.utility.construct import ConstructEnum
+from pont_client.utility.construct import PackEnum
 
 ProofResponse = construct.Struct(
-	'opcode' / construct.Default(construct.Const(Opcode.login_proof, ConstructEnum(Opcode)), Opcode.login_proof),
-	'response' / construct.Default(ConstructEnum(Response), Response.success),
+	'opcode' / construct.Default(construct.Const(Opcode.login_proof, PackEnum(Opcode)), Opcode.login_proof),
+	'response' / construct.Default(PackEnum(Response), Response.success),
 
 	'session_proof_hash' / construct.BytesInteger(20, swapped=True),
 	'account_flags' / construct.Default(construct.Int, 32768),
