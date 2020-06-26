@@ -32,11 +32,15 @@ class RealmFlags(Enum):
 	recommended = 0x40
 	full = 0x80
 
+	def __and__(self, other):
+		value = self.value & other.value
+		return RealmFlags(value)
+
 BuildInfo = construct.Struct(
 	'major' / construct.Default(construct.Byte, 3),
 	'minor' / construct.Default(construct.Byte, 3),
 	'bugfix' / construct.Default(construct.Byte, 5),
-	'build' / construct.Default(construct.Short, 12340),
+	'build' / construct.Default(construct.ByteSwapped(construct.Short), 12340),
 )
 
 Realm = construct.Struct(
@@ -49,11 +53,11 @@ Realm = construct.Struct(
 	'num_characters' / construct.Byte,
 	'timezone' / construct.Default(construct.Byte, 8),
 	'id' / construct.Default(construct.Byte, 1),
-	# 'build_info' / construct.Switch(
-	# 	bool(int(construct.this.flags) & RealmFlags.specify_build),
-	# 	{
-	# 		True: BuildInfo,
-	# 		False: None
-	# 	}
-	# )
+	'build_info' / construct.Switch(
+		(construct.this.flags & RealmFlags.specify_build) == RealmFlags.specify_build.value,
+		{
+			True: BuildInfo,
+			False: construct.Pass
+		}
+	)
 )

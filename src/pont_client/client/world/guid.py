@@ -4,4 +4,4 @@ class Guid:
 		self.high: int = high
 
 	def __int__(self):
-		return int(self.low | self.high)
+		return int(self.low | (self.high << 64))

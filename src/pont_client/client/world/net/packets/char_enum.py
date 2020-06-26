@@ -1,28 +1,18 @@
 import construct
 
+from .parse import parser
 from .constants import Opcode
-from pont_client.utility.construct import PackEnum, Coordinates
+from .headers import ClientHeader, ServerHeader
+from ...character import CharacterInfo
 
-CharacterInfo = construct.Struct(
-	'name' / construct.CString('ascii'),
-	'race' / construct.Byte,
-	'class' / construct.Byte,
-	'gender' / construct.Byte,
-	'skin' / construct.Byte,
-	'face' / construct.Byte,
-	'hair_style' / construct.Byte,
-	'hair_color' / construct.Byte,
-	'facial_hair' / construct.Byte,
-	'level' / construct.Byte,
-	'zone' / construct.Bytes(4),
-	'map' / construct.Bytes(4),
-	'coords' / Coordinates(),
+CMSG_CHAR_ENUM = construct.Struct(
+	'header' / ClientHeader(Opcode.CMSG_CHAR_ENUM, 4),
 )
 
 SMSG_CHAR_ENUM = construct.Struct(
-	'opcode' / construct.Default(construct.Const(Opcode.SMSG_CHAR_ENUM, PackEnum(Opcode)), Opcode.SMSG_CHAR_ENUM),
+	'header' / ServerHeader(Opcode.SMSG_CHAR_ENUM, 4 + construct.len_(construct.this.characters)),
 	'guid' / construct.Int,
 	'characters' / CharacterInfo
 )
 
-
+parser.set_parser(Opcode.SMSG_CHAR_ENUM, SMSG_CHAR_ENUM)

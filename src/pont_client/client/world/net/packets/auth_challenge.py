@@ -1,21 +1,15 @@
 import construct
 
+from pont_client.client.world.net.packets.parse import parser
 from pont_client.client.world.net.packets.constants import Opcode
-from pont_client.utility.construct import PackEnum
+from pont_client.client.world.net.packets.headers import ServerHeader
 
 SMSG_AUTH_CHALLENGE = construct.Struct(
-	'size' / construct.Short,
-	'opcode' / construct.Const(
-		Opcode.SMSG_AUTH_CHALLENGE,
-		construct.Default(
-			construct.ByteSwapped(PackEnum(Opcode, construct.Short)),
-			Opcode.SMSG_AUTH_CHALLENGE
-		)
-	),
-	construct.Padding(1),
-	'server_seed' / construct.Int,
-	'seed1' / construct.BytesInteger(16),
-	'seed2' / construct.BytesInteger(16)
-
+	'header' / ServerHeader(Opcode.SMSG_AUTH_CHALLENGE, 4 + 4 + 16*2),
+	construct.Padding(4),
+	'server_seed' / construct.ByteSwapped(construct.Int),
+	'encryption_seed1' / construct.BytesInteger(16, swapped=True),
+	'encryption_seed2' / construct.BytesInteger(16, swapped=True)
 )
 
+parser.set_parser(Opcode.SMSG_AUTH_CHALLENGE, SMSG_AUTH_CHALLENGE)

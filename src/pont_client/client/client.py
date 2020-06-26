@@ -22,14 +22,6 @@ class ClientState(enum.ComparableEnum):
 	loading_world = 7
 	in_game = 8
 
-@asynccontextmanager
-async def _open_nursery():
-	nursery = trio.open_nursery()
-	try:
-		yield nursery
-	finally:
-		nursery.cancel_scope.cancel()
-
 class Client(AsyncScopedEmitter):
 	def __init__(self, nursery, proxy=None):
 		super().__init__(emitter=None)
@@ -92,6 +84,11 @@ class Client(AsyncScopedEmitter):
 
 @asynccontextmanager
 async def open_client(proxy=None):
+	'''
+	Creates a client and
+	:param proxy: address of the proxy server to use
+	:return: Client
+	'''
 	async with trio.open_nursery() as nursery:
 		client = Client(nursery, proxy=proxy)
 		try:

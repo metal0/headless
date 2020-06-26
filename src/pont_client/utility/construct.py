@@ -5,6 +5,20 @@ from typing import Tuple, Union
 def FixedString(length, encoding='ascii'):
 	return construct.StringEncoded(construct.FixedSized(length, construct.GreedyBytes), encoding)
 
+def RC4Encrypted(subcon, encrypt, decrypt, size):
+	return construct.Transformed(subcon, decrypt, size, encrypt, size)
+
+class UpperCString(construct.Adapter):
+	def __init__(self, encoding='ascii'):
+		super().__init__(construct.CString(encoding))
+		self.encoding = encoding
+
+	def _decode(self, obj: str, context, path) -> str:
+		return obj.upper()
+
+	def _encode(self, obj: str, context, path) -> str:
+		return obj.upper()
+
 class UpperPascalStringAdapter(construct.StringEncoded):
 	def __init__(self, subcon, encoding):
 		super().__init__(subcon, encoding)
@@ -85,7 +99,6 @@ class ConstructEnumAdapter(construct.Enum):
 		if isinstance(obj, Tuple):
 			obj = obj[0]
 
-		print(f'{type(self)}: {obj}')
 		return super()._encode(int(obj), context, path)
 
 PackEnum = lambda enum_type, subcon=construct.Byte: ConstructEnumAdapter(enum_type=enum_type, subcon=subcon)

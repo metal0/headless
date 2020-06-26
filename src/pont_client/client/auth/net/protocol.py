@@ -1,16 +1,13 @@
-import traceback
-
 import trio
 
 from pont_client.client.auth.net.packets.constants import Response
 from pont_client.client.auth.net import packets
-from pont_client.client import events, log
+from pont_client.client import log
 log = log.get_logger(__name__)
 
 class AuthProtocol:
 	def __init__(self, stream: trio.abc.HalfCloseableStream):
 		self.stream = stream
-		self._receiver_started = trio.Event()
 
 	async def send_challenge_request(self, username: str, country='enUS', arch='x86', ip='127.0.0.1'):
 		log.debug('Sending challenge request...')
@@ -103,4 +100,3 @@ class AuthProtocol:
 	async def aclose(self):
 		await self.stream.aclose()
 		self.stream = None
-		self._receiver_started = trio.Event()

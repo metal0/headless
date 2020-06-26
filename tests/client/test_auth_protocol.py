@@ -2,7 +2,7 @@ import traceback
 import trio
 
 from pont_client import client as pont, cryptography
-from pont_client.client import auth, ClientState
+from pont_client.client import auth
 from pont_client.client.auth import AuthState, RealmType, RealmStatus
 from pont_client.utility.string import bytes_to_int
 from tests.cryptography.test_srp import load_test_servers

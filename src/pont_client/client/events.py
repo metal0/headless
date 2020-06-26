@@ -30,6 +30,9 @@ class WorldEvent(Enum):
 	received_name_query_response = uuid.uuid4()
 	received_char_enum = uuid.uuid4()
 
+	CMSG_PING_sent = uuid.uuid4()
+	CMSG_KEEP_ALIVE_sent = uuid.uuid4()
+
 world = WorldEvent
 
 class ConsoleEvent(Enum):
