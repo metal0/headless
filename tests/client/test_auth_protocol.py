@@ -1,10 +1,10 @@
 import traceback
 import trio
 
-from pont_client import client as pont, cryptography
-from pont_client.client import auth
-from pont_client.client.auth import AuthState, RealmType, RealmStatus
-from pont_client.utility.string import bytes_to_int
+from pont import client as pont, cryptography
+from pont.client import auth
+from pont.client.auth import AuthState, RealmType, RealmStatus
+from pont.utility.string import bytes_to_int
 from tests.cryptography.test_srp import load_test_servers
 
 logins_filename = 'C:/Users/dinne/Documents/Projects/pont/servers_config.json'
