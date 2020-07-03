@@ -1,12 +1,12 @@
+from typing import Optional, Tuple
+
 import trio
 from trio_socks import socks5
-from typing import Optional, Tuple, List
 
-from . import AuthState, Realm
-from .errors import AuthError
 from pont.client.auth.net.protocol import AuthProtocol
-from .. import log, events
-from ... import cryptography
+from . import AuthState
+from .errors import AuthError
+from .. import log, events, cryptography
 from ...utility.string import bytes_to_int
 
 log = log.mgr.get_logger(__name__)
@@ -18,7 +18,7 @@ class AuthSession:
 		self._nursery = nursery
 		self._emitter = emitter
 		self._stream: Optional[trio.abc.HalfCloseableStream] = None
-		self._srp: Optional[cryptography.srp.WowSrpClient] = None
+		self._srp: Optional[cryptography.WowSrpClient] = None
 		self._session_key = None
 		self._username = None
 		self._state = AuthState.not_connected
@@ -39,7 +39,14 @@ class AuthSession:
 		self._state = AuthState.not_connected
 
 	async def connect(self, address=None, proxy=None, stream=None):
-		log.info(f'Connecting to {address}...')
+		if address is not None:
+			if type(address) == str:
+				address = (address, 3724)
+			log.info(f'Connecting to {address}...')
+
+		elif stream is not None:
+			log.info(f'Using {stream} as auth stream.')
+
 		if stream is None:
 			if address is None:
 				raise ValueError('Both stream and address cannot be None!')
@@ -64,7 +71,7 @@ class AuthSession:
 		self._username = username
 		self._emitter.emit(events.auth.logging_in)
 
-		await self.protocol.send_challenge_request(username=username, arch='x86')
+		await self.protocol.send_challenge_request(username=username, os='OSX')
 		log.debug('sent challenge request')
 
 		challenge_response = await self.protocol.receive_challenge_response()
@@ -74,11 +81,11 @@ class AuthSession:
 		if debug:
 			client_private = debug['client_private']
 
-		self._srp = cryptography.srp.WowSrpClient(username=username, password=password,
-		    prime=challenge_response.prime,
-			generator=challenge_response.generator,
-		    client_private=client_private
-		)
+		self._srp = cryptography.WowSrpClient(username=username, password=password,
+		                                                      prime=challenge_response.prime,
+		                                                      generator=challenge_response.generator,
+		                                                      client_private=client_private
+		                                                      )
 
 		client_public, session_proof = self._srp.process(challenge_response.server_public, challenge_response.salt)
 		self._session_key = int.from_bytes(self._srp.session_key, byteorder='little')
@@ -93,8 +100,9 @@ class AuthSession:
 		log.debug(f'{proof_response.session_proof_hash=} vs {self._srp.session_proof_hash:=}')
 
 		if proof_response.session_proof_hash != self._srp.session_proof_hash:
-			self._state = AuthState.not_connected
+			self._state = AuthState.disconnected
 			self._emitter.emit(events.auth.invalid_login)
+			self._emitter.emit(events.auth.disconnected, reason='Invalid login')
 			raise AuthError('Invalid username or password')
 
 		self._state = AuthState.logged_in

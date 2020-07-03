@@ -22,6 +22,7 @@ class WorldEvent(Enum):
 	connected = uuid.uuid4()
 	in_queue = uuid.uuid4()
 	logged_in = uuid.uuid4()
+	logging_in = uuid.uuid4()
 	loading_world = uuid.uuid4()
 	ingame = uuid.uuid4()
 
@@ -35,6 +36,7 @@ class WorldEvent(Enum):
 	received_SMSG_PONG = uuid.uuid4()
 	received_SMSG_LOGIN_VERIFY_WORLD = uuid.uuid4()
 	received_SMSG_WARDEN_DATA = uuid.uuid4()
+	received_SMSG_TUTORIAL_FLAGS = uuid.uuid4()
 
 	sent_CMSG_PING = uuid.uuid4()
 	sent_CMSG_KEEP_ALIVE = uuid.uuid4()

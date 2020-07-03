@@ -1,6 +1,5 @@
 import hashlib
 import hmac
-import traceback
 
 import arc4
 import trio
@@ -8,10 +7,12 @@ import trio
 from pont.client.world.errors import ProtocolError
 from pont.client.world.net import packets
 from pont.client.world.net.packets import headers
-from pont.client.world.net.packets.auth_packets import AuthResponse
+from pont.client.world.net.packets.auth_packets import AuthResponse, default_addon_bytes
 from pont.client.world.net.packets.constants import Expansion, Opcode
 from pont.client.world.net.packets.headers import ServerHeader
+from ..guid import Guid
 from ... import log
+
 log = log.mgr.get_logger(__name__)
 
 class WorldProtocol:
@@ -26,24 +27,19 @@ class WorldProtocol:
 		self._decrypter = None
 
 	def encrypt(self, data: bytes):
-		if self.has_encryption:
-			self._encrypter.encrypt(bytes([0] * 1024))
+		if self.has_encryption():
 			encrypted = self._encrypter.encrypt(data)
-			log.debug(f'[encrypt] {encrypted=}')
 			return encrypted
 
 		return data
 
 	def decrypt(self, data: bytes):
-		if self.has_encryption:
-			self._decrypter.decrypt(bytes([0] * 1024))
+		if self.has_encryption():
 			decrypted = self._decrypter.decrypt(data)
-			log.debug(f'[decrypt] {decrypted=}')
 			return decrypted
 
 		return data
 
-	@property
 	def has_encryption(self):
 		return self._has_encryption
 
@@ -55,7 +51,7 @@ class WorldProtocol:
 		if data == None or len(data) == 0:
 			return None
 
-		if self.has_encryption:
+		if self.has_encryption():
 			decrypted = self.decrypt(data[0:4])
 		else:
 			decrypted = data[0:4]
@@ -85,6 +81,32 @@ class WorldProtocol:
 		data = header + body
 		return data
 
+	async def _receive_encrypted_packet(self, packet_name: str, packet):
+		async with self._read_lock:
+			packet = packet.parse(self.decrypt_packet(await self.stream.receive_some()))
+			log.debug(f'[receive_{packet_name}] received decrypted: {packet}')
+			return packet
+
+	async def _receive_unencrypted_packet(self, packet_name: str, packet):
+		async with self._read_lock:
+			data = await self.stream.receive_some()
+			packet = packet.parse(data)
+			log.debug(f'[receive_{packet_name}] received unencrypted: {packet}')
+			return packet
+
+	async def _send_unencrypted_packet(self, packet_name: str, packet, **params):
+		async with self._send_lock:
+			data = packet.build(params)
+			await self.stream.send_all(data)
+			log.debug(f'[send_{packet_name}] sent unencrypted: {packet.parse(data)}')
+
+	async def _send_encrypted_packet(self, packet_name: str, packet, **params):
+		async with self._send_lock:
+			data = packet.build(params)
+			encrypted = self.encrypt_packet(data)
+			await self.stream.send_all(encrypted)
+			log.debug(f'[send_{packet_name}] sent encrypted: {packet.parse(data)}')
+
 	def init_encryption(self, session_key: int):
 		session_key_bytes = session_key.to_bytes(length=40, byteorder='little')
 		client_hmac = hmac.new(key=self._client_encrypt_key, digestmod=hashlib.sha1)
@@ -93,165 +115,178 @@ class WorldProtocol:
 		server_hmac = hmac.new(key=self._server_decrypt_key, digestmod=hashlib.sha1)
 		server_hmac.update(session_key_bytes)
 		self._encrypter = arc4.ARC4(client_hmac.digest())
-		# self._encrypter.encrypt(bytes([0] * 1024))
+		self._encrypter.encrypt(bytes([0] * 1024))
 
 		self._decrypter = arc4.ARC4(server_hmac.digest())
-		# self._decrypter.encrypt(bytes([0] * 1024))
+		self._decrypter.encrypt(bytes([0] * 1024))
 		self._has_encryption = True
 
 	async def send_SMSG_AUTH_CHALLENGE(self, server_seed, encryption_seed1, encryption_seed2):
 		'''
-		Sends an SMSG_AUTH_CHALLENGE packet with optional encrpytion.
+		Sends an unencrypted SMSG_AUTH_CHALLENGE packet.
 		:param server_seed:
 		:param encryption_seed1:
 		:param encryption_seed2:
 		:return: None.
 		'''
-		packet = packets.SMSG_AUTH_CHALLENGE.build({
-			'server_seed': server_seed,
-			'encryption_seed1': encryption_seed1,
-			'encryption_seed2': encryption_seed2,
-		})
-		async with self._send_lock:
-			await self.stream.send_all(packet)
-		log.debug(f'[send_SMSG_AUTH_CHALLENGE] sent: {packets.SMSG_AUTH_CHALLENGE.parse(packet)}')
+		await self._send_unencrypted_packet(
+			'SMSG_AUTH_CHALLENGE', packets.SMSG_AUTH_CHALLENGE,
+			server_seed=server_seed,
+			encryption_seed1=encryption_seed1,
+			encryption_seed2=encryption_seed2
+		)
 
 	async def receive_SMSG_AUTH_CHALLENGE(self) -> packets.SMSG_AUTH_CHALLENGE:
 		'''
-		Receives an SMSG_AUTH_CHALLENGE packet with optional encryption.
-		:return: packet of type SMSG_AUTH_CHALLENGE.
+		Receives an unencrypted SMSG_AUTH_CHALLENGE packet.
+		:return: a SMSG_AUTH_CHALLENGE packet.
 		'''
-		async with self._read_lock:
-			packet = packets.SMSG_AUTH_CHALLENGE.parse(await self.stream.receive_some())
-			log.debug(f'[receive_SMSG_AUTH_CHALLENGE] received: {packet}')
-			return packet
+		return await self._receive_unencrypted_packet('SMSG_AUTH_CHALLENGE', packets.SMSG_AUTH_CHALLENGE)
 
-	async def receive_SMSG_WARDEN_DATA(self) -> packets.SMSG_WARDEN_DATA:
+	async def send_CMSG_AUTH_SESSION(self, account_name, client_seed, account_hash, realm_id,
+		build=12340, login_server_id=0, login_server_type=0, region_id=0, battlegroup_id=0, addon_info: bytes = default_addon_bytes):
 		'''
-		Receives an SMSG_WARDEN_DATA packet with optional encryption.
-		:return: packet of type SMSG_WARDEN_DATA.
+		Sends an unencrypted CMSG_AUTH_SESSION packet.
+		:return: None.
 		'''
-		async with self._read_lock:
-			packet = packets.parser.parse(self.decrypt_packet(await self.stream.receive_some()))
-			log.debug(f'[receive_SMSG_WARDEN_DATA] received: {packet}')
-			return packet
+		await self._send_unencrypted_packet(
+			'CMSG_AUTH_SESSION', packets.CMSG_AUTH_SESSION,
+			build=build,
+			login_server_id=login_server_id,
+			account_name=account_name,
+			login_server_type=login_server_type,
+			client_seed=client_seed,
+			region_id=region_id,
+			battlegroup_id=battlegroup_id,
+			realm_id=realm_id,
+			account_hash=account_hash,
+			addon_info=addon_info,
+			header={'size': 61 + len(addon_info) + len(account_name)}
+		)
+
+	async def receive_CMSG_AUTH_SESSION(self) -> packets.CMSG_AUTH_SESSION:
+		'''
+		Receives an unencrypted CMSG_AUTH_SESSION packet.
+		:return: a CMSG_AUTH_SESSION packet.
+		'''
+		return await self._receive_unencrypted_packet(
+			'CMSG_AUTH_SESSION', packets.CMSG_AUTH_SESSION
+		)
+
+	async def send_SMSG_AUTH_RESPONSE(self, response: AuthResponse, expansion: Expansion=Expansion.wotlk):
+		'''
+		Sends an encrypted SMSG_AUTH_RESPONSE packet.
+		:return: None.
+		'''
+		await self._send_encrypted_packet(
+			'SMSG_AUTH_RESPONSE', packets.SMSG_AUTH_RESPONSE,
+			response=response, expansion=expansion
+		)
+
+	async def receive_SMSG_AUTH_RESPONSE(self) -> packets.SMSG_AUTH_RESPONSE:
+		'''
+		Receives an encrypted SMSG_AUTH_RESPONSE packet.
+		:return: a SMSG_AUTH_RESPONSE packet.
+		'''
+		return await self._receive_encrypted_packet(
+			'SMSG_AUTH_RESPONSE', packets.SMSG_AUTH_RESPONSE
+		)
 
 	async def send_SMSG_WARDEN_DATA(self, command=51, module_id=0, module_key=0, size=100):
 		'''
-		Sends an SMSG_WARDEN_DATA packet with optional encryption.
+		Sends an encrypted SMSG_WARDEN_DATA packet.
 		:param command:
 		:param module_id:
 		:param module_key:
 		:param size:
 		:return: None.
 		'''
-		data = self.encrypt_packet(packets.SMSG_WARDEN_DATA.build({
-			'command': command,
-			'module_id': module_id,
-			'module_key': module_key,
-			'size': size,
-		}))
-		async with self._send_lock:
-			await self.stream.send_all(data)
-		log.debug(f'[send_SMSG_WARDEN_DATA] sent packet: {packets.SMSG_WARDEN_DATA.parse(data)}')
+		await self._send_encrypted_packet(
+			'SMSG_WARDEN_DATA', packets.SMSG_WARDEN_DATA,
+			command=command,
+			module_id=module_id,
+			module_key=module_key,
+			size=size
+		)
 
-	async def send_CMSG_AUTH_SESSION(self, account_name, client_seed, account_hash, realm_id,
-		build=12340, login_server_id=0, login_server_type=0, region_id=0, battlegroup_id=0):
+	async def receive_SMSG_WARDEN_DATA(self) -> packets.SMSG_WARDEN_DATA:
 		'''
-		Sends an unencrypted CMSG_AUTH_SESSION packet.
-		:return: None.
+		Receives an SMSG_WARDEN_DATA packet with optional encryption.
+		:return: a SMSG_WARDEN_DATA packet.
 		'''
-		data = packets.CMSG_AUTH_SESSION.build({
-			'build': build,
-			'login_server_id': login_server_id,
-			'account_name': account_name,
-			'login_server_type': login_server_type,
-			'client_seed': client_seed,
-			'region_id': region_id,
-			'battlegroup_id': battlegroup_id,
-			'realm_id': realm_id,
-			'account_hash': account_hash,
-			'header': {'size': 61 + 237 + len(account_name)}
-		})
-		async with self._send_lock:
-			await self.stream.send_all(data)
-		log.debug(f'[send_CMSG_AUTH_SESSION] sent: {packets.CMSG_AUTH_SESSION.parse(data)}')
-
-	async def receive_CMSG_AUTH_SESSION(self) -> packets.CMSG_AUTH_SESSION:
-		'''
-		Receives an unencrypted CMSG_AUTH_SESSION packet.
-		:return: packet of type CMSG_AUTH_SESSION.
-		'''
-		async with self._read_lock:
-			packet = packets.CMSG_AUTH_SESSION.parse(await self.stream.receive_some())
-			log.debug(f'[receive_CMSG_AUTH_SESSION] received: {packet}')
-			return packet
-
-	async def send_SMSG_AUTH_RESPONSE(self, response: AuthResponse, expansion: Expansion=Expansion.wotlk):
-		data = packets.SMSG_AUTH_RESPONSE.build({
-			'response': response,
-			'expansion': expansion,
-		})
-
-		packet = packets.SMSG_AUTH_RESPONSE.parse(data)
-		async with self._read_lock:
-			await self.stream.send_all(packet)
-		log.debug(f'[send_SMSG_AUTH_RESPONSE] sent: {packet}')
-
-	async def receive_SMSG_AUTH_RESPONSE(self) -> packets.SMSG_AUTH_RESPONSE:
-		async with self._read_lock:
-			packet = packets.SMSG_AUTH_RESPONSE.parse(await self.stream.receive_some())
-			log.debug(f'[receive_SMSG_AUTH_RESPONSE] received: {packet}')
-			return packet
+		return await self._receive_encrypted_packet('SMSG_WARDEN_DATA', packets.SMSG_WARDEN_DATA)
 
 	async def send_CMSG_CHAR_ENUM(self):
 		'''
-		Sends a CMSG_CHAR_ENUM packet with optional encryption.
+		Sends an encrypted CMSG_CHAR_ENUM packet.
 		:return: None.
 		'''
-		data = packets.CMSG_CHAR_ENUM.build({})
-		encrypted = self.encrypt_packet(data)
-		async with self._send_lock:
-			await self.stream.send_all(encrypted)
-		log.debug(f'[send_CMSG_CHAR_ENUM] sent: {packets.CMSG_CHAR_ENUM.parse(data)}')
+		await self._send_encrypted_packet(
+			'CMSG_CHAR_ENUM', packets.CMSG_CHAR_ENUM,
+		)
 
 	async def receive_SMSG_CHAR_ENUM(self) -> packets.SMSG_CHAR_ENUM:
 		'''
-		Receives an SMSG_CHAR_ENUM packet with optional encryption.
-		:return: packet of type SMSG_CHAR_ENUM.
+		Receives an encrypted SMSG_CHAR_ENUM packet.
+		:return: a SMSG_CHAR_ENUM packet.
 		'''
-		async with self._read_lock:
-			packet = packets.SMSG_CHAR_ENUM.parse(self.decrypt_packet(await self.stream.receive_some()))
-			log.debug(f'[receive_SMSG_CHAR_ENUM] received: {packet}')
-			return packet
+		return await self._receive_encrypted_packet('SMSG_CHAR_ENUM', packets.SMSG_CHAR_ENUM)
 
 	async def send_CMSG_PING(self, id, latency=60):
 		'''
-		Sends a CMSG_PING packet with optional encryption.
-		:param id:
-		:param latency:
+		Sends an encrypted CMSG_PING packet.
+		:param id: the ping identifier (usually starts at 0 and increments)
+		:param latency: the latency (in ms)
 		:return: None.
 		'''
-		data = packets.CMSG_PING.build({
-			'id': id,
-			'latency': latency
-		})
+		await self._send_encrypted_packet(
+			'CMSG_PING', packets.CMSG_PING,
+			id=id, latency=latency
+		)
 
-		encrypted = self.encrypt_packet(data)
-		async with self._send_lock:
-			await self.stream.send_all(encrypted)
-		log.debug(f'[send_CMSG_PING] sent: {packets.CMSG_PING.parse(data)}')
+	async def receive_CMSG_PING(self) -> packets.CMSG_PING:
+		'''
+		Receives an encrypted CMSG_PING packet.
+		:return: a CMSG_PING packet.
+		'''
+		return await self._receive_encrypted_packet(
+			'CMSG_PING', packets.CMSG_PING,
+		)
 
 	async def send_CMSG_KEEP_ALIVE(self):
 		'''
 		Sends a CMSG_KEEP_ALIVE packet with optional encryption.
 		:return: None.
 		'''
-		data = packets.CMSG_KEEP_ALIVE.build({})
-		encrypted = self.encrypt_packet(data)
-		async with self._send_lock:
-			await self.stream.send_all(encrypted)
-		log.debug(f'[send_CMSG_KEEP_ALIVE] sent: {packets.CMSG_KEEP_ALIVE.parse(data)}')
+		await self._send_encrypted_packet(
+			'CMSG_KEEP_ALIVE', packets.CMSG_KEEP_ALIVE,
+		)
+
+	async def receive_CMSG_KEEP_ALIVE(self):
+		'''
+		Receives and decrypts (if necessary) a CMSG_KEEP_ALIVE packet.
+		:return: a packet of type world.net.packets.CMSG_KEEP_ALIVE.
+		'''
+		return await self._receive_encrypted_packet(
+			'CMSG_KEEP_ALIVE', packets.CMSG_KEEP_ALIVE,
+		)
+
+	async def send_CMSG_PLAYER_LOGIN(self, player_guid: Guid):
+		'''
+		Sends an encrypted CMSG_PLAYER_LOGIN packet.
+		:return: None.
+		'''
+		await self._send_encrypted_packet(
+			'CMSG_PLAYER_LOGIN', packets.CMSG_PLAYER_LOGIN,
+			player_guid=player_guid
+		)
+
+	async def receive_CMSG_PLAYER_LOGIN(self) -> packets.CMSG_PLAYER_LOGIN:
+		'''
+		Receives an encrypted CMSG_PLAYER_LOGIN packet.
+		:return: a CMSG_PLAYER_LOGIN packet.
+		'''
+		return await self._receive_encrypted_packet('CMSG_PLAYER_LOGIN', packets.CMSG_PLAYER_LOGIN)
 
 	async def process_packets(self):
 		while True:
@@ -263,13 +298,11 @@ class WorldProtocol:
 				raise ProtocolError('received EOF from server')
 
 			header_data = self.decrypt(header_data)
-			log.debug(f'[process_packets] received: {header_data=}')
-
 			if headers.is_large_packet(header_data):
 				header_data += self.decrypt(await self.stream.receive_some(max_bytes=1))
 				size = ((header_data[0] & 0x7F) << 16) | (header_data[1] << 8) | header_data[2]
 				opcode = Opcode(header_data[3] | (header_data[4] << 8))
-				log.warning(f'[decrypt_packet] large packet {size=}')
+				log.warning(f'[process_packets] large packet {size=}')
 
 			else:
 				size = (header_data[0] << 8) | header_data[1]
@@ -282,13 +315,17 @@ class WorldProtocol:
 
 			header = packets.parser.parse_header(header_data)
 			log.debug(f'{header=}')
-			log.debug(f'Listening for {header.size - 2} bytes...')
 
-			async with self._read_lock:
-				data = header_data + await self.stream.receive_some(max_bytes=header.size - 2)
+			if header.size - 2 > 0:
+				log.debug(f'Listening for {header.size - 2} bytes...')
 
-			if data is None or len(data) == 0:
-				raise ProtocolError('received EOF from server')
+				async with self._read_lock:
+					data = header_data + await self.stream.receive_some(max_bytes=header.size - 2)
+
+				if data is None or len(data) == 0:
+					raise ProtocolError('received EOF from server')
+			else:
+				data = header_data
 
 			await trio.lowlevel.checkpoint()
 
@@ -298,9 +335,8 @@ class WorldProtocol:
 
 			except KeyError:
 				await trio.lowlevel.checkpoint()
-				traceback.print_exc()
 				header = packets.parser.parse_header(header_data)
-				log.error(f'[receive_packet] Dropped packet: {header=}, {data=}')
+				log.error(f'Dropped packet: {header=}, {data=}')
 
 	async def aclose(self):
 		await self.stream.aclose()

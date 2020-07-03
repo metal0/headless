@@ -1,7 +1,9 @@
 import json
+
 import pytest
 
 from pont.client import log
+
 log = log.mgr.get_logger(__name__)
 
 def load_test_servers(filename: str):
@@ -11,7 +13,7 @@ def load_test_servers(filename: str):
 def run_login_test(login: dict, expected_proof_hash: int, server_public: int,
                    prime: int, salt: int, client_private: int, generator: int = 7):
 
-	from pont.cryptography import srp
+	from pont.client.cryptography import srp
 	srp = srp.WowSrpClient(
 		username=login['username'], password=login['password'],
 		prime=prime, generator=generator, client_private=client_private
@@ -26,7 +28,7 @@ logins_filename = 'C:/Users/dinne/Documents/Projects/pont/servers_config.json'
 test_servers = load_test_servers(logins_filename)
 
 def test_srp_sha1_1():
-	from pont.cryptography.sha import sha1
+	from pont.client.cryptography import sha1
 	assert sha1(['admin', ':', 'password'])\
 		   == sha1('admin', ':', 'password')\
 		   == sha1('admin:', 'password')\
@@ -34,7 +36,7 @@ def test_srp_sha1_1():
 		   == sha1('admin:password')
 
 def test_srp_sha1_2():
-	from pont.cryptography.sha import sha1
+	from pont.client.cryptography import sha1
 	assert sha1('hello there', out=hex) == '6e71b3cac15d32fe2d36c270887df9479c25c640'
 
 def test_trinity_core_login():

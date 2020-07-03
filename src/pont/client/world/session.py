@@ -6,16 +6,16 @@ from typing import Optional, Tuple
 import trio
 from trio_socks import socks5
 
-from pont.client.world.net.protocol import WorldProtocol
-from .character_select import CharacterInfo
+from pont.client.cryptography import sha
 from .errors import ProtocolError
-from .net.handler import WorldHandler
+from .guid import Guid
+from .net import packets, WorldHandler, WorldProtocol
 from .net.packets.auth_packets import AuthResponse
+from .state import WorldState
 from .. import events, world
 from ..auth import Realm
-from ...cryptography import sha
-
 from ..log import mgr
+
 log = mgr.get_logger(__name__)
 
 class WorldSession:
@@ -34,7 +34,12 @@ class WorldSession:
 		self._encryption_seed2 = None
 		self._username = None
 		self._packets_received = []
-		# self._world = esper.World
+		# self._obj_mgr = esper.World()
+		self._state = WorldState.not_connected
+
+	@property
+	def state(self):
+		return self._state
 
 	def realm(self) -> Realm:
 		return self._realm
@@ -42,20 +47,6 @@ class WorldSession:
 	async def aclose(self):
 		if self._stream is not None:
 			await self._stream.aclose()
-
-	async def characters(self) -> CharacterInfo:
-		received_characters_event = trio.Event()
-		characters: Optional[CharacterInfo] = None
-
-		@self._emitter.once(events.world.received_SMSG_CHAR_ENUM)
-		def on_char_enum(packet: world.net.packets.SMSG_CHAR_ENUM):
-			nonlocal characters
-			characters = packet.characters
-			received_characters_event.set()
-
-		await self.protocol.send_CMSG_CHAR_ENUM()
-		await received_characters_event.wait()
-		return characters
 
 	async def _keepalive(self):
 		log.debug('[_keepalive] started')
@@ -80,16 +71,24 @@ class WorldSession:
 		log.debug('[_packet_handler] started')
 		try:
 			async for packet in self.protocol.process_packets():
-				self.handler.handle(packet)
+				await self.handler.handle(packet)
 
 		except world.errors.ProtocolError as e:
 			traceback.print_exc()
-			self._emitter.emit(events.world.disconnected)
+			self._state = WorldState.disconnected
+			self._emitter.emit(events.world.disconnected, reason=str(e))
 			await trio.lowlevel.checkpoint()
 			raise e
 
-	async def connect(self, realm: Realm, proxy=None, stream=None):
-		log.info(f'Connecting to {realm.name} at {realm.address}')
+	async def connect(self, realm=None, proxy=None, stream=None):
+		if realm is not None:
+			log.info(f'Connecting to {realm.name} at {realm.address}')
+		elif stream is not None:
+			log.info(f'Using {stream} as world stream.')
+
+		if self._state > WorldState.not_connected:
+			raise ProtocolError('Already connected to another server!')
+
 		if stream is None:
 			if self.proxy is not None or proxy is not None:
 				self._stream = socks5.Socks5Stream(destination=realm.address,
@@ -102,16 +101,24 @@ class WorldSession:
 			self._stream = stream
 
 		self._realm = realm
+		self._state = WorldState.connected
 		self._emitter.emit(events.world.connected, self._realm.address)
 
 	async def authenticate(self, username, session_key):
 		log.info(f'Logging in with username {username}...')
+		if self.state < WorldState.connected:
+			raise ProtocolError('Not connected to world server')
+
+		self._state = WorldState.logging_in
+		self._emitter.emit(events.world.logging_in)
+
 		self.protocol = WorldProtocol(stream=self._stream)
 		self.protocol.init_encryption(session_key=session_key)
 		self._session_key = session_key
 		self._username = username.upper()
 
 		auth_challenge = await self.protocol.receive_SMSG_AUTH_CHALLENGE()
+		print(auth_challenge)
 		self._server_seed = auth_challenge.server_seed
 		self._encryption_seed1 = auth_challenge.encryption_seed1
 		self._encryption_seed2 = auth_challenge.encryption_seed2
@@ -135,13 +142,43 @@ class WorldSession:
 		def on_auth_response(packet: world.net.packets.SMSG_AUTH_RESPONSE):
 			if packet.response == AuthResponse.ok:
 				response_event.set()
+				self._state = WorldState.logged_in
 				log.info('Logged in!')
 
 			elif packet.response == AuthResponse.wait_queue:
+				self._state = WorldState.in_queue
 				log.info(f'In queue: {packet.queue_position}')
 
 		self._nursery.start_soon(self._packet_handler)
 		await response_event.wait()
 
-		# self._nursery.start_soon(self._keepalive)
-		# self._nursery.start_soon(self._ping_every_30_seconds)
+		self._nursery.start_soon(self._keepalive)
+		self._nursery.start_soon(self._ping_every_30_seconds)
+
+	async def characters(self):
+		received_characters_event = trio.Event()
+		result = []
+
+		@self._emitter.once(events.world.received_SMSG_CHAR_ENUM)
+		def on_char_enum(characters):
+			nonlocal result
+			result = characters
+			received_characters_event.set()
+
+		await self.protocol.send_CMSG_CHAR_ENUM()
+		await received_characters_event.wait()
+		return result
+
+	async def enter_world(self, player_guid: Guid):
+		log.info(f'Entering world with {player_guid}...')
+		login_verify_world_event = trio.Event()
+		@self._emitter.once(events.world.received_SMSG_LOGIN_VERIFY_WORLD)
+		async def on_login_verify_world(packet: packets.SMSG_LOGIN_VERIFY_WORLD):
+			login_verify_world_event.set()
+
+		await self.protocol.send_CMSG_PLAYER_LOGIN(player_guid)
+		await login_verify_world_event.wait()
+
+
+
+

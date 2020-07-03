@@ -1,11 +1,12 @@
 import traceback
+
 import trio
 
-from pont import client as pont, cryptography
-from pont.client import auth
+from pont import client as pont
+from pont.client import auth, cryptography
 from pont.client.auth import AuthState, RealmType, RealmStatus
 from pont.utility.string import bytes_to_int
-from tests.cryptography.test_srp import load_test_servers
+from tests.client.cryptography import load_test_servers
 
 logins_filename = 'C:/Users/dinne/Documents/Projects/pont/servers_config.json'
 test_servers = load_test_servers(logins_filename)
@@ -35,7 +36,13 @@ async def auth_server(stream):
 	proof_request = await protocol.receive_proof_request()
 	client_private = 143386892073113346271045296825355365119602324795205856098132479049957622403427006810653616896639308669514885320513042624825577275523311345156882292579472806120577841118102290052948040847318515534261288049316514160095147951671405527775489066400222418481863631312167863930538967927022064010646095222765545969242
 
-	srp = cryptography.srp.WowSrpClient(username=tc_login['username'], password=tc_login['password'], prime=prime, generator=generator, client_private=client_private)
+	srp = cryptography.WowSrpClient(
+		username=tc_login['username'], password=tc_login['password'],
+		prime=prime,
+		generator=generator,
+		client_private=client_private
+	)
+
 	client_public, session_proof = srp.process(server_public=server_public, salt=salt)
 	assert client_public == proof_request.client_public
 	assert session_proof == proof_request.session_proof
@@ -81,8 +88,7 @@ async def client_login(auth_address, stream):
 
 async def test_auth_protocol():
 	(client_stream, server_stream) = trio.testing.memory_stream_pair()
-	auth_address = ('10.179.205.114', 3724)
 	with trio.fail_after(1):
 		async with trio.open_nursery() as nursery:
-			nursery.start_soon(client_login, auth_address, client_stream)
+			nursery.start_soon(client_login, None, client_stream)
 			nursery.start_soon(auth_server, server_stream)

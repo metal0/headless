@@ -1,8 +1,12 @@
+import inspect
+
 from pont.client.world.net.packets import SMSG_AUTH_RESPONSE, SMSG_PONG, SMSG_WARDEN_DATA
 from pont.client.world.net.packets.constants import Opcode
+from . import packets
 from .packets.auth_packets import AuthResponse
 from ..errors import ProtocolError
 from ... import events, log
+
 log = log.mgr.get_logger(__name__)
 
 class WorldHandler:
@@ -12,16 +16,33 @@ class WorldHandler:
 			Opcode.SMSG_AUTH_RESPONSE: self.handle_auth_response,
 			Opcode.SMSG_WARDEN_DATA: self.handle_warden_data,
 			Opcode.SMSG_PONG: self.handle_pong,
+			Opcode.SMSG_CHAR_ENUM: self.handle_char_enum,
+			Opcode.SMSG_LOGIN_VERIFY_WORLD: self.handle_login_verify_world,
+			Opcode.SMSG_TUTORIAL_FLAGS: self.handle_tutorial_flags,
 		}
 
-	def handle(self, packet):
-		fn = self._packet_map[packet.header.opcode]
+	async def handle(self, packet):
+		try:
+			fn = self._packet_map[packet.header.opcode]
 
-		if fn is None:
+			if fn is None:
+				log.debug(f'Dropped packet: packet={packet}')
+				return
+
+			if inspect.iscoroutine(fn):
+				# noinspection PyUnresolvedReferences, PyArgumentList
+				return await fn(packet)
+			else:
+				# noinspection PyArgumentList
+				return fn(packet)
+
+		except KeyError:
 			log.debug(f'Dropped packet: packet={packet}')
 			return
 
-		return self._packet_map[packet.header.opcode](packet)
+	def handle_tutorial_flags(self, packet: packets.SMSG_TUTORIAL_FLAGS):
+		self._emitter.emit(events.world.received_SMSG_TUTORIAL_FLAGS, packet=packet)
+		log.debug(f'[handle_tutorial_flags] packet={packet}')
 
 	def handle_auth_response(self, packet: SMSG_AUTH_RESPONSE):
 		self._emitter.emit(events.world.received_SMSG_AUTH_RESPONSE, packet=packet)
@@ -34,6 +55,14 @@ class WorldHandler:
 
 		else:
 			raise ProtocolError(str(packet.response))
+
+	def handle_char_enum(self, packet: packets.SMSG_CHAR_ENUM):
+		self._emitter.emit(events.world.received_SMSG_CHAR_ENUM, characters=packet.characters)
+		log.debug(f'[handle_char_enum] packet={packet}')
+
+	def handle_login_verify_world(self, packet: packets.SMSG_LOGIN_VERIFY_WORLD):
+		self._emitter.emit(events.world.received_SMSG_LOGIN_VERIFY_WORLD, packet=packet)
+		log.debug(f'[handle_login_verify_world] packet={packet}')
 
 	def handle_warden_data(self, packet: SMSG_WARDEN_DATA):
 		self._emitter.emit(events.world.received_SMSG_WARDEN_DATA, packet=packet)

@@ -1,7 +1,8 @@
 import hashlib
 
-from pont.utility.string import int_to_bytes
 from pont.client.log import mgr
+from pont.utility.string import int_to_bytes
+
 log = mgr.get_logger(__name__)
 
 def __handle_arg(arg, hash, encoding='latin1'):

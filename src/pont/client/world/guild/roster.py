@@ -20,7 +20,7 @@ RosterMemberData = construct.Struct(
 	'name' / construct.CString('ascii'),
 	'rank_id' / construct.ByteSwapped(construct.Int),
 	'level' / construct.Byte,
-	'class_id' / PackEnum(CombatClass),
+	'combat_class' / PackEnum(CombatClass),
 	'gender' / PackEnum(Gender),
 	'area_id' / construct.ByteSwapped(construct.Int),
 	'last_save' / construct.IfThenElse(construct.this.status == MemberStatus.offline, construct.Float32l, construct.Pass),

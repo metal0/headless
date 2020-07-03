@@ -1,8 +1,9 @@
 import traceback
+
 import trio
 
 from pont.client import world
-from tests.cryptography.test_srp import load_test_servers
+from tests.client.cryptography import load_test_servers
 
 logins_filename = 'C:/Users/dinne/Documents/Projects/pont/servers_config.json'
 test_servers = load_test_servers(logins_filename)

@@ -1,6 +1,7 @@
 from ...utility import enum
 
 class AuthState(enum.ComparableEnum):
+	disconnected = -1
 	not_connected = 0
 	connected = 1
 	logging_in = 2

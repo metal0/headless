@@ -1,5 +1,7 @@
-import construct
 from enum import Enum
+
+import construct
+
 from ...utility.construct import PackEnum, AddressPort
 
 
@@ -49,7 +51,7 @@ Realm = construct.Struct(
 	'flags' / construct.Default(PackEnum(RealmFlags), RealmFlags.none),
 	'name' / construct.CString('ascii'),
 	'address' / AddressPort('ascii'),
-	'population' / construct.ByteSwapped(construct.Float32b),
+	'population' / construct.Float32l, # TODO: Figure out realm population encoding/decoding
 	'num_characters' / construct.Byte,
 	'timezone' / construct.Default(construct.Byte, 8),
 	'id' / construct.Default(construct.Byte, 1),
