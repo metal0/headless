@@ -4,9 +4,9 @@ from typing import Tuple
 import pyee
 import trio
 
-from . import Config, auth
-from . import log
+from . import log, auth
 from .auth import AuthSession, AuthState, Realm
+from .config import Config
 from .world.character_select import CharacterInfo
 from .world.session import WorldSession
 from .world.state import WorldState
@@ -110,7 +110,7 @@ class Client(AsyncScopedEmitter):
 
 		return await self.auth.realmlist()
 
-	async def connect_realm(self, realm: Realm):
+	async def select_realm(self, realm: Realm):
 		if self.auth.state < AuthState.logged_in:
 			raise auth.ProtocolError('Must at least be logged into the auth server')
 

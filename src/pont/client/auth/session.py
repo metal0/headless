@@ -4,8 +4,8 @@ import trio
 from trio_socks import socks5
 
 from pont.client.auth.net.protocol import AuthProtocol
-from . import AuthState
 from .errors import AuthError
+from .state import AuthState
 from .. import log, events, cryptography
 from ...utility.string import bytes_to_int
 
