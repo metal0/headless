@@ -1,4 +1,5 @@
 import json
+import random
 import traceback
 
 import trio
@@ -36,19 +37,24 @@ async def run(server, proxy=None):
 					break
 
 			# Enter world with character
-			await client.enter_world(character)
+			with trio.fail_after(5):
+				await client.enter_world(character)
+
+			# client.nursery.start_soon(client.anti_afk)
 			await trio.sleep_forever()
 
-	except (trio.TooSlowError, auth.ProtocolError, auth.AuthError, world.ProtocolError) as e:
+	except (trio.TooSlowError, auth.ProtocolError, auth.AuthError, world.ProtocolError):
 		traceback.print_exc()
 
 async def main():
 	login_filename = 'C:/Users/dinne/Documents/Projects/pont/servers_config.json'
 	acore = load_login('acore', login_filename)
-	proxy = ('10.179.205.114', 1664)
-	# proxy = None
+	# proxy = ('10.179.205.114', 1664)
+	proxy = None
 
-	await run(acore, proxy=proxy)
+	while True:
+		await run(acore, proxy=proxy)
+		await trio.sleep(5 + random.random() * 20)
 
 if __name__ == '__main__':
 	trio.run(main)

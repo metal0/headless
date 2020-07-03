@@ -7,10 +7,11 @@ import trio
 from trio_socks import socks5
 
 from pont.client.cryptography import sha
+from .character_select import CharacterInfo
 from .errors import ProtocolError
-from .guid import Guid
-from .net import packets, WorldHandler, WorldProtocol
+from .net import WorldHandler, WorldProtocol
 from .net.packets.auth_packets import AuthResponse
+from .net.packets.constants import Opcode
 from .state import WorldState
 from .. import events, world
 from ..auth import Realm
@@ -22,7 +23,7 @@ class WorldSession:
 	def __init__(self, nursery, emitter, proxy: Optional[Tuple[str, int]] = None):
 		self.proxy = proxy
 		self.protocol: Optional[WorldProtocol] = None
-		self.handler: WorldHandler = WorldHandler(emitter)
+		self.handler: WorldHandler = WorldHandler(emitter=emitter, world=self)
 		self._nursery = nursery
 		self._emitter = emitter
 		self._stream: Optional[trio.abc.HalfCloseableStream] = None
@@ -48,6 +49,24 @@ class WorldSession:
 		if self._stream is not None:
 			await self._stream.aclose()
 
+		self._state = WorldState.not_connected
+
+	async def wait_for_packet(self, opcode: Opcode):
+		receive_event = trio.Event()
+		result = None
+
+		async def on_receive_packet(packet):
+			if packet.header.opcode == opcode:
+				nonlocal result
+				result = packet
+				receive_event.set()
+
+		listener = self._emitter.on(events.world.received_packet, on_receive_packet)
+		await receive_event.wait()
+
+		self._emitter.remove_listener(events.world.received_packet, listener)
+		return result
+
 	async def _keepalive(self):
 		log.debug('[_keepalive] started')
 		while True:
@@ -57,20 +76,27 @@ class WorldSession:
 			random_factor = r * 20 - 10
 			await trio.sleep(30 + random_factor)
 
-	async def _ping_every_30_seconds(self):
-		log.debug('[_ping_every_30_seconds] started')
-		id = 0
-		while True:
-			await self.protocol.send_CMSG_PING(id)
-			self._emitter.emit(events.world.sent_CMSG_PING)
-			random_factor = random.betavariate(alpha=0.2, beta=0.7) * 20 - 10
-			await trio.sleep(30 + random_factor)
-			id += 1
+	# async def ping(self) -> int:
+	# 	await self.protocol.send_CMSG_PING()
 
+	# async def _ping_every_30_seconds(self):
+	# 	log.debug('[_ping_every_30_seconds] started')
+	# 	id = 0
+	# 	while True:
+	# 		await self.protocol.send_CMSG_PING(id)
+	# 		self._emitter.emit(events.world.sent_CMSG_PING)
+	# 		random_factor = random.betavariate(alpha=0.2, beta=0.7) * 20 - 10
+	# 		await trio.sleep(30 + random_factor)
+	# 		id += 1
+
+	# TODO: Issue with children running when client exits scope?
+	#  iiuc, it should block until all children exit, so we need a way to
+	#  kill children when the client dies
 	async def _packet_handler(self):
 		log.debug('[_packet_handler] started')
 		try:
 			async for packet in self.protocol.process_packets():
+				self._emitter.emit(events.world.received_packet, packet=packet)
 				await self.handler.handle(packet)
 
 		except world.errors.ProtocolError as e:
@@ -104,6 +130,7 @@ class WorldSession:
 		self._state = WorldState.connected
 		self._emitter.emit(events.world.connected, self._realm.address)
 
+	# noinspection PyUnresolvedReferences
 	async def authenticate(self, username, session_key):
 		log.info(f'Logging in with username {username}...')
 		if self.state < WorldState.connected:
@@ -118,7 +145,6 @@ class WorldSession:
 		self._username = username.upper()
 
 		auth_challenge = await self.protocol.receive_SMSG_AUTH_CHALLENGE()
-		print(auth_challenge)
 		self._server_seed = auth_challenge.server_seed
 		self._encryption_seed1 = auth_challenge.encryption_seed1
 		self._encryption_seed2 = auth_challenge.encryption_seed2
@@ -137,23 +163,17 @@ class WorldSession:
 			realm_id=self._realm.id
 		)
 
-		response_event = trio.Event()
-		@self._emitter.once(events.world.received_SMSG_AUTH_RESPONSE)
-		def on_auth_response(packet: world.net.packets.SMSG_AUTH_RESPONSE):
-			if packet.response == AuthResponse.ok:
-				response_event.set()
-				self._state = WorldState.logged_in
-				log.info('Logged in!')
-
-			elif packet.response == AuthResponse.wait_queue:
-				self._state = WorldState.in_queue
-				log.info(f'In queue: {packet.queue_position}')
-
 		self._nursery.start_soon(self._packet_handler)
-		await response_event.wait()
+		auth_response = await self.wait_for_packet(Opcode.SMSG_AUTH_RESPONSE)
+		if auth_response.response == AuthResponse.ok:
+			self._state = WorldState.logged_in
+			log.info('Logged in!')
+
+		elif auth_response.response == AuthResponse.wait_queue:
+			self._state = WorldState.in_queue
+			log.info(f'In queue: {auth_response.queue_position}')
 
 		self._nursery.start_soon(self._keepalive)
-		self._nursery.start_soon(self._ping_every_30_seconds)
 
 	async def characters(self):
 		received_characters_event = trio.Event()
@@ -169,15 +189,15 @@ class WorldSession:
 		await received_characters_event.wait()
 		return result
 
-	async def enter_world(self, player_guid: Guid):
-		log.info(f'Entering world with {player_guid}...')
-		login_verify_world_event = trio.Event()
-		@self._emitter.once(events.world.received_SMSG_LOGIN_VERIFY_WORLD)
-		async def on_login_verify_world(packet: packets.SMSG_LOGIN_VERIFY_WORLD):
-			login_verify_world_event.set()
+	async def enter_world(self, character: CharacterInfo):
+		log.info(f'Entering world as {character.name}...')
+		await self.protocol.send_CMSG_PLAYER_LOGIN(character.guid)
+		await self.wait_for_packet(Opcode.SMSG_LOGIN_VERIFY_WORLD)
+		log.info('Entered world')
 
-		await self.protocol.send_CMSG_PLAYER_LOGIN(player_guid)
-		await login_verify_world_event.wait()
+	async def logout(self):
+		pass
+		# await self.protocol.send_CMSG_PLAYER_LOGOUT?()
 
 
 

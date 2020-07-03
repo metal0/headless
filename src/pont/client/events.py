@@ -29,6 +29,7 @@ class WorldEvent(Enum):
 	# Net events
 	disconnected = uuid.uuid4()
 
+	received_packet = uuid.uuid4()
 	received_SMSG_AUTH_CHALLENGE = uuid.uuid4()
 	received_SMSG_AUTH_RESPONSE = uuid.uuid4()
 	received_SMSG_NAME_QUERY_RESPONSE = uuid.uuid4()
@@ -37,18 +38,15 @@ class WorldEvent(Enum):
 	received_SMSG_LOGIN_VERIFY_WORLD = uuid.uuid4()
 	received_SMSG_WARDEN_DATA = uuid.uuid4()
 	received_SMSG_TUTORIAL_FLAGS = uuid.uuid4()
+	received_SMSG_TIME_SYNC_REQ = uuid.uuid4()
 
 	sent_CMSG_PING = uuid.uuid4()
 	sent_CMSG_KEEP_ALIVE = uuid.uuid4()
 	sent_CMSG_WARDEN_DATA = uuid.uuid4()
 	sent_CMSG_CHAR_ENUM = uuid.uuid4()
+	sent_CMSG_TIME_SYNC_RES = uuid.uuid4()
 
 world = WorldEvent
-
-class ConsoleEvent(Enum):
-	data_received = uuid.uuid4()
-
-console = ConsoleEvent
 
 class ConfigEvent(Enum):
 	relogger_changed = uuid.uuid4()

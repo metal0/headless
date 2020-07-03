@@ -1,8 +1,10 @@
 import time
+
 import construct
-from .constants import Response, Opcode
+
 from pont.utility.construct import UpperPascalString, IPv4Address, PackEnum, PaddedStringByteSwapped, \
 	VersionString
+from .constants import Response, Opcode
 
 ChallengeRequest = construct.Struct(
 	'opcode' / construct.Default(construct.Const(Opcode.login_challenge, PackEnum(Opcode)), Opcode.login_challenge),

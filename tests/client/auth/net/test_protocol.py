@@ -15,7 +15,6 @@ tc_login = test_servers['trinity-core-3.3.5']['account']
 async def auth_server(stream):
 	protocol = auth.net.AuthProtocol(stream)
 	challenge_request = await protocol.receive_challenge_request()
-	print(challenge_request)
 
 	assert challenge_request.packet_size == 30 + len(challenge_request.account_name)
 	assert challenge_request.game == 'WoW'
@@ -74,7 +73,7 @@ async def client_login(auth_address, stream):
 			await client.auth.authenticate(tc_login['username'], tc_login['password'], debug=auth_debug)
 			assert client.auth.state >= AuthState.logged_in
 
-			realmlist = await client.auth.realmlist()
+			realmlist = await client.auth.realms()
 			assert client.auth.state == AuthState.realmlist_ready
 
 			assert realmlist[0].type == RealmType.pvp

@@ -3,7 +3,6 @@ import construct
 from pont.utility.construct import GuidConstruct, PackedGuid
 from .constants.opcode import Opcode
 from .headers import ServerHeader, ClientHeader
-from .parse import parser
 from ...guid import Guid
 
 CMSG_NAME_QUERY = construct.Struct(
@@ -21,5 +20,3 @@ SMSG_NAME_QUERY_RESPONSE = construct.Struct(
 	# 'gender' / PackEnum(Gender),
 	# 'combat_class' / PackEnum(CombatClass),
 )
-
-parser.set_parser(Opcode.SMSG_NAME_QUERY_RESPONSE, SMSG_NAME_QUERY_RESPONSE)

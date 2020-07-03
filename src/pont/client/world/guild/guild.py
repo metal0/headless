@@ -52,13 +52,13 @@ class Guild:
 	min_ranks = 5
 
 GuildInfo = construct.Struct(
-	'guild_id' / construct.ByteSwapped(construct.Int),
+	'guild_id' / construct.Int32ul,
 	'name' / construct.CString('ascii'),
 	'ranks' / construct.Array(Guild.max_ranks, construct.CString('ascii')),
-	'emblem_style' / construct.ByteSwapped(construct.Int),
-	'emblem_color' / construct.ByteSwapped(construct.Int),
-	'border_style' / construct.ByteSwapped(construct.Int),
-	'border_color' / construct.ByteSwapped(construct.Int),
-	'background_color' / construct.ByteSwapped(construct.Int),
-	'num_ranks' / construct.ByteSwapped(construct.Int),
+	'emblem_style' / construct.Int32ul,
+	'emblem_color' / construct.Int32ul,
+	'border_style' / construct.Int32ul,
+	'border_color' / construct.Int32ul,
+	'background_color' / construct.Int32ul,
+	'num_ranks' / construct.Int32ul,
 )

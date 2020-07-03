@@ -2,7 +2,7 @@ import construct
 
 from pont.client.world.entities.player import Race, CombatClass, Gender
 from pont.client.world.guid import Guid
-from pont.utility.construct import Coordinates, PackEnum, FixedString, GuidConstruct
+from pont.utility.construct import Coordinates, PackEnum, GuidConstruct
 
 DisplayInfo = construct.Struct(
 	'skin' / construct.Byte,
@@ -13,21 +13,21 @@ DisplayInfo = construct.Struct(
 )
 
 PetInfo = construct.Struct(
-	'display_id' / construct.ByteSwapped(construct.Int),
-	'level' / construct.ByteSwapped(construct.Int),
-	'family' / construct.ByteSwapped(construct.Int),
+	'display_id' / construct.Int32ul,
+	'level' / construct.Int32ul,
+	'family' / construct.Int32ul,
 )
 
 ItemInfo = construct.Struct(
-	'display_id' / construct.ByteSwapped(construct.Int),
+	'display_id' / construct.Int32ul,
 	'inventory_type' / construct.Byte,
-	'enchant_aura_id' / construct.ByteSwapped(construct.Int),
+	'enchant_aura_id' / construct.Int32ul,
 )
 
 BagInfo = construct.Struct(
-	'display_id' / construct.ByteSwapped(construct.Int),
+	'display_id' / construct.Int32ul,
 	'inventory_type' / construct.Byte,
-	'enchant_id' / construct.ByteSwapped(construct.Int),
+	'enchant_id' / construct.Int32ul,
 )
 
 CharacterInfo = construct.Struct(
@@ -42,12 +42,12 @@ CharacterInfo = construct.Struct(
 	'hair_color' / construct.Byte,
 	'facial_hair' / construct.Byte,
 	'level' / construct.Byte,
-	'zone' / construct.ByteSwapped(construct.Int),
-	'map' / construct.ByteSwapped(construct.Int),
+	'zone' / construct.Int32ul,
+	'map' / construct.Int32ul,
 	'position' / construct.ByteSwapped(Coordinates()),
-	'guild_guid' / construct.ByteSwapped(construct.Int),
-	'flags' / construct.ByteSwapped(construct.Int),
-	'customization_flags' / construct.ByteSwapped(construct.Int),
+	'guild_guid' / construct.Int32ul,
+	'flags' / construct.Int32ul,
+	'customization_flags' / construct.Int32ul,
 	# 'slot' / construct.Byte,
 	'is_first_login' / construct.Flag,
 	'pet' / PetInfo,

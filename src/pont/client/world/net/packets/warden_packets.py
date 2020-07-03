@@ -1,9 +1,8 @@
 import construct
 
-from pont.client.world.net.packets.parse import parser
+from pont.client.world import warden
 from pont.client.world.net.packets.constants import Opcode
 from pont.client.world.net.packets.headers import ServerHeader
-from pont.client.world import warden
 from pont.utility.construct import PackEnum
 
 # TODO: Warden on mac is much less robust than on windows, so we have better chances with os='OSX'
@@ -20,5 +19,3 @@ SMSG_WARDEN_DATA = construct.Struct(
 		}
 	)
 )
-
-parser.set_parser(Opcode.SMSG_WARDEN_DATA, SMSG_WARDEN_DATA)

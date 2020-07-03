@@ -1,8 +1,8 @@
 import construct
 
+from pont.client.auth.net.packets.constants import Opcode
 from pont.utility.construct import PackEnum
 from .constants import Response
-from pont.client.auth.net.packets.constants import Opcode
 
 ResponseHeader = construct.Struct(
 	'opcode' / PackEnum(Opcode),

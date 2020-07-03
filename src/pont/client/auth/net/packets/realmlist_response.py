@@ -2,7 +2,6 @@ import construct
 
 from pont.client.auth.realm import Realm
 from pont.utility.construct import PackEnum
-from .parse import parser
 from .constants import Opcode
 
 RealmlistResponse = construct.Struct(
@@ -11,5 +10,3 @@ RealmlistResponse = construct.Struct(
 	construct.Padding(4),
 	'realms' / construct.PrefixedArray(construct.ByteSwapped(construct.Short), Realm),
 )
-
-parser.set_parser(opcode=Opcode.realm_list, parser=RealmlistResponse)

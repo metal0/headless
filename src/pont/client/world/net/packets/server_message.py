@@ -1,10 +1,11 @@
-import construct
 from enum import Enum
 
-from .parse import parser
+import construct
+
+from pont.utility.construct import PackEnum
 from .constants import Opcode
 from .headers import ServerHeader
-from pont.utility.construct import PackEnum
+
 
 class ServerMessageType(Enum):
 	shutdown_time = 1
@@ -18,5 +19,3 @@ SMSG_SERVER_MESSAGE = construct.Struct(
 	'type' / PackEnum(ServerMessageType),
 	'text' / construct.CString('ascii')
 )
-
-parser.set_parser(Opcode.SMSG_SERVER_MESSAGE, SMSG_SERVER_MESSAGE)

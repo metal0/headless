@@ -1,2 +1,2 @@
-class Handler:
+class ChatHandler:
 	pass

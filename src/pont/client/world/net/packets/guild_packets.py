@@ -4,7 +4,6 @@ from pont.client.world.guid import Guid
 from pont.utility.construct import GuidConstruct, PackEnum
 from .constants import Opcode
 from .headers import ClientHeader, ServerHeader
-from .parse import parser
 from ...guild.events import GuildEventType
 from ...guild.guild import GuildInfo
 from ...guild.roster import GuildRankData, RosterMemberData
@@ -16,7 +15,7 @@ CMSG_GUILD_INVITE = construct.Struct(
 
 CMSG_GUILD_QUERY = construct.Struct(
 	'header' / ClientHeader(Opcode.CMSG_GUILD_QUERY, 4),
-	'guild_id' / construct.ByteSwapped(construct.Int),
+	'guild_id' / construct.Int32ul,
 )
 
 CMSG_GUILD_ROSTER = construct.Struct(
@@ -64,14 +63,9 @@ SMSG_GUILD_EVENT = construct.Struct(
 
 SMSG_GUILD_ROSTER = construct.Struct(
 	'header' / ServerHeader(Opcode.SMSG_GUILD_ROSTER, 0),
-	'total_members' / construct.ByteSwapped(construct.Int),
+	'total_members' / construct.Int32ul,
 	'motd' / construct.CString('ascii'),
 	'guild_info' / construct.CString('ascii'),
-	'ranks' / construct.PrefixedArray(construct.ByteSwapped(construct.Int), GuildRankData),
+	'ranks' / construct.PrefixedArray(construct.Int32ul, GuildRankData),
 	'members' / construct.Array(construct.this.total_members, RosterMemberData)
 )
-
-parser.set_parser(Opcode.SMSG_GUILD_INFO, SMSG_GUILD_INFO)
-parser.set_parser(Opcode.SMSG_GUILD_EVENT, SMSG_GUILD_EVENT)
-parser.set_parser(Opcode.SMSG_GUILD_ROSTER, SMSG_GUILD_ROSTER)
-parser.set_parser(Opcode.SMSG_GUILD_QUERY_RESPONSE, SMSG_GUILD_QUERY_RESPONSE)

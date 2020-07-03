@@ -1,16 +1,23 @@
-import construct
-
 from typing import Dict, Optional
 
-from .header import ResponseHeader
-from .constants import Response, Opcode
+import construct
+
 from pont.client.auth.errors import AuthError
+from .challenge_response import ChallengeResponse
+from .constants import Response, Opcode
+from .header import ResponseHeader
+from .proof_response import ProofResponse
+from .realmlist_response import RealmlistResponse
 from ....log import mgr
+
 log = mgr.get_logger(__name__)
 
 class AuthPacketParser:
 	def __init__(self):
 		self._parsers: Dict[Opcode, Optional[construct.Construct]] = {}
+		self.set_parser(Opcode.login_challenge, ChallengeResponse)
+		self.set_parser(Opcode.login_proof, ProofResponse)
+		self.set_parser(Opcode.realm_list, RealmlistResponse)
 
 	def set_parser(self, opcode: Opcode, parser: construct.Construct):
 		self._parsers[opcode] = parser

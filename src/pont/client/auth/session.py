@@ -110,7 +110,7 @@ class AuthSession:
 		self._session_key = bytes_to_int(self._srp.session_key)
 		log.info(f'Logged in!')
 
-	async def realmlist(self):
+	async def realms(self):
 		await self.protocol.send_realmlist_request()
 		result = await self.protocol.receive_realmlist_response()
 		realmlist = list(result.realms)
