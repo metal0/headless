@@ -1,12 +1,12 @@
 import os
-import srptools
-
 from typing import Tuple
 
+import srptools
+
+from pont.client.auth.errors import AuthError
+from pont.client.log import mgr
+from pont.utility.string import int_to_bytes, bytes_to_int
 from .sha import sha1, sha1v
-from ..client.log import mgr
-from ..client.auth.errors import AuthError
-from ..utility.string import int_to_bytes, bytes_to_int
 
 log = mgr.get_logger(__name__)
 
@@ -28,7 +28,7 @@ class WowSrpClient(object):
 		else:
 			self.client_private = client_private
 
-		log.debug(f'{self.client_private}')
+		log.debug(f'{self.client_private=}')
 		self.client_public = self.__srptools.get_client_public(self.client_private)
 		if self.client_public == 0:
 			raise AuthError('client_public must not be zero')

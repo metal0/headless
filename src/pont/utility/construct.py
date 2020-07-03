@@ -1,6 +1,7 @@
 import ipaddress
-import construct
 from typing import Tuple, Union, NamedTuple
+
+import construct
 
 
 class GuidConstruct(construct.Adapter):
@@ -141,7 +142,7 @@ class PackedCoordinates(construct.Adapter):
 		z = ((obj >> 22 << 22) >> 22) * 0.25
 		return self.position_type(x, y, z)
 
-	def _encode(self, obj: NamedTuple, context, path) -> int:
+	def _encode(self, obj, context, path) -> int:
 		value = 0
 		value |= (int(obj.x / 0.25) & 0x7FF)
 		value |= (int(obj.y / 0.25) & 0x7FF) << 11
@@ -156,11 +157,11 @@ class PackedGuid(construct.Adapter):
 	def _decode(self, obj: bytes, context, path):
 		result = 0
 		mask = obj[0]
+		body = obj[1:]
 
-		# Convert mask byte to bitmask whose activated bits we are interested in
-		# to obtain the guid's bytes.
+		# Convert first byte to bitmask whose activated bits are indices to the guid's bytes in body.
 		bits = list(map(int, bin(mask)[2:]))
-		activated_bytes = ((t[0], obj[t[0]]) for t in enumerate(bits) if t[1])
+		activated_bytes = ((t[0], body[t[0]]) for t in enumerate(bits) if t[1])
 
 		for i, byte in activated_bytes:
 			result |= byte << (i * 8)

@@ -1,2 +1,2 @@
 from . import client
-from .client import open_client
+from .client import Client, open_client

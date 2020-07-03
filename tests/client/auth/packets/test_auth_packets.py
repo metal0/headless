@@ -4,6 +4,7 @@ from pont.client import auth
 from pont.client.auth.net import packets
 from pont.utility.string import bytes_to_int
 
+
 def test_challenge_request_packet1():
 	packet = bytes.fromhex('00082300576f57000303053430363878006e69570053556e65d4feffff0ab3cd730541444d494e')
 	challenge_request = packets.ChallengeRequest.parse(packet)

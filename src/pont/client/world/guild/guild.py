@@ -1,5 +1,7 @@
 from enum import Enum
+
 import construct
+
 
 class GuildMemberDataType(Enum):
 	zone_id = 1
@@ -23,6 +25,7 @@ class GuildCommandType(Enum):
 	move_item = 22
 	repair = 25
 
+# noinspection PyTypeChecker
 class GuildRankRights(Enum):
 	empty = 0x00000040
 	guild_chat_listen = empty | 0x00000001
@@ -49,7 +52,7 @@ class Guild:
 	min_ranks = 5
 
 GuildInfo = construct.Struct(
-	'id' / construct.ByteSwapped(construct.Int),
+	'guild_id' / construct.ByteSwapped(construct.Int),
 	'name' / construct.CString('ascii'),
 	'ranks' / construct.Array(Guild.max_ranks, construct.CString('ascii')),
 	'emblem_style' / construct.ByteSwapped(construct.Int),
