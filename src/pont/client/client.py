@@ -4,7 +4,7 @@ from typing import Tuple
 import pyee
 import trio
 
-from . import log, auth
+from . import log, auth, world
 from .auth import AuthSession, AuthState, Realm
 from .config import Config
 from .world.character_select import CharacterInfo
@@ -42,7 +42,7 @@ class ClientState(enum.ComparableEnum):
 
 class Client(AsyncScopedEmitter):
 	def __init__(self, nursery, auth_server: Tuple[str, int], proxy=None):
-		super().__init__(emitter=None)
+		super().__init__(emitter=pyee.TrioEventEmitter(nursery=nursery))
 		from . import log
 		log.mgr.add_file_handler('pont.log')
 		self._auth_server = auth_server
@@ -56,9 +56,14 @@ class Client(AsyncScopedEmitter):
 		)
 
 		self.nursery = nursery
-		self._emitter = pyee.TrioEventEmitter(nursery=self.nursery)
 		self.auth = AuthSession(nursery=self.nursery, emitter=self, proxy=self._proxy)
 		self.world = WorldSession(nursery=self.nursery, emitter=self, proxy=self._proxy)
+
+	# async def __aexit__(self, exc_type, exc_val, exc_tb):
+	# 	if self.world.state >= WorldState.in_game:
+	# 		await self.logout()
+	#
+	# 	await super().__aexit__(exc_type, exc_val, exc_tb)
 
 	@property
 	def auth_server(self):
@@ -106,26 +111,32 @@ class Client(AsyncScopedEmitter):
 
 	async def realms(self):
 		if self.auth.state < AuthState.logged_in:
-			raise auth.ProtocolError('Must be logged into the auth server')
+			raise auth.ProtocolError('Not logged in')
 
-		return await self.auth.realmlist()
+		return await self.auth.realms()
 
 	async def select_realm(self, realm: Realm):
-		if self.auth.state < AuthState.logged_in:
-			raise auth.ProtocolError('Must at least be logged into the auth server')
+		if self.world.state > WorldState.connected:
+			raise world.ProtocolError('Not logged in')
+
+		if self.auth.session_key is None:
+			raise ValueError('Invalid session key')
 
 		await self.world.connect(realm, proxy=self._proxy)
 		await self.world.authenticate(self._username, self.auth.session_key)
 
 	async def characters(self):
 		if self.world.state < WorldState.logged_in:
-			raise auth.ProtocolError('Must be logged into the world server')
+			raise world.ProtocolError('Not logged in')
 		return await self.world.characters()
 
 	async def enter_world(self, character: CharacterInfo):
 		if self.world.state < WorldState.logged_in:
-			raise auth.ProtocolError('Must be logged into the world server')
-		await self.world.enter_world(character.guid)
+			raise world.ProtocolError('Not logged in')
+		await self.world.enter_world(character)
+
+	async def logout(self):
+		await self.world.logout()
 
 	@property
 	def state(self) -> ClientState:

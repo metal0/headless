@@ -2,6 +2,7 @@ import construct
 
 from pont.client.world.net.packets.constants import Opcode
 
+
 def ClientHeader(opcode = None, size = 0):
 	from .....utility.construct import PackEnum
 	if opcode is None:

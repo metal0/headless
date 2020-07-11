@@ -1,11 +1,13 @@
 import inspect
+
 import trio
 
 from ..client.log import mgr
+
 log = mgr.get_logger(__name__)
 
 class BaseEmitter:
-	def __init__(self, emitter, scope = None):
+	def __init__(self, emitter, scope=None):
 		self._emitter = emitter
 		self._scope = scope
 		self._events = {}
@@ -15,6 +17,12 @@ class BaseEmitter:
 			self._events[event] = [fn]
 		else:
 			self._events[event].append(fn)
+
+	def remove_listener(self, event, listener):
+		self._emitter.remove_listener(event, listener)
+
+	def remove_all_listeners(self, event=None):
+		self._emitter.remove_all_listeners(event)
 
 	def emit(self, event, *args, **kwargs):
 		log.debug(f'[{type(self).__name__}.emit]: emitted {event=}, {kwargs}')

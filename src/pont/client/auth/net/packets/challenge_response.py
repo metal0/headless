@@ -1,8 +1,7 @@
 import construct
 
-from .parse import parser
-from .constants import Response, Opcode
 from pont.utility.construct import PackEnum
+from .constants import Response, Opcode
 
 ChallengeResponse = construct.Struct(
 	'opcode' / construct.Default(construct.Const(Opcode.login_challenge, PackEnum(Opcode)), Opcode.login_challenge),
@@ -19,5 +18,3 @@ ChallengeResponse = construct.Struct(
 	'checksum_salt' / construct.BytesInteger(16, swapped=True),
 	'security_flag' / construct.Default(construct.Byte, 0),
 )
-
-parser.set_parser(Opcode.login_challenge, parser=ChallengeResponse)

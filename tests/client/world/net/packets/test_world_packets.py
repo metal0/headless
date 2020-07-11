@@ -111,19 +111,37 @@ def test_CMSG_PLAYER_LOGIN():
 	assert packet.player_guid == Guid(counter=1, type=GuidType.player)
 	print(packet)
 
-# def test_SMSG_TIME_SYNC_REQ():
-# 	data = bytes.fromhex('0006900305000000')
-# 	packet = world.net.packets.SMSG_TIME_SYNC_REQ.parse(data)
-# 	print(packet)
-#
-# 	data2 = bytes.fromhex('000690033E010000')
-# 	packet2 = world.net.packets.CMSG_TIME_SYNC_RES.parse(data)
-# 	print(packet2)
-#
-# def test_CMSG_TIME_SYNC_REQ():
-# 	data = bytes.fromhex('000A910305000000D5C30000')
-# 	packet = world.net.packets.CMSG_TIME_SYNC_RES.parse(data)
-# 	print(packet)
+def test_SMSG_TIME_SYNC_REQ():
+	data = bytes.fromhex('000690033E010000')
+	packet = world.net.packets.SMSG_TIME_SYNC_REQ.parse(data)
+	assert packet.header.size == 6
+	assert packet.id == 318
+	print(packet)
+
+	data2 = b'\x00\x06\x90\x03\x19\x00\x00\x00'
+	packet2 = world.net.packets.SMSG_TIME_SYNC_REQ.parse(data2)
+	assert packet2.header.size == 6
+	assert packet2.id == 25
+	print(packet2)
+
+	data3 = b'\x00\x06\x90\x03g\x00\x00\x00'
+	packet3 = world.net.packets.SMSG_TIME_SYNC_REQ.parse(data3)
+	assert packet3.header.size == 6
+	print(packet3)
+
+	data4 = b'\x00\x06\x90\x03h\x00\x00\x00'
+	packet4 = world.net.packets.SMSG_TIME_SYNC_REQ.parse(data4)
+	assert packet4.header.size == 6
+	assert packet3.id == packet4.id - 1
+	print(packet4)
+
+def test_CMSG_TIME_SYNC_REQ():
+	data = bytes.fromhex('000A9103000005000000D5C30000')
+	packet = world.net.packets.CMSG_TIME_SYNC_RESP.parse(data)
+	assert packet.header.size == 10
+	assert packet.id == 5
+	assert packet.client_ticks == 50133
+	print(packet)
 
 def test_CMSG_NAME_QUERY():
 	data = bytes.fromhex('000C500000001F00000000000000')

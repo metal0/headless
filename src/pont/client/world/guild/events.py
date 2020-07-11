@@ -1,4 +1,3 @@
-import construct
 from enum import Enum
 
 class GuildEventType(Enum):

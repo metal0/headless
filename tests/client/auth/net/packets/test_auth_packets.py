@@ -161,11 +161,3 @@ def test_proof_response_packet2():
 	assert proof_response.survey_id == 0
 	assert proof_response.account_flags == 32768
 	assert packets.ProofResponse.build(proof_response) == packet
-
-def test_proof_response_error():
-	data = bytes.fromhex('010400000000')
-	# with pytest.raises(utility.StructParseError):
-	# 	packet = pont.client.packets.ProofResponse(raw_bytes=data)
-	# 	assert packet.opcode == auth.Opcode.login_proof
-	# 	assert packet.error == auth.errors.unknown_account
-

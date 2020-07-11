@@ -1,2 +1,2 @@
-from .opcode import Opcode
 from .expansion import Expansion
+from .opcode import Opcode
