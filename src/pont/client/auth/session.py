@@ -4,7 +4,7 @@ import trio
 from trio_socks import socks5
 
 from pont.client.auth.net.protocol import AuthProtocol
-from .errors import AuthError
+from .errors import InvalidLogin
 from .state import AuthState
 from .. import log, events, cryptography
 from ...utility.string import bytes_to_int
@@ -103,7 +103,7 @@ class AuthSession:
 			self._state = AuthState.disconnected
 			self._emitter.emit(events.auth.invalid_login)
 			self._emitter.emit(events.auth.disconnected, reason='Invalid login')
-			raise AuthError('Invalid username or password')
+			raise InvalidLogin('Invalid username or password')
 
 		self._state = AuthState.logged_in
 		self._emitter.emit(events.auth.login_success)

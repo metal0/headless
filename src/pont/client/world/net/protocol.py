@@ -1,15 +1,14 @@
 import hashlib
 import hmac
-
-import arc4
 import trio
+from ...cryptography import rc4
 
-from pont.client.world.errors import ProtocolError
-from pont.client.world.net import packets
-from pont.client.world.net.packets import headers
-from pont.client.world.net.packets.auth_packets import AuthResponse, default_addon_bytes
-from pont.client.world.net.packets.constants import Expansion, Opcode
-from pont.client.world.net.packets.headers import ServerHeader
+from ..errors import ProtocolError
+from ..net import packets
+from ..net.packets import headers
+from ..net.packets.auth_packets import AuthResponse, default_addon_bytes
+from ..net.packets.constants import Expansion, Opcode
+from ..net.packets.headers import ServerHeader
 from ..guid import Guid
 from ... import log
 
@@ -114,10 +113,10 @@ class WorldProtocol:
 
 		server_hmac = hmac.new(key=self._server_decrypt_key, digestmod=hashlib.sha1)
 		server_hmac.update(session_key_bytes)
-		self._encrypter = arc4.ARC4(client_hmac.digest())
+		self._encrypter = rc4.RC4(client_hmac.digest())
 		self._encrypter.encrypt(bytes([0] * 1024))
 
-		self._decrypter = arc4.ARC4(server_hmac.digest())
+		self._decrypter = rc4.RC4(server_hmac.digest())
 		self._decrypter.encrypt(bytes([0] * 1024))
 		self._has_encryption = True
 

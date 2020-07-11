@@ -39,7 +39,7 @@ async def run(server, proxy=None):
 			await client.enter_world(character)
 			await trio.sleep_forever()
 
-	except (trio.TooSlowError, auth.ProtocolError, auth.AuthError, world.ProtocolError) as e:
+	except (trio.TooSlowError, auth.AuthError, world.WorldError):
 		traceback.print_exc()
 
 async def main():
