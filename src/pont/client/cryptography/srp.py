@@ -3,7 +3,7 @@ from typing import Tuple
 
 import srptools
 
-from pont.client.auth.errors import AuthError
+from pont.client.auth.errors import InvalidLogin
 from pont.client.log import mgr
 from pont.utility.string import int_to_bytes, bytes_to_int
 from .sha import sha1, sha1v
@@ -31,7 +31,7 @@ class WowSrpClient(object):
 		log.debug(f'{self.client_private=}')
 		self.client_public = self.__srptools.get_client_public(self.client_private)
 		if self.client_public == 0:
-			raise AuthError('client_public must not be zero')
+			raise InvalidLogin('client_public must not be zero')
 
 		self.password_hash = 0
 		self.password_verifier = 0

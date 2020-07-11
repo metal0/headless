@@ -43,7 +43,7 @@ async def run(server, proxy=None):
 			# client.nursery.start_soon(client.anti_afk)
 			await trio.sleep_forever()
 
-	except (trio.TooSlowError, auth.ProtocolError, auth.AuthError, world.ProtocolError):
+	except (trio.TooSlowError, auth.AuthError, world.WorldError):
 		traceback.print_exc()
 
 async def main():

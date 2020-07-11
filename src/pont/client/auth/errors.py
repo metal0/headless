@@ -1,5 +1,8 @@
 class AuthError(Exception):
 	pass
 
-class ProtocolError(Exception):
+class InvalidLogin(AuthError):
+	pass
+
+class ProtocolError(AuthError):
 	pass

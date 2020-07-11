@@ -2,7 +2,7 @@ from typing import Dict, Optional
 
 import construct
 
-from pont.client.auth.errors import AuthError
+from pont.client.auth.errors import InvalidLogin
 from .challenge_response import ChallengeResponse
 from .constants import Response, Opcode
 from .header import ResponseHeader
@@ -28,7 +28,7 @@ class AuthPacketParser:
 		response: Optional[Response] = header.response
 
 		if response is not None and response != Response.success:
-			raise AuthError(f'Received error response: {response}')
+			raise InvalidLogin(f'Received error response: {response}')
 
 		parser = self._parsers[opcode]
 		if parser is None:

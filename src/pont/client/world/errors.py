@@ -1,2 +1,5 @@
-class ProtocolError(Exception):
+class WorldError(Exception):
+	pass
+
+class ProtocolError(WorldError):
 	pass
