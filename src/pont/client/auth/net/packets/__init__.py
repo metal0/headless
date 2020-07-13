@@ -1,4 +1,3 @@
-from . import constants
 from .challenge_request import ChallengeRequest
 from .challenge_response import ChallengeResponse
 from .header import ResponseHeader

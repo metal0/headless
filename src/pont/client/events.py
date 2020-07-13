@@ -25,6 +25,7 @@ class WorldEvent(Enum):
 	logging_in = uuid.uuid4()
 	loading_world = uuid.uuid4()
 	ingame = uuid.uuid4()
+	logged_out = uuid.uuid4()
 
 	# Net events
 	disconnected = uuid.uuid4()
@@ -39,12 +40,19 @@ class WorldEvent(Enum):
 	received_SMSG_WARDEN_DATA = uuid.uuid4()
 	received_SMSG_TUTORIAL_FLAGS = uuid.uuid4()
 	received_SMSG_TIME_SYNC_REQ = uuid.uuid4()
+	received_SMSG_LOGOUT_RESPONSE = uuid.uuid4()
+	received_SMSG_LOGOUT_CANCEL_ACK = uuid.uuid4()
+	received_SMSG_LOGOUT_COMPLETE = uuid.uuid4()
 
 	sent_CMSG_PING = uuid.uuid4()
 	sent_CMSG_KEEP_ALIVE = uuid.uuid4()
 	sent_CMSG_WARDEN_DATA = uuid.uuid4()
 	sent_CMSG_CHAR_ENUM = uuid.uuid4()
 	sent_CMSG_TIME_SYNC_RES = uuid.uuid4()
+	sent_CMSG_PLAYER_LOGIN = uuid.uuid4()
+	sent_CMSG_LOGOUT_REQUEST = uuid.uuid4()
+	sent_CMSG_LOGOUT_CANCEL = uuid.uuid4()
+	sent_CMSG_AUTH_SESSION = uuid.uuid4()
 
 world = WorldEvent
 

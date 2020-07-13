@@ -1,6 +1,6 @@
 import construct
 
-from .constants import Opcode
+from ..opcode import Opcode
 from .headers import ServerHeader, ClientHeader
 
 CMSG_TIME_SYNC_RESP = construct.Struct(

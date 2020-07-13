@@ -1,6 +1,6 @@
 import construct
 
-from .constants import Opcode
+from ..opcode import Opcode
 from .headers import ServerHeader
 
 SMSG_INIT_WORLD_STATES = construct.Struct(

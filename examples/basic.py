@@ -39,6 +39,10 @@ async def run(server, proxy=None):
 				await client.enter_world(character)
 
 			# client.nursery.start_soon(client.anti_afk)
+			await trio.sleep(5)
+			await client.logout()
+			# await client.world.wait_for_packet(world.net.Opcode.SMSG_MONSTER_MOVE)
+			# print('Received SMSG_MONSTER_MOVE, waiting forever...')
 			await trio.sleep_forever()
 
 	except (trio.TooSlowError, auth.AuthError, world.WorldError):

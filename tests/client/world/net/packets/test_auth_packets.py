@@ -1,8 +1,9 @@
 import random
 
 from pont.client import world
+from pont.client.world.expansion import Expansion
+from pont.client.world.net import Opcode
 from pont.client.world.net.packets.auth_packets import AuthResponse
-from pont.client.world.net.packets.constants import Expansion, Opcode
 
 
 def test_world_auth_packet():

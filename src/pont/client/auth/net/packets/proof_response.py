@@ -1,7 +1,8 @@
 import construct
 
 from pont.utility.construct import PackEnum
-from .constants import Response, Opcode
+from ..response import Response
+from ..opcode import Opcode
 
 ProofResponse = construct.Struct(
 	'opcode' / construct.Default(construct.Const(Opcode.login_proof, PackEnum(Opcode)), Opcode.login_proof),

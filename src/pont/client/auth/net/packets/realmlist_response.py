@@ -2,7 +2,8 @@ import construct
 
 from pont.client.auth.realm import Realm
 from pont.utility.construct import PackEnum
-from .constants import Opcode
+from ..response import Response
+from ..opcode import Opcode
 
 RealmlistResponse = construct.Struct(
 	'opcode' / construct.Default(construct.Const(Opcode.realm_list, PackEnum(Opcode)), Opcode.realm_list),

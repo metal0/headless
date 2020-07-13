@@ -1,6 +1,6 @@
 import random
 import traceback
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Any
 
 import trio
 from trio_socks import socks5
@@ -8,13 +8,12 @@ from trio_socks import socks5
 from pont.client.cryptography import sha
 from .character_select import CharacterInfo
 from .errors import ProtocolError
-from .net import WorldHandler, WorldProtocol
+from .net import WorldHandler, WorldProtocol, Opcode
 from .net.packets.auth_packets import AuthResponse
-from .net.packets.constants import Opcode
-from .state import WorldState
 from .. import events, world
 from ..auth import Realm
 from ..log import mgr
+from ...utility.enum import ComparableEnum
 
 log = mgr.get_logger(__name__)
 
@@ -50,7 +49,7 @@ class WorldSession:
 
 		self._state = WorldState.not_connected
 
-	async def wait_for_packet(self, opcode: Opcode):
+	async def wait_for_packet(self, opcode: Opcode) -> Any:
 		receive_event = trio.Event()
 		result = None
 
@@ -126,7 +125,6 @@ class WorldSession:
 		self._state = WorldState.connected
 		self._emitter.emit(events.world.connected, self._realm.address)
 
-	# noinspection PyUnresolvedReferences
 	async def authenticate(self, username, session_key):
 		log.info(f'Logging in with username {username}...')
 		if self.state < WorldState.connected:
@@ -160,6 +158,7 @@ class WorldSession:
 			realm_id=self._realm.id
 		)
 
+		self._emitter.emit(events.world.sent_CMSG_AUTH_SESSION)
 		self._nursery.start_soon(self._packet_handler)
 		auth_response = await self.wait_for_packet(Opcode.SMSG_AUTH_RESPONSE)
 		if auth_response.response == AuthResponse.ok:
@@ -183,20 +182,35 @@ class WorldSession:
 			received_characters_event.set()
 
 		await self.protocol.send_CMSG_CHAR_ENUM()
+		self._emitter.emit(events.world.sent_CMSG_CHAR_ENUM)
+
 		await received_characters_event.wait()
 		return result
 
 	async def enter_world(self, character: CharacterInfo):
 		log.info(f'Entering world as {character.name}...')
 		await self.protocol.send_CMSG_PLAYER_LOGIN(character.guid)
+		self._emitter.emit(events.world.sent_CMSG_PLAYER_LOGIN)
+
 		await self.wait_for_packet(Opcode.SMSG_LOGIN_VERIFY_WORLD)
 		log.info('Entered world')
 
 	async def logout(self):
 		log.debug('logout called')
-		pass
-		# await self.protocol.send_CMSG_PLAYER_LOGOUT?()
+		await self.protocol.send_CMSG_LOGOUT_REQUEST()
+		self._emitter.emit(events.world.sent_CMSG_LOGOUT_REQUEST)
 
+		logout_response = await self.wait_for_packet(Opcode.SMSG_LOGOUT_RESPONSE)
 
+class WorldState(ComparableEnum):
+	disconnected = -1
+	not_connected = 0
+	connected = 1
+	logging_in = 2
+	in_queue = 3
+	logged_in = 4
 
+	loading = 5
+	in_game = 6
 
+__all__ = ['WorldSession', 'WorldState']

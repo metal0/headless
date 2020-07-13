@@ -3,7 +3,7 @@ from enum import Enum
 import construct
 
 from pont.utility.construct import PackEnum
-from .constants import Opcode
+from ..opcode import Opcode
 from .headers import ServerHeader
 
 

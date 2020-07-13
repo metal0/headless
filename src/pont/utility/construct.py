@@ -155,27 +155,26 @@ class PackedGuid(construct.Adapter):
 		self.guid_type = guid_type
 
 	def _decode(self, obj: bytes, context, path):
-		result = 0
+		guid = 0
 		mask = obj[0]
-		body = obj[1:]
+		for i in range(8):
+			if mask & (1 << i):
+				bit = obj[i]
+				guid |= bit << (i * 8)
 
-		# Convert first byte to bitmask whose activated bits are indices to the guid's bytes in body.
-		bits = list(map(int, bin(mask)[2:]))
-		activated_bytes = ((t[0], body[t[0]]) for t in enumerate(bits) if t[1])
-
-		for i, byte in activated_bytes:
-			result |= byte << (i * 8)
-
-		return self.guid_type(value=result)
+		return self.guid_type(value=guid)
 
 	def _encode(self, obj, context, path) -> bytes:
 		mask = 0
-		result = bytearray([mask])
+		result = bytearray([0])
+		guid = obj
 
-		for i, byte in enumerate(obj.value.to_bytes(length=8, byteorder='big')):
-			if byte != 0:
+		for i in range(8):
+			if guid & 0xFF:
 				mask |= 1 << i
-				result.append(byte)
+				result.append(guid & 0xFF)
 
-		result[0] = 0xFF & mask
+			guid >>= 8
+
+		result[0] = mask & 0xFF
 		return bytes(result)

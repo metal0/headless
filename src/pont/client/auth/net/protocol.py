@@ -1,7 +1,7 @@
 import trio
 
 from pont.client.auth.net import packets
-from pont.client.auth.net.packets.constants import Response
+from .response import Response
 from pont.client.log import mgr
 
 log = mgr.get_logger(__name__)

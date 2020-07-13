@@ -2,8 +2,8 @@ import construct
 
 from pont.client.world.guid import Guid
 from pont.utility.construct import GuidConstruct, PackEnum
-from .constants import Opcode
-from .headers import ClientHeader, ServerHeader
+from .headers import ServerHeader, ClientHeader
+from ..opcode import Opcode
 from ...guild.events import GuildEventType
 from ...guild.guild import GuildInfo
 from ...guild.roster import GuildRankData, RosterMemberData

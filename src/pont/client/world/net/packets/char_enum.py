@@ -1,7 +1,6 @@
 import construct
-
-from .constants import Opcode
-from .headers import ClientHeader, ServerHeader
+from .headers import ServerHeader, ClientHeader
+from ..opcode import Opcode
 from ...character_select import CharacterInfo
 
 CMSG_CHAR_ENUM = construct.Struct(

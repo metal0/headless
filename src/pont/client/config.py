@@ -28,6 +28,7 @@ class EmittingValue:
 		self.value = value
 		self.__emitter.emit(self.event, old=previous_value, new=self.value)
 
+# TODO: Config with modular hierarchy
 class Config:
 	def __init__(self, emitter, **named_args):
 		self.__emitter = emitter

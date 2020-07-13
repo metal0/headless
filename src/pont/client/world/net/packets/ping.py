@@ -1,7 +1,7 @@
 import construct
 
-from pont.client.world.net.packets.constants import Opcode
-from pont.client.world.net.packets.headers import ClientHeader, ServerHeader
+from .headers import ServerHeader, ClientHeader
+from ..opcode import Opcode
 
 CMSG_PING = construct.Struct(
 	'header' / ClientHeader(Opcode.CMSG_PING, 8),

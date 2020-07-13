@@ -1,11 +1,10 @@
 import construct
 
-from .constants import Opcode
+from ..opcode import Opcode
 from .headers import ClientHeader, ServerHeader
 
 CMSG_MESSAGECHAT = construct.Struct(
 	'header' / ClientHeader(Opcode.CMSG_MESSAGECHAT, 0),
-
 )
 
 SMSG_MESSAGECHAT = construct.Struct(

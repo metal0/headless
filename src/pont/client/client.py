@@ -5,11 +5,11 @@ import pyee
 import trio
 
 from . import log, auth, world
-from .auth import AuthSession, AuthState, Realm
+from .auth.session import AuthState
+from .auth import AuthSession, Realm
 from .config import Config
 from .world.character_select import CharacterInfo
-from .world.session import WorldSession
-from .world.state import WorldState
+from .world.session import WorldSession, WorldState
 from ..utility import AsyncScopedEmitter, enum
 
 log = log.mgr.get_logger(__name__)

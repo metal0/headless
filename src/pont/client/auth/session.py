@@ -5,8 +5,8 @@ from trio_socks import socks5
 
 from pont.client.auth.net.protocol import AuthProtocol
 from .errors import InvalidLogin
-from .state import AuthState
 from .. import log, events, cryptography
+from ...utility.enum import ComparableEnum
 from ...utility.string import bytes_to_int
 
 log = log.mgr.get_logger(__name__)
@@ -118,3 +118,11 @@ class AuthSession:
 		self._state = AuthState.realmlist_ready
 		self._emitter.emit(events.auth.realmlist_ready, realmlist=realmlist)
 		return realmlist
+
+class AuthState(ComparableEnum):
+	disconnected = -1
+	not_connected = 0
+	connected = 1
+	logging_in = 2
+	logged_in = 3
+	realmlist_ready = 4

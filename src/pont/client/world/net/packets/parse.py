@@ -1,6 +1,7 @@
 from typing import Dict, Optional
 
 import construct
+from construct import ConstructError
 
 from .addon_info import SMSG_ADDON_INFO
 from .auth_packets import SMSG_AUTH_RESPONSE, SMSG_AUTH_CHALLENGE
@@ -8,10 +9,10 @@ from .bind_point import SMSG_BIND_POINT_UPDATE
 from .char_enum import SMSG_CHAR_ENUM
 from .chat_packets import SMSG_MESSAGECHAT, SMSG_GM_MESSAGECHAT
 from .clientcache_version import SMSG_CLIENTCACHE_VERSION
-from .constants import Opcode
+from ..opcode import Opcode
 from .guild_packets import SMSG_GUILD_QUERY_RESPONSE, SMSG_GUILD_ROSTER, SMSG_GUILD_INVITE, SMSG_GUILD_EVENT
 from .headers import ServerHeader
-from .login_verify_world import SMSG_LOGIN_VERIFY_WORLD
+from .login_packets import SMSG_LOGIN_VERIFY_WORLD, SMSG_LOGOUT_RESPONSE, SMSG_LOGOUT_CANCEL_ACK, SMSG_LOGOUT_COMPLETE
 from .motd import SMSG_MOTD
 from .name_query import SMSG_NAME_QUERY_RESPONSE
 from .ping import SMSG_PONG
@@ -48,6 +49,9 @@ class WorldPacketParser:
 		self.set_parser(Opcode.SMSG_TUTORIAL_FLAGS, SMSG_TUTORIAL_FLAGS)
 		self.set_parser(Opcode.SMSG_WARDEN_DATA, SMSG_WARDEN_DATA)
 		self.set_parser(Opcode.SMSG_INIT_WORLD_STATES, SMSG_INIT_WORLD_STATES)
+		self.set_parser(Opcode.SMSG_LOGOUT_RESPONSE, SMSG_LOGOUT_RESPONSE)
+		self.set_parser(Opcode.SMSG_LOGOUT_CANCEL_ACK, SMSG_LOGOUT_CANCEL_ACK)
+		self.set_parser(Opcode.SMSG_LOGOUT_COMPLETE, SMSG_LOGOUT_COMPLETE)
 
 	def set_parser(self, opcode: Opcode, parser: construct.Construct):
 		self._parsers[opcode] = parser
@@ -55,7 +59,7 @@ class WorldPacketParser:
 	def parse_header(self, data: bytes) -> ServerHeader:
 		try:
 			return ServerHeader().parse(data)
-		except:
+		except ConstructError:
 			return None
 
 	def parse(self, data: bytes):

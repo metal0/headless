@@ -1,16 +1,13 @@
-from typing import Dict, Optional
-
 import construct
 
+from typing import Dict, Optional
 from pont.client.auth.errors import InvalidLogin
 from .challenge_response import ChallengeResponse
-from .constants import Response, Opcode
+from ..response import Response
+from ..opcode import Opcode
 from .header import ResponseHeader
 from .proof_response import ProofResponse
 from .realmlist_response import RealmlistResponse
-from ....log import mgr
-
-log = mgr.get_logger(__name__)
 
 class AuthPacketParser:
 	def __init__(self):

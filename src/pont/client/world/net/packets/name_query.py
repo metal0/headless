@@ -1,8 +1,8 @@
 import construct
 
 from pont.utility.construct import GuidConstruct, PackedGuid, PackEnum
-from .constants.opcode import Opcode
 from .headers import ServerHeader, ClientHeader
+from ..opcode import Opcode
 from ...entities.player import Race, Gender, CombatClass
 from ...guid import Guid
 

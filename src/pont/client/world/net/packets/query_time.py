@@ -1,6 +1,6 @@
 import construct
 
-from .constants import Opcode
+from ..opcode import Opcode
 from .headers import ServerHeader, ClientHeader
 
 CMSG_QUERY_TIME = construct.Struct(

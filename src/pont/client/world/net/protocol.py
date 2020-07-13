@@ -4,12 +4,14 @@ import trio
 import traceback
 
 from construct import ConstructError
+
+from .opcode import Opcode
+from ..expansion import Expansion
 from ...cryptography import rc4
 from ..errors import ProtocolError
 from ..net import packets
 from ..net.packets import headers
 from ..net.packets.auth_packets import AuthResponse, default_addon_bytes
-from ..net.packets.constants import Expansion, Opcode
 from ..net.packets.headers import ServerHeader
 from ..guid import Guid
 from ... import log
@@ -336,6 +338,20 @@ class WorldProtocol:
 			'CMSG_PLAYER_LOGIN', packets.CMSG_PLAYER_LOGIN,
 			player_guid=player_guid
 		)
+
+	async def send_CMSG_LOGOUT_REQUEST(self):
+		"""
+		Sends an encrypted CMSG_LOGOUT_REQUEST packet.
+		:return: None.
+		"""
+		await self._send_encrypted_packet('CMSG_LOGOUT_REQUEST', packets.CMSG_LOGOUT_REQUEST)
+
+	async def send_CMSG_LOGOUT_CANCEL(self):
+		"""
+		Sends an encrypted CMSG_LOGOUT_CANCEL packet.
+		:return: None.
+		"""
+		await self._send_encrypted_packet('CMSG_LOGOUT_CANCEL', packets.CMSG_LOGOUT_CANCEL)
 
 	async def receive_CMSG_PLAYER_LOGIN(self) -> packets.CMSG_PLAYER_LOGIN:
 		"""
