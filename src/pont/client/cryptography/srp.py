@@ -57,6 +57,7 @@ class WowSrpClient(object):
 			common_secret=self.common_secret
 		)
 
+
 		# this is K
 		self.session_key = self.sha_interleave(self.client_premaster_secret)
 		self.session_proof, self.session_proof_hash = self.compute_proof(salt=salt, server_public=server_public)

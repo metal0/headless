@@ -91,7 +91,7 @@ class WorldProtocol:
 
 	def decrypt(self, data: bytes):
 		if self.has_encryption():
-			decrypted = self._decrypter.decrypt(data)
+			decrypted = self._decrypter.encrypt(data)
 			return decrypted
 
 		return data
@@ -104,7 +104,7 @@ class WorldProtocol:
 		return self.encrypt(header) + data[6:]
 
 	def decrypt_packet(self, data: bytes):
-		if data == None or len(data) == 0:
+		if data is None or len(data) == 0:
 			return None
 
 		if self.has_encryption():

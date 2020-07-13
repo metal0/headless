@@ -40,3 +40,5 @@ def sha1(*args, **kwargs):
 		else:
 			raise UnsupportedResultType(f'{out=} is not supported by this function')
 	return sha.digest()
+
+__all__ = ['sha1']

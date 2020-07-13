@@ -32,7 +32,7 @@ def test_packed_guid():
 	data = PackedGuid(Guid).build(guid)
 
 	# TODO: Fix PackedGuid and its unit tests
-	# assert PackedGuid(Guid).parse(data) == guid
+	assert PackedGuid(Guid).parse(data) == guid
 
 def test_packed_coordinates():
 	pos = Position(2.1, -33, 99.8)

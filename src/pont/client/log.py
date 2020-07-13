@@ -1,5 +1,32 @@
 import logging
 
+# TODO: Add logger routing for better logging. (stdout, log/packets.txt, log/auth.txt, log/world.txt, etc)
+# from anytree import Node, RenderTree
+
+# class Route:
+# 	def __init__(self, route='pont.client'):
+# 		self._parse(route)
+#
+# 	def _parse(self, route: str):
+# 		self._original = route
+# 		route = route.split('.')
+# 		self._root = route[0]
+#
+# 	def __str__(self) -> str:
+# 		return self._original
+#
+# class Router:
+# 	def __init__(self, logger):
+# 		self.logger = logger
+# 		self._routes = {}
+#
+# 	def route(self, name,):
+#
+# 	def get_logger(self, name: str):
+# 		# Check name for routing
+# 		route = Route(name)
+# 		return self.logger.get_logger(name)
+
 class LogManager:
 	def __init__(self, level=logging.DEBUG, log_path=None, client=None):
 		self._client = client
@@ -71,3 +98,4 @@ class LogManager:
 
 mgr = LogManager()
 
+__all__ = [LogManager, mgr]

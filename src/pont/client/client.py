@@ -59,11 +59,11 @@ class Client(AsyncScopedEmitter):
 		self.auth = AuthSession(nursery=self.nursery, emitter=self, proxy=self._proxy)
 		self.world = WorldSession(nursery=self.nursery, emitter=self, proxy=self._proxy)
 
-	# async def __aexit__(self, exc_type, exc_val, exc_tb):
-	# 	if self.world.state >= WorldState.in_game:
-	# 		await self.logout()
-	#
-	# 	await super().__aexit__(exc_type, exc_val, exc_tb)
+	async def __aexit__(self, exc_type, exc_val, exc_tb):
+		if self.world.state >= WorldState.in_game:
+			await self.logout()
+
+		await super().__aexit__(exc_type, exc_val, exc_tb)
 
 	@property
 	def auth_server(self):
@@ -156,3 +156,5 @@ class Client(AsyncScopedEmitter):
 
 	def is_ingame(self):
 		return self.world.state >= WorldState.in_game
+
+__all__ = [Client, ClientState, open_client, ]

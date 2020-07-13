@@ -1,5 +1,4 @@
 import random
-import secrets
 import traceback
 from typing import Optional, Tuple
 
@@ -89,9 +88,6 @@ class WorldSession:
 	# 		await trio.sleep(30 + random_factor)
 	# 		id += 1
 
-	# TODO: Issue with children running when client exits scope?
-	#  iiuc, it should block until all children exit, so we need a way to
-	#  kill children when the client dies
 	async def _packet_handler(self):
 		log.debug('[_packet_handler] started')
 		try:
@@ -148,7 +144,8 @@ class WorldSession:
 		self._server_seed = auth_challenge.server_seed
 		self._encryption_seed1 = auth_challenge.encryption_seed1
 		self._encryption_seed2 = auth_challenge.encryption_seed2
-		self._client_seed = secrets.randbits(32)
+
+		self._client_seed = random.getrandbits(32)
 		account_hash = sha.sha1(
 			self._username, bytes([0] * 4),
 			self._client_seed,
@@ -196,6 +193,7 @@ class WorldSession:
 		log.info('Entered world')
 
 	async def logout(self):
+		log.debug('logout called')
 		pass
 		# await self.protocol.send_CMSG_PLAYER_LOGOUT?()
 

@@ -1,12 +1,10 @@
 import json
 import random
 import traceback
-
 import trio
 
 import pont
 from pont.client import auth, world
-
 
 def load_login(server: str, filename: str):
 	with open(filename, 'r') as f:
@@ -47,7 +45,7 @@ async def run(server, proxy=None):
 		traceback.print_exc()
 
 async def main():
-	login_filename = 'C:/Users/dinne/Documents/Projects/pont/servers_config.json'
+	login_filename = 'C:/Users/Owner/Documents/WoW/servers_config.json'
 	acore = load_login('acore', login_filename)
 	# proxy = ('10.179.205.114', 1664)
 	proxy = None

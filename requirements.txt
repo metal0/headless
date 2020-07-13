@@ -4,3 +4,5 @@ pyee~=7.0.2
 ipaddress~=1.0.23
 srptools~=1.0.0
 pytest~=5.4.3
+setuptools~=49.1.0
+cryptography~=2.9.2
