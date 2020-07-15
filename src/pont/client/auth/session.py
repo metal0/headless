@@ -1,15 +1,12 @@
-from typing import Optional, Tuple
-
 import trio
 from trio_socks import socks5
-
+from typing import Optional, Tuple
 from pont.client.auth.net.protocol import AuthProtocol
 from .errors import InvalidLogin
-from .. import log, events, cryptography
+from .. import events, cryptography
 from ...utility.enum import ComparableEnum
 from ...utility.string import bytes_to_int
-
-log = log.mgr.get_logger(__name__)
+from loguru import logger
 
 class AuthSession:
 	def __init__(self, nursery, emitter, proxy: Optional[Tuple[str, int]]=None):
@@ -42,10 +39,10 @@ class AuthSession:
 		if address is not None:
 			if type(address) == str:
 				address = (address, 3724)
-			log.info(f'Connecting to {address}...')
+			logger.info(f'Connecting to {address}...')
 
 		elif stream is not None:
-			log.info(f'Using {stream} as auth stream.')
+			logger.info(f'Using {stream} as auth stream.')
 
 		if stream is None:
 			if address is None:
@@ -63,19 +60,19 @@ class AuthSession:
 		self.protocol = AuthProtocol(stream=self._stream)
 		self._state = AuthState.connected
 		self._emitter.emit(events.auth.connected)
-		log.info('Connected!')
+		logger.info('Connected!')
 
 	async def authenticate(self, username, password, debug=None):
-		log.info(f'Logging in with username {username}...')
+		logger.info(f'Logging in with username {username}...')
 		self._state = AuthState.logging_in
 		self._username = username
 		self._emitter.emit(events.auth.logging_in)
 
 		await self.protocol.send_challenge_request(username=username, os='OSX')
-		log.debug('sent challenge request')
+		logger.debug('sent challenge request')
 
 		challenge_response = await self.protocol.receive_challenge_response()
-		log.debug('received challenge response')
+		logger.debug('received challenge response')
 
 		client_private = None
 		if debug:
@@ -89,15 +86,15 @@ class AuthSession:
 
 		client_public, session_proof = self._srp.process(challenge_response.server_public, challenge_response.salt)
 		self._session_key = int.from_bytes(self._srp.session_key, byteorder='little')
-		log.debug(f'{self._session_key=}')
+		logger.debug(f'{self._session_key=}')
 
 		await self.protocol.send_proof_request(client_public=client_public, session_proof=session_proof)
-		log.debug('sent proof request')
+		logger.debug('sent proof request')
 
 		proof_response = await self.protocol.receive_proof_response()
-		log.debug('received proof response')
+		logger.debug('received proof response')
 
-		log.debug(f'{proof_response.session_proof_hash=} vs {self._srp.session_proof_hash:=}')
+		logger.debug(f'{proof_response.session_proof_hash=} vs {self._srp.session_proof_hash:=}')
 
 		if proof_response.session_proof_hash != self._srp.session_proof_hash:
 			self._state = AuthState.disconnected
@@ -108,7 +105,7 @@ class AuthSession:
 		self._state = AuthState.logged_in
 		self._emitter.emit(events.auth.login_success)
 		self._session_key = bytes_to_int(self._srp.session_key)
-		log.info(f'Logged in!')
+		logger.info(f'Logged in!')
 
 	async def realms(self):
 		await self.protocol.send_realmlist_request()

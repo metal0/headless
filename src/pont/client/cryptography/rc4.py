@@ -1,12 +1,11 @@
-from .. import log
-log = log.mgr.get_logger(__name__)
+from loguru import logger
 
 __all__ = ['RC4']
 
 # noinspection PyPackageRequirements
 def import_arc4_backend():
 	import arc4
-	log.debug('arc4 library backend selected')
+	logger.info('arc4 library backend selected')
 	return lambda key: lambda data: arc4.ARC4(key).encrypt(data)
 
 def import_cryptography_backend():
@@ -18,12 +17,12 @@ def import_cryptography_backend():
 			return encryptor.update(data)
 
 		return encrypt
-	log.debug('cryptography.io library backend selected')
+	logger.info('cryptography.io library backend selected')
 	return create_encryptor
 
 def import_custom_backend():
 	from .rc4_backend import RC4Backend
-	log.debug('custom python backend selected')
+	logger.info('custom python backend selected')
 	return lambda key: lambda data: RC4Backend(key).encrypt(data)
 
 backends = [import_arc4_backend, import_cryptography_backend, import_custom_backend]

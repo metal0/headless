@@ -30,6 +30,13 @@ class WorldEvent(Enum):
 	# Net events
 	disconnected = uuid.uuid4()
 
+	received_group_invite = uuid.uuid4()
+	received_guild_invite = uuid.uuid4()
+
+	received_chat_message = uuid.uuid4()
+	received_gm_chat_message = uuid.uuid4()
+	received_duel_request = uuid.uuid4()
+
 	received_packet = uuid.uuid4()
 	received_SMSG_AUTH_CHALLENGE = uuid.uuid4()
 	received_SMSG_AUTH_RESPONSE = uuid.uuid4()
@@ -41,8 +48,7 @@ class WorldEvent(Enum):
 	received_SMSG_TUTORIAL_FLAGS = uuid.uuid4()
 	received_SMSG_TIME_SYNC_REQ = uuid.uuid4()
 	received_SMSG_LOGOUT_RESPONSE = uuid.uuid4()
-	received_SMSG_LOGOUT_CANCEL_ACK = uuid.uuid4()
-	received_SMSG_LOGOUT_COMPLETE = uuid.uuid4()
+	logout_cancelled = uuid.uuid4()
 
 	sent_CMSG_PING = uuid.uuid4()
 	sent_CMSG_KEEP_ALIVE = uuid.uuid4()

@@ -1,10 +1,5 @@
 import json
-
 import pytest
-
-from pont.client import log
-
-log = log.mgr.get_logger(__name__)
 
 def load_test_servers(filename: str):
 	with open(filename) as f:

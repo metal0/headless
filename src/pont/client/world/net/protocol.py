@@ -8,15 +8,13 @@ from construct import ConstructError
 from .opcode import Opcode
 from ..expansion import Expansion
 from ...cryptography import rc4
-from ..errors import ProtocolError
+from ..errors import ProtocolError, Disconnected
 from ..net import packets
 from ..net.packets import headers
 from ..net.packets.auth_packets import AuthResponse, default_addon_bytes
 from ..net.packets.headers import ServerHeader
 from ..guid import Guid
-from ... import log
-
-log = log.mgr.get_logger(__name__)
+from loguru import logger
 
 class WorldProtocol:
 	def __init__(self, stream: trio.abc.HalfCloseableStream):
@@ -28,6 +26,16 @@ class WorldProtocol:
 		self._has_encryption = False
 		self._encrypter = None
 		self._decrypter = None
+		self._num_packets_received = 0
+		self._num_packets_sent = 0
+
+	@property
+	def num_packets_sent(self):
+		return self._num_packets_sent
+
+	@property
+	def num_packets_received(self):
+		return self._num_packets_received
 
 	async def process_packets(self):
 		while True:
@@ -36,31 +44,35 @@ class WorldProtocol:
 				header_data = await self._stream.receive_some(max_bytes=4)
 
 			if header_data is None or len(header_data) == 0:
-				raise ProtocolError('received EOF from server')
+				raise Disconnected('received EOF from server')
 
 			header_data = self.decrypt(header_data)
-			if headers.is_large_packet(header_data):
-				async with self._read_lock:
-					header_data += self.decrypt(await self._stream.receive_some(max_bytes=1))
+			try:
+				if headers.is_large_packet(header_data):
+					async with self._read_lock:
+						header_data += self.decrypt(await self._stream.receive_some(max_bytes=1))
 
-				size = ((header_data[0] & 0x7F) << 16) | (header_data[1] << 8) | header_data[2]
-				opcode = Opcode(header_data[3] | (header_data[4] << 8))
-				log.warning(f'[process_packets] large packet {size=}')
+					size = ((header_data[0] & 0x7F) << 16) | (header_data[1] << 8) | header_data[2]
+					opcode = Opcode(header_data[3] | (header_data[4] << 8))
+					logger.warning(f'[process_packets] large packet {size=}')
 
-			else:
-				size = (header_data[0] << 8) | header_data[1]
-				opcode = Opcode(header_data[2] | (header_data[3] << 8))
+				else:
+					size = (header_data[0] << 8) | header_data[1]
+					opcode = Opcode(header_data[2] | (header_data[3] << 8))
 
-			header_data = ServerHeader().build({
-				'opcode': Opcode(opcode),
-				'size': (0xFFFF & size)
-			})
+				header_data = ServerHeader().build({
+					'opcode': Opcode(opcode),
+					'size': (0xFFFF & size)
+				})
+			except ValueError as e:
+				if 'is not a valid Opcode' in str(e):
+					raise ProtocolError('Invalid opcode, stream might be out of sync')
 
 			header = packets.parser.parse_header(header_data)
-			log.debug(f'{header=}')
+			logger.log('PACKETS', f'{header=}')
 
 			if header.size - 2 > 0:
-				log.debug(f'Listening for {header.size - 2} bytes...')
+				logger.log('PACKETS', f'Listening for {header.size - 2} bytes...')
 
 				async with self._read_lock:
 					data = header_data + await self._stream.receive_some(max_bytes=header.size - 2)
@@ -71,16 +83,18 @@ class WorldProtocol:
 				data = header_data
 
 			await trio.lowlevel.checkpoint()
+			logger.log('PACKETS', f'{data=}')
 
 			try:
 				packet = packets.parser.parse(data)
 				yield packet
+				self._num_packets_received += 1
 
 			except (KeyError, ConstructError) as e:
 				await trio.lowlevel.checkpoint()
 				if type(e) is KeyError:
 					header = packets.parser.parse_header(header_data)
-					log.warning(f'Dropped packet: {header=}')
+					logger.warning(f'Dropped packet: {header=}')
 				else:
 					traceback.print_exc()
 
@@ -117,7 +131,7 @@ class WorldProtocol:
 		if headers.is_large_packet(decrypted):
 			decrypted += bytes([self.decrypt(bytes([data[4]]))[0]])
 			size = ((decrypted[0] & 0x7F) << 16) | (decrypted[1] << 8) | decrypted[2]
-			log.warning(f'[decrypt_packet] large packet {size=}')
+			logger.warning(f'[decrypt_packet] large packet {size=}')
 
 			opcode = Opcode(decrypted[3] | (decrypted[4] << 8))
 			header = ServerHeader().build({
@@ -142,28 +156,32 @@ class WorldProtocol:
 	async def _receive_encrypted_packet(self, packet_name: str, packet):
 		async with self._read_lock:
 			packet = packet.parse(self.decrypt_packet(await self._stream.receive_some()))
-			log.debug(f'[receive_{packet_name}] received decrypted: {packet}')
+			logger.debug(f'[receive_{packet_name}] received decrypted: {packet}')
+			self._num_packets_received += 1
 			return packet
 
 	async def _receive_unencrypted_packet(self, packet_name: str, packet):
 		async with self._read_lock:
 			data = await self._stream.receive_some()
 			packet = packet.parse(data)
-			log.debug(f'[receive_{packet_name}] received unencrypted: {packet}')
+			logger.debug(f'received unencrypted {packet_name}: {packet}')
+			self._num_packets_received += 1
 			return packet
 
 	async def _send_unencrypted_packet(self, packet_name: str, packet, **params):
 		async with self._send_lock:
 			data = packet.build(params)
 			await self._stream.send_all(data)
-			log.debug(f'[send_{packet_name}] sent unencrypted: {packet.parse(data)}')
+			logger.debug(f'sent unencrypted {packet_name}: {packet.parse(data)}')
+			self._num_packets_sent += 1
 
 	async def _send_encrypted_packet(self, packet_name: str, packet, **params):
 		async with self._send_lock:
 			data = packet.build(params)
 			encrypted = self.encrypt_packet(data)
 			await self._stream.send_all(encrypted)
-			log.debug(f'[send_{packet_name}] sent encrypted: {packet.parse(data)}')
+			logger.debug(f'sent encrypted {packet_name}: {packet.parse(data)}')
+			self._num_packets_sent += 1
 
 	def init_encryption(self, session_key: int):
 		session_key_bytes = session_key.to_bytes(length=40, byteorder='little')
@@ -339,26 +357,212 @@ class WorldProtocol:
 			player_guid=player_guid
 		)
 
+	async def receive_CMSG_PLAYER_LOGIN(self):
+		"""
+		Receives an encrypted CMSG_PLAYER_LOGIN packet.
+		:return: None.
+		"""
+		return await self._receive_encrypted_packet(
+			'CMSG_PLAYER_LOGIN', packets.CMSG_PLAYER_LOGIN
+		)
+
 	async def send_CMSG_LOGOUT_REQUEST(self):
 		"""
 		Sends an encrypted CMSG_LOGOUT_REQUEST packet.
 		:return: None.
 		"""
-		await self._send_encrypted_packet('CMSG_LOGOUT_REQUEST', packets.CMSG_LOGOUT_REQUEST)
+		await self._send_encrypted_packet(
+			'CMSG_LOGOUT_REQUEST', packets.CMSG_LOGOUT_REQUEST
+		)
+
+	async def receive_CMSG_LOGOUT_REQUEST(self):
+		"""
+		Receives an encrypted CMSG_LOGOUT_REQUEST packet.
+		:return: None.
+		"""
+		return await self._receive_encrypted_packet(
+			'CMSG_LOGOUT_REQUEST', packets.CMSG_LOGOUT_REQUEST
+		)
+
+	async def send_CMSG_DUEL_ACCEPTED(self):
+		"""
+		Sends an encrypted CMSG_DUEL_ACCEPTED packet.
+		:return: None.
+		"""
+		await self._send_encrypted_packet(
+			'CMSG_DUEL_ACCEPTED', packets.CMSG_DUEL_ACCEPTED
+		)
+
+	async def receive_CMSG_DUEL_ACCEPTED(self) -> packets.CMSG_DUEL_ACCEPTED:
+		"""
+		Receives an encrypted CMSG_DUEL_ACCEPTED packet.
+		:return: None.
+		"""
+		return await self._receive_encrypted_packet(
+			'CMSG_DUEL_ACCEPTED', packets.CMSG_DUEL_ACCEPTED
+		)
+
+	async def send_CMSG_GUILD_ACCEPT(self):
+		"""
+		Sends an encrypted CMSG_GUILD_ACCEPT packet.
+		:return: None.
+		"""
+		await self._send_encrypted_packet(
+			'CMSG_GUILD_ACCEPT', packets.CMSG_GUILD_ACCEPT
+		)
+
+	async def receive_CMSG_GUILD_ACCEPT(self) -> packets.CMSG_GUILD_ACCEPT:
+		"""
+		Receives an encrypted CMSG_GUILD_ACCEPT packet.
+		:return: None.
+		"""
+		return await self._receive_encrypted_packet(
+			'CMSG_GUILD_ACCEPT', packets.CMSG_GUILD_ACCEPT
+		)
+
+	async def send_CMSG_GUILD_SET_PUBLIC_NOTE(self, player: str, note: str):
+		"""
+		Sends an encrypted CMSG_GUILD_SET_PUBLIC_NOTE packet.
+		:return: None.
+		"""
+		await self._send_encrypted_packet(
+			'CMSG_GUILD_SET_PUBLIC_NOTE', packets.CMSG_GUILD_SET_PUBLIC_NOTE,
+			player=player,
+			note=note
+		)
+
+	async def receive_CMSG_GUILD_SET_PUBLIC_NOTE(self) -> packets.CMSG_GUILD_SET_PUBLIC_NOTE:
+		"""
+		Receives an encrypted CMSG_GUILD_SET_PUBLIC_NOTE packet.
+		:return: None.
+		"""
+		return await self._receive_encrypted_packet('CMSG_GUILD_SET_PUBLIC_NOTE', packets.CMSG_GUILD_SET_PUBLIC_NOTE)
+
+	async def send_CMSG_GUILD_DECLINE(self):
+		"""
+		Sends an encrypted CMSG_GUILD_DECLINE packet.
+		:return: None.
+		"""
+		await self._send_encrypted_packet(
+			'CMSG_GUILD_DECLINE', packets.CMSG_GUILD_DECLINE
+		)
+
+	async def receive_CMSG_GUILD_DECLINE(self) -> packets.CMSG_GUILD_DECLINE:
+		"""
+		Receives an encrypted CMSG_GUILD_DECLINE packet.
+		:return: None.
+		"""
+		return await self._receive_encrypted_packet('CMSG_GUILD_DECLINE', packets.CMSG_GUILD_DECLINE)
+
+	async def send_SMSG_GUILD_INVITE(self, inviter: str, guild: str):
+		"""
+		Sends an encrypted CMSG_GUILD_DECLINE packet.
+		:return: None.
+		"""
+		await self._send_encrypted_packet(
+			'SMSG_GUILD_INVITE', packets.SMSG_GUILD_INVITE,
+			header={'size': len(inviter) + len(guild)},
+			inviter=inviter,
+			guild=guild
+		)
+
+	async def receive_SMSG_GUILD_INVITE(self) -> packets.SMSG_GUILD_INVITE:
+		"""
+		Receives an encrypted SMSG_GUILD_INVITE packet.
+		:return: None.
+		"""
+		return await self._receive_encrypted_packet('SMSG_GUILD_INVITE', packets.SMSG_GUILD_INVITE)
+
+	async def send_CMSG_GUILD_CREATE(self, guild_name: str):
+		"""
+		Sends an encrypted CMSG_GUILD_CREATE packet.
+		:return: None.
+		"""
+		await self._send_encrypted_packet(
+			'CMSG_GUILD_CREATE', packets.CMSG_GUILD_CREATE,
+			header={'size': len(guild_name)},
+			guild_name=guild_name
+		)
+
+	async def receive_CMSG_GUILD_CREATE(self) -> packets.CMSG_GUILD_CREATE:
+		"""
+		Receives an encrypted CMSG_GUILD_CREATE packet.
+		:return: None.
+		"""
+		return await self._receive_encrypted_packet(
+			'CMSG_GUILD_CREATE', packets.CMSG_GUILD_CREATE
+		)
 
 	async def send_CMSG_LOGOUT_CANCEL(self):
 		"""
 		Sends an encrypted CMSG_LOGOUT_CANCEL packet.
 		:return: None.
 		"""
-		await self._send_encrypted_packet('CMSG_LOGOUT_CANCEL', packets.CMSG_LOGOUT_CANCEL)
+		await self._send_encrypted_packet(
+			'CMSG_LOGOUT_CANCEL', packets.CMSG_LOGOUT_CANCEL
+		)
 
-	async def receive_CMSG_PLAYER_LOGIN(self) -> packets.CMSG_PLAYER_LOGIN:
+	async def receive_CMSG_LOGOUT_CANCEL(self) -> packets.CMSG_LOGOUT_CANCEL:
 		"""
-		Receives an encrypted CMSG_PLAYER_LOGIN packet.
-		:return: a parsed CMSG_PLAYER_LOGIN packet.
+		Receives an encrypted CMSG_LOGOUT_CANCEL packet.
+		:return: a parsed CMSG_LOGOUT_CANCEL packet.
 		"""
-		return await self._receive_encrypted_packet('CMSG_PLAYER_LOGIN', packets.CMSG_PLAYER_LOGIN)
+		return await self._receive_encrypted_packet(
+			'CMSG_LOGOUT_CANCEL', packets.CMSG_LOGOUT_CANCEL
+		)
+
+	async def send_CMSG_GROUP_ACCEPT(self):
+		"""
+		Sends an encrypted CMSG_GROUP_ACCEPT packet.
+		:return: None.
+		"""
+		await self._send_encrypted_packet(
+			'CMSG_GROUP_ACCEPT', packets.CMSG_GROUP_ACCEPT
+		)
+
+	async def send_CMSG_GROUP_INVITE(self, invitee: str):
+		"""
+		Sends an encrypted CMSG_GROUP_INVITE packet.
+		:return: None.
+		"""
+		await self._send_encrypted_packet(
+			'CMSG_GROUP_INVITE', packets.CMSG_GROUP_INVITE,
+			header={'size': len(invitee) + 4},
+			invitee=invitee,
+			unknown=0,
+		)
+
+	async def receieve_CMSG_GROUP_INVITE(self) -> packets.CMSG_GROUP_INVITE:
+		"""
+		Receives an encrypted CMSG_GROUP_INVITE packet.
+		:return: a parsed CMSG_GROUP_INVITE packet.
+		"""
+		return await self._receive_encrypted_packet(
+			'CMSG_GROUP_INVITE',
+			packets.CMSG_GROUP_INVITE
+		)
+
+	async def send_SMSG_GROUP_INVITE(self, inviter: str, in_group=False):
+		"""
+		Sends an encrypted SMSG_GROUP_INVITE packet.
+		:return: None.
+		"""
+		await self._send_encrypted_packet(
+			'SMSG_GROUP_INVITE', packets.SMSG_GROUP_INVITE,
+			header={'size': 1 + len(inviter) + 4 + 1 + 4},
+			in_group=in_group,
+			inviter=inviter
+		)
+
+	async def receieve_SMSG_GROUP_INVITE(self) -> packets.SMSG_GROUP_INVITE:
+		"""
+		Receives an encrypted SMSG_GROUP_INVITE packet.
+		:return: a parsed SMSG_GROUP_INVITE packet.
+		"""
+		return await self._receive_encrypted_packet(
+			'SMSG_GROUP_INVITE',
+			packets.SMSG_GROUP_INVITE
+		)
 
 	async def send_CMSG_TIME_SYNC_RES(self, id, client_ticks):
 		"""

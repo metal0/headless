@@ -1,10 +1,7 @@
 import json
 import trio
-import pickle
-
 from . import events
-from .log import mgr
-log = mgr.get_logger(__name__)
+from loguru import logger
 
 async def load_server_config(server: str, path: str):
 	async with await trio.open_file(path) as f:
@@ -58,7 +55,7 @@ class Config:
 			setattr(Config, name, property(fget=getter, fset=setter))
 
 		except AttributeError as e:
-			log.error(f'Attribute Error (probably as a result of eval in Config.make_property): {e}')
+			logger.error(f'Attribute Error (probably as a result of eval in Config.make_property): {e}')
 			pass
 
 	async def load(self, path: str):
@@ -69,12 +66,12 @@ class Config:
 
 		print(file_data)
 		config = json.loads(file_data)
-		log.debug(f'load {path=}: {config=}')
+		logger.debug(f'load {path=}: {config=}')
 		for name in self.__config_names:
 			self.__setattr__(name, json.loads(config[name]))
 
 	async def save(self, path: str):
-		log.debug(f'save {path=}')
+		logger.debug(f'save {path=}')
 		async with await trio.open_file(path, 'w') as f:
 			result = {}
 			for name in self.__config_names:

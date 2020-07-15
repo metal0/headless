@@ -1,12 +1,10 @@
 import ipaddress
-from typing import Tuple, Union, NamedTuple
-
 import construct
-
+from typing import Tuple, Union, NamedTuple
 
 class GuidConstruct(construct.Adapter):
 	def __init__(self, guid_type):
-		super().__init__(construct.Long)
+		super().__init__(construct.Int64ul)
 		self.guid_type = guid_type
 
 	def _decode(self, obj: int, context, path):

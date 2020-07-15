@@ -1,14 +1,10 @@
 import os
-from typing import Tuple
-
 import srptools
-
+from typing import Tuple
 from pont.client.auth.errors import InvalidLogin
-from pont.client.log import mgr
 from pont.utility.string import int_to_bytes, bytes_to_int
 from .sha import sha1, sha1v
-
-log = mgr.get_logger(__name__)
+from loguru import logger
 
 class WowSrpClient(object):
 	def __init__(self, username: str, password: str, prime: int, generator: int, client_private = None):
@@ -28,7 +24,7 @@ class WowSrpClient(object):
 		else:
 			self.client_private = client_private
 
-		log.debug(f'{self.client_private=}')
+		logger.debug(f'{self.client_private=}')
 		self.client_public = self.__srptools.get_client_public(self.client_private)
 		if self.client_public == 0:
 			raise InvalidLogin('client_public must not be zero')
@@ -150,7 +146,7 @@ def generate_crc(client_public, crc_salt: int, game_files_root: str = 'C:\\Users
 		else:
 			for bin in filenames['bin']:
 				path = os.path.join(bin_path, bin)
-				log.debug(f'{path=}')
+				logger.debug(f'{path=}')
 
 				if not os.path.exists(path):
 					raise SrpChecksumNoGameFiles(f'File {path} not found')

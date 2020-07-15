@@ -1,11 +1,10 @@
 import datetime
+import construct
 from enum import Enum
 
-import construct
-
-from pont.client.world.language import Language
+from ..guid import Guid, GuidType
+from ..language import Language
 from pont.utility.construct import PackEnum, GuidConstruct
-
 
 class MessageType(Enum):
 	system = 0x00
@@ -70,13 +69,55 @@ class ChatLinkColor(Enum):
 	achievement = 0xffffff00  # achievement yellow
 	glyph       = 0xff66bbff  # teal blue
 
-MessageData = construct.Struct(
-	'type' / PackEnum(MessageType),
-	'language' / PackEnum(Language, construct.Int32ul),
-	'sender_guid' / GuidConstruct,
-	'flags' / construct.Default(construct.Int32ul, 0),
-
+MonsterMessage = construct.Struct(
+	'sender' / construct.Prefixed(construct.Int32ul, construct.CString('ascii')),
+	'receiver_guid' / GuidConstruct(Guid),
+	'receiver' / construct.If(
+		construct.this.receiver_guid != Guid() and construct.this.receiver_guid.type not in (GuidType.player, GuidType.pet),
+		construct.Prefixed(construct.Int32ul, construct.CString('ascii'))
+	),
 )
+
+WhisperForeign = construct.Struct(
+	'sender' / construct.Prefixed(construct.Int32ul, construct.CString('ascii')),
+	'receiver_guid' / GuidConstruct(Guid),
+)
+
+BGMessage = construct.Struct(
+	'receiver_guid' / GuidConstruct(Guid),
+	'receiver' / construct.If(
+		construct.this.receiver_guid != Guid() and construct.this.receiver_guid.type != GuidType.player,
+		construct.Prefixed(construct.Int32ul, construct.CString('ascii'))
+	),
+)
+
+AchievementMessage = construct.Struct(
+	'receiver_guid' / GuidConstruct(Guid),
+)
+
+def ChannelMessage(gm_chat=False):
+	if gm_chat:
+		return construct.Struct(
+			'sender' / construct.Prefixed(construct.Int32ul, construct.CString('ascii')),
+			'channel' / construct.CString('ascii'),
+			'receiver_guid' / GuidConstruct(Guid),
+		)
+	else:
+		return construct.Struct(
+			'channel' / construct.CString('ascii'),
+			'receiver_guid' / GuidConstruct(Guid),
+		)
+
+def DefaultMessage(gm_chat=False):
+	if gm_chat:
+		return construct.Struct(
+			'sender' / construct.Prefixed(construct.Int32ul, construct.CString('ascii')),
+			'receiver_guid' / GuidConstruct(Guid),
+		)
+	else:
+		return construct.Struct(
+			'receiver_guid' / GuidConstruct(Guid),
+		)
 
 class Message:
 	def __init__(self, text: str):

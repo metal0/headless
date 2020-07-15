@@ -3,3 +3,6 @@ class WorldError(Exception):
 
 class ProtocolError(WorldError):
 	pass
+
+class Disconnected(ProtocolError):
+	pass

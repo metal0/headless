@@ -8,7 +8,7 @@ from ...guid import Guid
 
 CMSG_NAME_QUERY = construct.Struct(
 	'header' / ClientHeader(Opcode.CMSG_NAME_QUERY, 8),
-	'guid' / construct.ByteSwapped(GuidConstruct(Guid))
+	'guid' / GuidConstruct(Guid)
 )
 
 NameInfo = construct.Struct(

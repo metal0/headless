@@ -28,7 +28,7 @@ SMSG_LOGOUT_COMPLETE = construct.Struct(
 
 CMSG_PLAYER_LOGIN = construct.Struct(
 	'header' / ClientHeader(Opcode.CMSG_PLAYER_LOGIN, 8),
-	'player_guid' / construct.ByteSwapped(GuidConstruct(Guid))
+	'player_guid' / GuidConstruct(Guid)
 )
 
 CMSG_LOGOUT_REQUEST = construct.Struct(

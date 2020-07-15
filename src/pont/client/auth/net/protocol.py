@@ -2,9 +2,7 @@ import trio
 
 from pont.client.auth.net import packets
 from .response import Response
-from pont.client.log import mgr
-
-log = mgr.get_logger(__name__)
+from loguru import logger
 
 class AuthProtocol:
 	def __init__(self, stream: trio.abc.HalfCloseableStream):
@@ -13,7 +11,7 @@ class AuthProtocol:
 		self._read_lock = trio.Lock()
 
 	async def send_challenge_request(self, username: str, build=12340, country='enUS', game='WoW', arch='x86', os='Win', ip='127.0.0.1'):
-		log.debug('Sending challenge request...')
+		logger.debug('Sending challenge request...')
 		packet = packets.ChallengeRequest.build({
 			'country': country,
 			'build': build,
@@ -29,7 +27,7 @@ class AuthProtocol:
 
 	async def send_challenge_response(self, prime, server_public, salt, response: Response=Response.success,
 			generator_length=1, generator=7, prime_length=32, checksum_salt=0, security_flag=0):
-		log.debug('Sending challenge response...')
+		logger.debug('Sending challenge response...')
 		challenge_response = packets.ChallengeResponse.build({
 			'server_public': server_public,
 			'response': response,

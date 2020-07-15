@@ -15,7 +15,7 @@ GuildRankData = construct.ByteSwapped(construct.Struct(
 ))
 
 RosterMemberData = construct.Struct(
-	'guid' / construct.ByteSwapped(GuidConstruct(Guid)),
+	'guid' / GuidConstruct(Guid),
 	'status' / PackEnum(MemberStatus),
 	'name' / construct.CString('ascii'),
 	'rank_id' / construct.Int32ul,

@@ -12,10 +12,8 @@ from .net import WorldHandler, WorldProtocol, Opcode
 from .net.packets.auth_packets import AuthResponse
 from .. import events, world
 from ..auth import Realm
-from ..log import mgr
 from ...utility.enum import ComparableEnum
-
-log = mgr.get_logger(__name__)
+from loguru import logger
 
 class WorldSession:
 	def __init__(self, nursery, emitter, proxy: Optional[Tuple[str, int]] = None):
@@ -32,7 +30,6 @@ class WorldSession:
 		self._encryption_seed1 = None
 		self._encryption_seed2 = None
 		self._username = None
-		self._packets_received = []
 		# self._obj_mgr = esper.World()
 		self._state = WorldState.not_connected
 
@@ -42,6 +39,8 @@ class WorldSession:
 
 	def realm(self) -> Realm:
 		return self._realm
+
+
 
 	async def aclose(self):
 		if self._stream is not None:
@@ -66,7 +65,7 @@ class WorldSession:
 		return result
 
 	async def _keepalive(self):
-		log.debug('[_keepalive] started')
+		logger.debug('started')
 		while True:
 			await self.protocol.send_CMSG_KEEP_ALIVE()
 			self._emitter.emit(events.world.sent_CMSG_KEEP_ALIVE)
@@ -78,7 +77,7 @@ class WorldSession:
 	# 	await self.protocol.send_CMSG_PING()
 
 	# async def _ping_every_30_seconds(self):
-	# 	log.debug('[_ping_every_30_seconds] started')
+	# 	logger.debug('[_ping_every_30_seconds] started')
 	# 	id = 0
 	# 	while True:
 	# 		await self.protocol.send_CMSG_PING(id)
@@ -88,14 +87,14 @@ class WorldSession:
 	# 		id += 1
 
 	async def _packet_handler(self):
-		log.debug('[_packet_handler] started')
+		logger.debug('started')
 		try:
 			async for packet in self.protocol.process_packets():
 				self._emitter.emit(events.world.received_packet, packet=packet)
 				await self.handler.handle(packet)
 
-		except world.errors.ProtocolError as e:
-			traceback.print_exc()
+		except world.ProtocolError as e:
+			logger.exception('packet handler exception')
 			self._state = WorldState.disconnected
 			self._emitter.emit(events.world.disconnected, reason=str(e))
 			await trio.lowlevel.checkpoint()
@@ -103,9 +102,9 @@ class WorldSession:
 
 	async def connect(self, realm=None, proxy=None, stream=None):
 		if realm is not None:
-			log.info(f'Connecting to {realm.name} at {realm.address}')
+			logger.info(f'Connecting to {realm.name} at {realm.address}')
 		elif stream is not None:
-			log.info(f'Using {stream} as world stream.')
+			logger.info(f'Using {stream} as world stream.')
 
 		if self._state > WorldState.not_connected:
 			raise ProtocolError('Already connected to another server!')
@@ -126,7 +125,7 @@ class WorldSession:
 		self._emitter.emit(events.world.connected, self._realm.address)
 
 	async def authenticate(self, username, session_key):
-		log.info(f'Logging in with username {username}...')
+		logger.info(f'Logging in with username {username}...')
 		if self.state < WorldState.connected:
 			raise ProtocolError('Not connected to world server')
 
@@ -139,6 +138,7 @@ class WorldSession:
 		self._username = username.upper()
 
 		auth_challenge = await self.protocol.receive_SMSG_AUTH_CHALLENGE()
+
 		self._server_seed = auth_challenge.server_seed
 		self._encryption_seed1 = auth_challenge.encryption_seed1
 		self._encryption_seed2 = auth_challenge.encryption_seed2
@@ -163,44 +163,36 @@ class WorldSession:
 		auth_response = await self.wait_for_packet(Opcode.SMSG_AUTH_RESPONSE)
 		if auth_response.response == AuthResponse.ok:
 			self._state = WorldState.logged_in
-			log.info('Logged in!')
+			logger.info('Logged in!')
 
 		elif auth_response.response == AuthResponse.wait_queue:
 			self._state = WorldState.in_queue
-			log.info(f'In queue: {auth_response.queue_position}')
+			logger.info(f'In queue: {auth_response.queue_position}')
 
 		self._nursery.start_soon(self._keepalive)
 
 	async def characters(self):
-		received_characters_event = trio.Event()
-		result = []
-
-		@self._emitter.once(events.world.received_SMSG_CHAR_ENUM)
-		def on_char_enum(characters):
-			nonlocal result
-			result = characters
-			received_characters_event.set()
-
 		await self.protocol.send_CMSG_CHAR_ENUM()
 		self._emitter.emit(events.world.sent_CMSG_CHAR_ENUM)
 
-		await received_characters_event.wait()
-		return result
+		char_enum = await self.wait_for_packet(Opcode.SMSG_CHAR_ENUM)
+		return char_enum.characters
 
 	async def enter_world(self, character: CharacterInfo):
-		log.info(f'Entering world as {character.name}...')
+		logger.info(f'Entering world as {character.name}...')
 		await self.protocol.send_CMSG_PLAYER_LOGIN(character.guid)
-		self._emitter.emit(events.world.sent_CMSG_PLAYER_LOGIN)
 
+		self._emitter.emit(events.world.sent_CMSG_PLAYER_LOGIN)
 		await self.wait_for_packet(Opcode.SMSG_LOGIN_VERIFY_WORLD)
-		log.info('Entered world')
+		logger.info('Entered world')
 
 	async def logout(self):
-		log.debug('logout called')
-		await self.protocol.send_CMSG_LOGOUT_REQUEST()
+		logger.debug('logout called')
 		self._emitter.emit(events.world.sent_CMSG_LOGOUT_REQUEST)
+		await self.protocol.send_CMSG_LOGOUT_REQUEST()
 
 		logout_response = await self.wait_for_packet(Opcode.SMSG_LOGOUT_RESPONSE)
+		await self.wait_for_packet(Opcode.SMSG_LOGOUT_COMPLETE)
 
 class WorldState(ComparableEnum):
 	disconnected = -1

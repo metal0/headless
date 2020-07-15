@@ -146,19 +146,20 @@ def test_CMSG_TIME_SYNC_REQ():
 def test_CMSG_NAME_QUERY():
 	data = bytes.fromhex('000C500000001F00000000000000')
 	packet = world.net.packets.CMSG_NAME_QUERY.parse(data)
-	assert packet.guid == Guid(counter=0x1f)
 	print(packet)
 
+	assert packet.guid == Guid(counter=0x1f)
+
 def test_SMSG_NAME_QUERY():
-	data = bytes.fromhex('000E5100011F0045636F000001010400')
+	data = b'\x00\x0eQ\x00\x01\x1f\x00Eco\x00\x00\x01\x01\x04\x00'
 	packet = world.net.packets.SMSG_NAME_QUERY_RESPONSE.parse(data)
 	print(packet)
 
 	assert packet.name_unknown == False
-	# assert packet.name == None
-	# assert packet.realm_name == 'AzerothCore'
-	# assert packet.race == Race.human
-	# assert packet.gender == Gender.female
+	assert packet.name == 'Eco'
+	assert packet.realm_name == 'AzerothCore'
+	assert packet.race == Race.human
+	assert packet.gender == Gender.female
 
 def test_SMSG_INIT_WORLD_STATES():
 	data = bytes.fromhex('0050C20200000000EF050000EF0500000800D808000000000000D708000000000000D608000000000000D508000000000000D408000000000000D308000000000000770C0000010000003D0F000008000000')

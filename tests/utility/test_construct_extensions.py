@@ -4,7 +4,6 @@ from pont.client.world.guid import Guid
 from pont.client.world.position import Position
 from pont.utility.construct import AddressPort, PackedGuid, PackedCoordinates
 
-
 def test_address_port():
 	# Test big endian encoding and decoding
 	con = AddressPort()

@@ -1,18 +1,17 @@
+import pyee
+import trio
 from contextlib import asynccontextmanager
 from typing import Tuple
 
-import pyee
-import trio
-
-from . import log, auth, world
+from . import auth, world
 from .auth.session import AuthState
 from .auth import AuthSession, Realm
 from .config import Config
 from .world.character_select import CharacterInfo
 from .world.session import WorldSession, WorldState
 from ..utility import AsyncScopedEmitter, enum
-
-log = log.mgr.get_logger(__name__)
+from loguru import logger
+from . import log as log_config
 
 @asynccontextmanager
 async def open_client(auth_server=None, proxy=None):
@@ -43,8 +42,6 @@ class ClientState(enum.ComparableEnum):
 class Client(AsyncScopedEmitter):
 	def __init__(self, nursery, auth_server: Tuple[str, int], proxy=None):
 		super().__init__(emitter=pyee.TrioEventEmitter(nursery=nursery))
-		from . import log
-		log.mgr.add_file_handler('pont.log')
 		self._auth_server = auth_server
 		self._proxy = proxy
 		self._username = None
@@ -134,6 +131,7 @@ class Client(AsyncScopedEmitter):
 		if self.world.state < WorldState.logged_in:
 			raise world.ProtocolError('Not logged in')
 		await self.world.enter_world(character)
+		return self.world
 
 	async def logout(self):
 		await self.world.logout()

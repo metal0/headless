@@ -31,7 +31,7 @@ BagInfo = construct.Struct(
 )
 
 CharacterInfo = construct.Struct(
-	'guid' / construct.ByteSwapped(GuidConstruct(Guid)),
+	'guid' / GuidConstruct(Guid),
 	'name' / construct.CString('ascii'),
 	'race' / PackEnum(Race),
 	'combat_class' / PackEnum(CombatClass),
