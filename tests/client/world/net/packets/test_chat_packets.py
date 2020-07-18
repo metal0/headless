@@ -3,11 +3,6 @@ from pont.client.world.chat.message import MessageType
 from pont.client.world.language import Language
 from pont.client.world.net import packets, Opcode
 
-def test_1():
-	pass
-	# packet = packets.SMSG_MESSAGECHAT.parse(data)
-	# print(packet)
-
 async def test_SMSG_MESSAGECHAT():
 	data = b'\x003\x96\x00\x0c\x00\x00\x00\x00k7\x01\xbe\r\x000\xf1\x00\x00\x00\x00\x0e\x00\x00\x00Thomas Miller\x00\x00\x00\x00\x00\x00\x00\x00\x00\x01\x00\x00\x00\x00\x00'
 	packet = packets.SMSG_MESSAGECHAT.parse(data)
@@ -58,6 +53,22 @@ async def test_SMSG_MESSAGECHAT():
 	assert packet3.message == 'ayte'
 	assert packet3.chat_tag == 4
 	assert packet3.achievement_id is None
+
+	data4 = b"\x00A\x96\x00\x04\xff\xff\xff\xff\x15\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00!\x00\x00\x00Crb\tS% fa692e 7b5D}'$s'7*Wisplol\x00\x00"
+	packet4 = packets.SMSG_MESSAGECHAT.parse(data4)
+	print(packet4)
+
+	assert packet4.header.size == 65
+	assert packet4.header.opcode == Opcode.SMSG_MESSAGECHAT
+
+	assert packet4.type == MessageType.guild
+	assert packet4.language == Language.addon
+	assert packet4.sender_guid == Guid(0x15)
+	assert packet4.flags == 0
+	assert packet4.info.receiver_guid == Guid()
+	assert packet4.message == 'Crb\tS% fa692e 7b5D}\'$s\'7*Wisplol'
+	assert packet4.chat_tag == 0
+	assert packet4.achievement_id is None
 
 async def test_SMSG_GM_MESSAGECHAT():
 	data =b'\x006\xb3\x03\x02\xff\xff\xff\xff\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x04\x00\x00\x00Act\x00\x00\x00\x00\x00\x00\x00\x00\x00\x0e\x00\x00\x00DBMv4-Ver\tHi!\x00\x04'

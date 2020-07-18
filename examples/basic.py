@@ -2,6 +2,8 @@ import json
 import random
 import traceback
 import trio
+import sys
+sys.path.append('C:/Users/Owner/PycharmProjects/pont.client/src')
 
 import pont
 from pont.client import auth, world
@@ -35,9 +37,10 @@ async def run(server, proxy=None):
 					break
 
 			# Enter world with character
-			with trio.fail_after(5):
-				await client.enter_world(character)
-
+			# TODO: aenter should start a scope/nursery in which all following in-game tasks run
+			#   aexit does the obvious scope.aexit
+			# async with client.enter_world(character):
+			await client.enter_world(character)
 			await trio.sleep_forever()
 
 	except (OSError, trio.TooSlowError, auth.AuthError, world.WorldError):
@@ -46,8 +49,8 @@ async def run(server, proxy=None):
 async def main():
 	login_filename = 'C:/Users/Owner/Documents/WoW/servers_config.json'
 	acore = load_login('acore', login_filename)
-	# proxy = ('tower', 1664)
-	proxy = None
+	proxy = ('tower', 1665)
+	# proxy = None
 
 	while True:
 		await run(acore, proxy=proxy)

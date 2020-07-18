@@ -1,7 +1,7 @@
 import random
-import traceback
 from typing import Optional, Tuple, Any
 
+import esper as esper
 import trio
 from trio_socks import socks5
 
@@ -30,7 +30,6 @@ class WorldSession:
 		self._encryption_seed1 = None
 		self._encryption_seed2 = None
 		self._username = None
-		# self._obj_mgr = esper.World()
 		self._state = WorldState.not_connected
 
 	@property
@@ -39,8 +38,6 @@ class WorldSession:
 
 	def realm(self) -> Realm:
 		return self._realm
-
-
 
 	async def aclose(self):
 		if self._stream is not None:
@@ -138,7 +135,6 @@ class WorldSession:
 		self._username = username.upper()
 
 		auth_challenge = await self.protocol.receive_SMSG_AUTH_CHALLENGE()
-
 		self._server_seed = auth_challenge.server_seed
 		self._encryption_seed1 = auth_challenge.encryption_seed1
 		self._encryption_seed2 = auth_challenge.encryption_seed2
@@ -151,6 +147,7 @@ class WorldSession:
 			self._session_key, out=int
 		)
 
+		self._emitter.emit(events.world.sent_CMSG_AUTH_SESSION)
 		await self.protocol.send_CMSG_AUTH_SESSION(
 			account_name=self._username,
 			client_seed=self._client_seed,
@@ -158,9 +155,9 @@ class WorldSession:
 			realm_id=self._realm.id
 		)
 
-		self._emitter.emit(events.world.sent_CMSG_AUTH_SESSION)
 		self._nursery.start_soon(self._packet_handler)
 		auth_response = await self.wait_for_packet(Opcode.SMSG_AUTH_RESPONSE)
+
 		if auth_response.response == AuthResponse.ok:
 			self._state = WorldState.logged_in
 			logger.info('Logged in!')
@@ -184,6 +181,9 @@ class WorldSession:
 
 		self._emitter.emit(events.world.sent_CMSG_PLAYER_LOGIN)
 		await self.wait_for_packet(Opcode.SMSG_LOGIN_VERIFY_WORLD)
+
+		self._emitter.emit(events.world.entered_world)
+		self._state = WorldState.in_game
 		logger.info('Entered world')
 
 	async def logout(self):
@@ -193,6 +193,7 @@ class WorldSession:
 
 		logout_response = await self.wait_for_packet(Opcode.SMSG_LOGOUT_RESPONSE)
 		await self.wait_for_packet(Opcode.SMSG_LOGOUT_COMPLETE)
+		self._state = WorldState.logged_in
 
 class WorldState(ComparableEnum):
 	disconnected = -1

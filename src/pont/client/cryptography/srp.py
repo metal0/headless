@@ -76,8 +76,13 @@ class WowSrpClient(object):
 		for i in range(0, 20):
 			result[i * 2] = sha[i]
 
-		for i in range(0, 16):
-			t1[i] = t[i * 2 + 1]
+		# TODO: Fix "IndexError: index out of range" bug
+		try:
+			for i in range(0, 16):
+				t1[i] = t[i * 2 + 1]
+		except:
+			logger.exception('Weird srp error')
+			raise
 
 		sha = sha1(t1)
 		# fill uneven result entries [1], [3] etc.

@@ -11,7 +11,7 @@ from ...language import Language
 CMSG_MESSAGECHAT = construct.Struct(
 	'header' / ClientHeader(Opcode.CMSG_MESSAGECHAT, 0),
 	'type' / PackEnum(MessageType, construct.Int32sl),
-	'language' / PackEnum(Language, construct.Int32sl)
+	'language' / PackEnum(Language, construct.Int32sl),
 )
 
 def make_messagechat_packet(gm_chat=False):
@@ -46,7 +46,7 @@ def make_messagechat_packet(gm_chat=False):
 		),
 
 		'message' / construct.Prefixed(construct.Int32ul, construct.CString('utf-8')),
-		'chat_tag' / construct.Byte,
+		'chat_tag' / construct.Byte, # 4 appears when a GM has their chat tag visible
 		'achievement_id' / construct.Switch(
 			construct.this.type, {
 				MessageType.achievement: construct.Int32ul,

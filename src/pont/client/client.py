@@ -131,7 +131,7 @@ class Client(AsyncScopedEmitter):
 		if self.world.state < WorldState.logged_in:
 			raise world.ProtocolError('Not logged in')
 		await self.world.enter_world(character)
-		return self.world
+		# return self.world
 
 	async def logout(self):
 		await self.world.logout()

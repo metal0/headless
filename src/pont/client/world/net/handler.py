@@ -20,6 +20,7 @@ class WorldHandler:
 			Opcode.SMSG_LOGIN_VERIFY_WORLD: self.handle_login_verify_world,
 			Opcode.SMSG_TUTORIAL_FLAGS: self.handle_tutorial_flags,
 			Opcode.SMSG_TIME_SYNC_REQ: self.handle_time_sync_request,
+			Opcode.SMSG_NAME_QUERY_RESPONSE: self.handle_name_query_response,
 			Opcode.SMSG_LOGOUT_RESPONSE: self.handle_logout_response,
 			Opcode.SMSG_LOGOUT_CANCEL_ACK: self.handle_logout_cancel_ack,
 			Opcode.SMSG_LOGOUT_COMPLETE: self.handle_logout_complete,
@@ -53,6 +54,10 @@ class WorldHandler:
 			logger.debug(f'Dropped packet: {packet.header}')
 			return
 
+	async def handle_name_query_response(self, packet: packets.SMSG_NAME_QUERY_RESPONSE):
+		self._emitter.emit(events.world.received_name_query_response)
+		logger.debug(f'packet={packet}')
+
 	async def handle_duel_requested(self, packet: packets.SMSG_DUEL_REQUESTED):
 		self._emitter.emit(events.world.received_duel_request)
 		logger.debug(f'packet={packet}')
@@ -81,7 +86,7 @@ class WorldHandler:
 		logger.debug(f'packet={packet}')
 
 	async def handle_logout_response(self, packet: packets.SMSG_LOGOUT_RESPONSE):
-		self._emitter.emit(events.world.received_SMSG_LOGOUT_RESPONSE, reason=packet.reason, instant_logout=packet.instant_logout)
+		self._emitter.emit(events.world.received_logout_response, reason=packet.reason, instant_logout=packet.instant_logout)
 		logger.debug(f'packet={packet}')
 
 	async def handle_logout_cancel_ack(self, packet: packets.SMSG_LOGOUT_CANCEL_ACK):
@@ -89,7 +94,7 @@ class WorldHandler:
 		logger.debug(f'packet={packet}')
 
 	async def handle_time_sync_request(self, packet: packets.SMSG_TIME_SYNC_REQ):
-		self._emitter.emit(events.world.received_SMSG_TIME_SYNC_REQ, id=packet.id)
+		self._emitter.emit(events.world.received_time_sync_request, id=packet.id)
 		logger.debug(f'packet={packet}')
 
 		# TODO: Defer this to something like n.start_soon(client.anti_afk) instead of (await client.anti_afk() or
@@ -103,7 +108,7 @@ class WorldHandler:
 		self._time_sync_count += 1
 
 	def handle_tutorial_flags(self, packet: packets.SMSG_TUTORIAL_FLAGS):
-		self._emitter.emit(events.world.received_SMSG_TUTORIAL_FLAGS, packet=packet)
+		self._emitter.emit(events.world.received_tutorial_flags, packet=packet)
 		logger.debug(f'packet={packet}')
 
 	def handle_auth_response(self, packet: SMSG_AUTH_RESPONSE):
@@ -124,11 +129,11 @@ class WorldHandler:
 
 	def handle_login_verify_world(self, packet: packets.SMSG_LOGIN_VERIFY_WORLD):
 		self._emitter.emit(events.world.received_SMSG_LOGIN_VERIFY_WORLD, packet=packet)
-		self._emitter.emit(events.world.ingame)
+		self._emitter.emit(events.world.entered_world)
 		logger.debug(f'packet={packet}')
 
 	def handle_warden_data(self, packet: SMSG_WARDEN_DATA):
-		self._emitter.emit(events.world.received_SMSG_WARDEN_DATA, packet=packet)
+		self._emitter.emit(events.world.received_warden_data, packet=packet)
 		logger.debug(f'packet={packet}')
 
 	def handle_pong(self, packet: SMSG_PONG):

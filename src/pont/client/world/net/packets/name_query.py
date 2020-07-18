@@ -12,16 +12,17 @@ CMSG_NAME_QUERY = construct.Struct(
 )
 
 NameInfo = construct.Struct(
-	'name' / construct.CString('ascii'),
-	'realm_name' / construct.Default(construct.CString('ascii'), ''),
-	'race' / PackEnum(Race),
-	'gender' / PackEnum(Gender),
-	'combat_class' / PackEnum(CombatClass),
+	'name' / construct.CString('utf-8'),
+	# 'realm_name' / construct.Default(construct.CString('utf-8'), ''),
+	# 'race' / PackEnum(Race),
+	# 'gender' / PackEnum(Gender),
+	# 'combat_class' / PackEnum(CombatClass),
+	# 'declined' / construct.Default(construct.Flag, False)
 )
 
 SMSG_NAME_QUERY_RESPONSE = construct.Struct(
 	'header' / ServerHeader(Opcode.SMSG_NAME_QUERY_RESPONSE, 8+1+1+1+1+1+10),
 	'guid' / PackedGuid(Guid),
-	'name_unknown' / construct.Default(construct.Flag, False),
-	'info' / construct.If(not construct.this.name_unknown, NameInfo)
+	'found' / construct.Default(construct.Flag, False),
+	'info' / construct.If(construct.this.found, NameInfo)
 )

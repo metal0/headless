@@ -1,9 +1,11 @@
 from pont.client import world
 from pont.client.world.entities.player import Race, Gender, CombatClass
 from pont.client.world.guid import Guid, GuidType
+from pont.client.world.net import Opcode
+
 
 def test_SMSG_LOGIN_VERIFY_WORLD():
-	data = bytes.fromhex('00163602010000006B65B7457FB382C544B7CE44A0F84540')
+	data = b'\x00\x166\x02\x01\x00\x00\x00ke\xb7E\x7f\xb3\x82\xc5D\xb7\xceD\xa0\xf8E@'
 	packet = world.net.packets.SMSG_LOGIN_VERIFY_WORLD.parse(data)
 	assert packet.map == 1
 	assert packet.position.x == 1653.72705078125
@@ -138,16 +140,19 @@ def test_SMSG_TIME_SYNC_REQ():
 def test_CMSG_TIME_SYNC_REQ():
 	data = bytes.fromhex('000A9103000005000000D5C30000')
 	packet = world.net.packets.CMSG_TIME_SYNC_RESP.parse(data)
+	print(packet)
+
 	assert packet.header.size == 10
 	assert packet.id == 5
 	assert packet.client_ticks == 50133
-	print(packet)
 
 def test_CMSG_NAME_QUERY():
-	data = bytes.fromhex('000C500000001F00000000000000')
+	data = b'\x00\x0cP\x00\x00\x00\x1f\x00\x00\x00\x00\x00\x00\x00'
 	packet = world.net.packets.CMSG_NAME_QUERY.parse(data)
 	print(packet)
 
+	assert packet.header.size == 12
+	assert packet.header.opcode == Opcode.CMSG_NAME_QUERY
 	assert packet.guid == Guid(counter=0x1f)
 
 def test_SMSG_NAME_QUERY():
@@ -155,7 +160,7 @@ def test_SMSG_NAME_QUERY():
 	packet = world.net.packets.SMSG_NAME_QUERY_RESPONSE.parse(data)
 	print(packet)
 
-	assert packet.name_unknown == False
+	# assert packet.found == True
 	assert packet.name == 'Eco'
 	assert packet.realm_name == 'AzerothCore'
 	assert packet.race == Race.human
@@ -166,7 +171,19 @@ def test_SMSG_INIT_WORLD_STATES():
 	packet = world.net.packets.SMSG_INIT_WORLD_STATES.parse(data)
 	print(packet)
 
+	assert packet.map_id == 0
+	assert packet.zone_id == 1519
+	assert packet.area_id == 1519
+
 def test_SMSG_BIND_POINT_UPDATE():
 	data = bytes.fromhex('00165501CDD70BC6357E04C3F90FA742000000000C000000')
 	packet = world.net.packets.SMSG_BIND_POINT_UPDATE.parse(data)
 	print(packet)
+
+	assert packet.header.size == 22
+	assert packet.header.opcode == Opcode.SMSG_BIND_POINT_UPDATE
+	assert packet.position.x == 83.53119659423828
+	assert packet.position.y == -132.4929962158203
+	assert packet.position.z == -8949.9501953125
+	assert packet.map_id == 0
+	assert packet.area_id == 12

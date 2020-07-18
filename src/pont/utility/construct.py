@@ -1,3 +1,4 @@
+import inspect
 import ipaddress
 import construct
 from typing import Tuple, Union, NamedTuple
@@ -147,32 +148,55 @@ class PackedCoordinates(construct.Adapter):
 		value |= (int(obj.z / 0.25) & 0x3FF) << 22
 		return value
 
-class PackedGuid(construct.Adapter):
+def _compute_packed_guid_byte_size(mask) -> int:
+	return sum(1 for i in range(8) if mask & (1 << i))
+
+def compute_mask_size(mask):
+	def _compute_mask_size(this):
+		nonlocal mask
+		mask = this.mask
+		return _compute_packed_guid_byte_size(this.mask)
+
+	return _compute_mask_size
+
+class PackedGuidData(construct.Adapter):
 	def __init__(self, guid_type):
-		super().__init__(construct.FixedSized(8, construct.GreedyBytes))
+		self.mask = 0
+		super().__init__(construct.Sequence(
+			"mask" / construct.Byte,
+			"data" / construct.Bytes(compute_mask_size)
+		))
+
 		self.guid_type = guid_type
 
 	def _decode(self, obj: bytes, context, path):
 		guid = 0
-		mask = obj[0]
-		for i in range(8):
-			if mask & (1 << i):
+		print(context)
+
+		for i in range(min(len(obj), 8)):
+			if self.mask & (1 << i):
 				bit = obj[i]
-				guid |= bit << (i * 8)
+				guid |= (bit << (i * 8))
 
 		return self.guid_type(value=guid)
 
 	def _encode(self, obj, context, path) -> bytes:
-		mask = 0
-		result = bytearray([0])
-		guid = obj
+		context.mask = 0
+		result = bytearray()
+		print(context)
 
 		for i in range(8):
-			if guid & 0xFF:
-				mask |= 1 << i
-				result.append(guid & 0xFF)
+			if obj & 0xFF:
+				self.mask |= 1 << i
+				result.append(obj & 0xFF)
 
-			guid >>= 8
+			obj >>= 8
 
-		result[0] = mask & 0xFF
 		return bytes(result)
+
+def PackedGuid(guid_type):
+	return construct.Struct(
+		'guid' / PackedGuidData(guid_type)
+	)
+
+

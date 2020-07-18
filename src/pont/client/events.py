@@ -24,7 +24,7 @@ class WorldEvent(Enum):
 	logged_in = uuid.uuid4()
 	logging_in = uuid.uuid4()
 	loading_world = uuid.uuid4()
-	ingame = uuid.uuid4()
+	entered_world = uuid.uuid4()
 	logged_out = uuid.uuid4()
 
 	# Net events
@@ -36,18 +36,18 @@ class WorldEvent(Enum):
 	received_chat_message = uuid.uuid4()
 	received_gm_chat_message = uuid.uuid4()
 	received_duel_request = uuid.uuid4()
+	received_name_query_response = uuid.uuid4()
 
 	received_packet = uuid.uuid4()
 	received_SMSG_AUTH_CHALLENGE = uuid.uuid4()
 	received_SMSG_AUTH_RESPONSE = uuid.uuid4()
-	received_SMSG_NAME_QUERY_RESPONSE = uuid.uuid4()
 	received_SMSG_CHAR_ENUM = uuid.uuid4()
 	received_SMSG_PONG = uuid.uuid4()
 	received_SMSG_LOGIN_VERIFY_WORLD = uuid.uuid4()
-	received_SMSG_WARDEN_DATA = uuid.uuid4()
-	received_SMSG_TUTORIAL_FLAGS = uuid.uuid4()
-	received_SMSG_TIME_SYNC_REQ = uuid.uuid4()
-	received_SMSG_LOGOUT_RESPONSE = uuid.uuid4()
+	received_warden_data = uuid.uuid4()
+	received_tutorial_flags = uuid.uuid4()
+	received_time_sync_request = uuid.uuid4()
+	received_logout_response = uuid.uuid4()
 	logout_cancelled = uuid.uuid4()
 
 	sent_CMSG_PING = uuid.uuid4()
