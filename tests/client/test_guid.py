@@ -45,3 +45,4 @@ def test_guid2():
 	guid = Guid(counter=1, type=GuidType.player)
 	assert guid.counter == 1
 	assert guid.type == GuidType.player
+

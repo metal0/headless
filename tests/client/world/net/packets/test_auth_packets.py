@@ -5,7 +5,6 @@ from pont.client.world.expansion import Expansion
 from pont.client.world.net import Opcode
 from pont.client.world.net.packets.auth_packets import AuthResponse
 
-
 def test_world_auth_packet():
 	data = bytes.fromhex('002aec01010000004c6f82e4ab892d3d480a9898d510f879f862479fad62c8815ff00fd85e5ab6b4031684e9')
 	auth_challenge = world.net.packets.SMSG_AUTH_CHALLENGE.parse(data)

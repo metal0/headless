@@ -17,7 +17,6 @@ CMSG_DUEL_CANCELLED = construct.Struct(
 
 SMSG_DUEL_REQUESTED = construct.Struct(
 	'header' / ServerHeader(Opcode.SMSG_DUEL_REQUESTED, 8 + 8),
-	'duel_flag' / GuidConstruct(Guid),
+	'flag_obj' / GuidConstruct(Guid),
 	'requester' / GuidConstruct(Guid),
 )
-

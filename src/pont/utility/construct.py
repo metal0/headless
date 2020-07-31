@@ -159,10 +159,10 @@ def compute_mask_size(mask):
 
 	return _compute_mask_size
 
-class PackedGuidData(construct.Adapter):
+class PackedGuid(construct.Adapter):
 	def __init__(self, guid_type):
 		self.mask = 0
-		super().__init__(construct.Sequence(
+		super().__init__(construct.Struct(
 			"mask" / construct.Byte,
 			"data" / construct.Bytes(compute_mask_size)
 		))
@@ -193,10 +193,4 @@ class PackedGuidData(construct.Adapter):
 			obj >>= 8
 
 		return bytes(result)
-
-def PackedGuid(guid_type):
-	return construct.Struct(
-		'guid' / PackedGuidData(guid_type)
-	)
-
 

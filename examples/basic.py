@@ -49,8 +49,8 @@ async def run(server, proxy=None):
 async def main():
 	login_filename = 'C:/Users/Owner/Documents/WoW/servers_config.json'
 	acore = load_login('acore', login_filename)
-	proxy = ('tower', 1665)
-	# proxy = None
+	# proxy = ('tower', 1665)
+	proxy = None
 
 	while True:
 		await run(acore, proxy=proxy)

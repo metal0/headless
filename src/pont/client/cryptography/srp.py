@@ -6,6 +6,9 @@ from pont.utility.string import int_to_bytes, bytes_to_int
 from .sha import sha1, sha1v
 from loguru import logger
 
+class SrpError(Exception):
+	pass
+
 class WowSrpClient(object):
 	def __init__(self, username: str, password: str, prime: int, generator: int, client_private = None):
 		multiplier = 3
@@ -80,9 +83,9 @@ class WowSrpClient(object):
 		try:
 			for i in range(0, 16):
 				t1[i] = t[i * 2 + 1]
-		except:
+		except Exception as e:
 			logger.exception('Weird srp error')
-			raise
+			raise SrpError(e)
 
 		sha = sha1(t1)
 		# fill uneven result entries [1], [3] etc.
