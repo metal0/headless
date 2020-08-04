@@ -84,8 +84,7 @@ class Guid:
 
 	@type.setter
 	def type(self, ty: GuidType):
-		old_type = self.type
-		self.high = ty.value | self.high & ~old_type.value
+		self.high = ty.value | self.high & ~self.type.value
 
 	@staticmethod
 	def max_count() -> int:

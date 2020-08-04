@@ -1,4 +1,3 @@
-import inspect
 import ipaddress
 import construct
 from typing import Tuple, Union, NamedTuple
@@ -151,17 +150,43 @@ class PackedCoordinates(construct.Adapter):
 def _compute_packed_guid_byte_size(mask) -> int:
 	return sum(1 for i in range(8) if mask & (1 << i))
 
-def compute_mask_size(mask):
-	def _compute_mask_size(this):
-		nonlocal mask
-		mask = this.mask
-		return _compute_packed_guid_byte_size(this.mask)
+def compute_mask_size(context) -> int:
+	return _compute_packed_guid_byte_size(context.mask)
 
-	return _compute_mask_size
+def pack_guid(guid: int):
+	mask = 0
+	result = bytearray()
 
-class PackedGuid(construct.Adapter):
+	print(f'pack_guid: {guid=}')
+	print(f'{guid >> 7 * 8}')
+
+	for i in range(8):
+		if guid == 0:
+			break
+
+		if guid & 0xFF:
+			print(f'pack_guid: {guid=}, {i=}, {bin(mask)=}, {result=}')
+			mask |= (1 << i)
+			result.append(guid & 0xFF)
+
+		guid >>= 8
+
+	# result.append((guid >> 7 * 8) & )
+
+	return mask, bytes(result)
+
+def unpack_guid(mask: int, data: bytes) -> int:
+	guid = 0
+	data = bytearray(data)
+
+	for i in range(8):
+		if mask & (1 << i):
+			guid |= (data.pop(0) << (i * 8))
+
+	return guid
+
+class GuidUnpacker(construct.Adapter):
 	def __init__(self, guid_type):
-		self.mask = 0
 		super().__init__(construct.Struct(
 			"mask" / construct.Byte,
 			"data" / construct.Bytes(compute_mask_size)
@@ -169,28 +194,15 @@ class PackedGuid(construct.Adapter):
 
 		self.guid_type = guid_type
 
-	def _decode(self, obj: bytes, context, path):
-		guid = 0
-		print(context)
+	def _decode(self, obj, context, path):
+		print(f'_decode: {context=}')
+		print(obj)
 
-		for i in range(min(len(obj), 8)):
-			if self.mask & (1 << i):
-				bit = obj[i]
-				guid |= (bit << (i * 8))
+		return self.guid_type(value=unpack_guid(obj.mask, obj.data))
 
-		return self.guid_type(value=guid)
+	def _encode(self, obj, context, path):
+		print(f'_encode: {context=}')
+		print(obj)
 
-	def _encode(self, obj, context, path) -> bytes:
-		context.mask = 0
-		result = bytearray()
-		print(context)
-
-		for i in range(8):
-			if obj & 0xFF:
-				self.mask |= 1 << i
-				result.append(obj & 0xFF)
-
-			obj >>= 8
-
-		return bytes(result)
-
+		mask, data = pack_guid(obj.value)
+		return {"mask": mask, "data": data}

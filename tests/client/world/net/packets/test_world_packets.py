@@ -25,6 +25,8 @@ def test_SMSG_WARDEN_DATA():
 	packet = world.net.packets.SMSG_WARDEN_DATA.parse(data)
 	print(packet)
 
+	assert False
+
 def test_SMSG_TUTORIAL_FLAGS():
 	data = bytes.fromhex('0022FD00F7BFEFFCE3A3F503000000000000000000000000000000000000000000000000')
 	packet = world.net.packets.SMSG_TUTORIAL_FLAGS.parse(data)
@@ -41,6 +43,7 @@ def test_SMSG_CHAR_ENUM():
 	print(f'{char_enum}')
 
 	steako = char_enum.characters[0]
+	assert steako.name == 'Steako'
 	assert steako.guid == Guid(value=0x7000000003372cc)
 	assert steako.race == Race.tauren
 	assert steako.gender == Gender.male
@@ -160,11 +163,11 @@ def test_SMSG_NAME_QUERY():
 	packet = world.net.packets.SMSG_NAME_QUERY_RESPONSE.parse(data)
 	print(packet)
 
-	# assert packet.found == True
-	assert packet.name == 'Eco'
-	assert packet.realm_name == 'AzerothCore'
-	assert packet.race == Race.human
-	assert packet.gender == Gender.female
+	assert packet.found == True
+	assert packet.info.name == 'Eco'
+	assert packet.info.realm_name == ''
+	assert packet.info.race == Race.human
+	assert packet.info.gender == Gender.female
 
 def test_SMSG_INIT_WORLD_STATES():
 	data = bytes.fromhex('0050C20200000000EF050000EF0500000800D808000000000000D708000000000000D608000000000000D508000000000000D408000000000000D308000000000000770C0000010000003D0F000008000000')

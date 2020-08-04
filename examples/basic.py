@@ -3,6 +3,10 @@ import random
 import traceback
 import trio
 import sys
+
+from pont.client.world.chat.message import MessageType
+from pont.client.world.language import Language
+
 sys.path.append('C:/Users/Owner/PycharmProjects/pont.client/src')
 
 import pont
@@ -41,6 +45,9 @@ async def run(server, proxy=None):
 			#   aexit does the obvious scope.aexit
 			# async with client.enter_world(character):
 			await client.enter_world(character)
+			await trio.sleep(2)
+
+			await client.world.protocol.send_CMSG_MESSAGECHAT('hey', MessageType.say, Language.common)
 			await trio.sleep_forever()
 
 	except (OSError, trio.TooSlowError, auth.AuthError, world.WorldError):

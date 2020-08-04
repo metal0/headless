@@ -1,12 +1,16 @@
 import hashlib
 import hmac
+from typing import Optional
+
 import trio
 import traceback
 
 from construct import ConstructError
 
 from .opcode import Opcode
+from ..chat.message import MessageType
 from ..expansion import Expansion
+from ..language import Language
 from ...cryptography import rc4
 from ..errors import ProtocolError, Disconnected
 from ..net import packets
@@ -94,7 +98,7 @@ class WorldProtocol:
 				await trio.lowlevel.checkpoint()
 				if type(e) is KeyError:
 					header = packets.parser.parse_header(header_data)
-					logger.warning(f'Dropped packet: {header=}')
+					logger.log('PACKETS', f'Dropped packet: {header=}')
 				else:
 					traceback.print_exc()
 
@@ -156,7 +160,7 @@ class WorldProtocol:
 	async def _receive_encrypted_packet(self, packet_name: str, packet):
 		async with self._read_lock:
 			packet = packet.parse(self.decrypt_packet(await self._stream.receive_some()))
-			logger.debug(f'[receive_{packet_name}] received decrypted: {packet}')
+			logger.log('PACKETS', f' {packet}')
 			self._num_packets_received += 1
 			return packet
 
@@ -164,7 +168,7 @@ class WorldProtocol:
 		async with self._read_lock:
 			data = await self._stream.receive_some()
 			packet = packet.parse(data)
-			logger.debug(f'received unencrypted {packet_name}: {packet}')
+			logger.log('PACKETS', f'{packet_name}: {packet}')
 			self._num_packets_received += 1
 			return packet
 
@@ -172,7 +176,7 @@ class WorldProtocol:
 		async with self._send_lock:
 			data = packet.build(params)
 			await self._stream.send_all(data)
-			logger.debug(f'sent unencrypted {packet_name}: {packet.parse(data)}')
+			logger.log('PACKETS', f'{packet_name}: {packet.parse(data)}')
 			self._num_packets_sent += 1
 
 	async def _send_encrypted_packet(self, packet_name: str, packet, **params):
@@ -180,7 +184,8 @@ class WorldProtocol:
 			data = packet.build(params)
 			encrypted = self.encrypt_packet(data)
 			await self._stream.send_all(encrypted)
-			logger.debug(f'sent encrypted {packet_name}: {packet.parse(data)}')
+			logger.log('PACKETS', f'{packet_name}: {packet.parse(data)}')
+			logger.log('PACKETS', f'{data=}')
 			self._num_packets_sent += 1
 
 	def init_encryption(self, session_key: int):
@@ -461,7 +466,7 @@ class WorldProtocol:
 		"""
 		await self._send_encrypted_packet(
 			'SMSG_GUILD_INVITE', packets.SMSG_GUILD_INVITE,
-			header={'size': len(inviter) + len(guild)},
+			header={'size': len(inviter) + len(guild) + 2},
 			inviter=inviter,
 			guild=guild
 		)
@@ -480,7 +485,7 @@ class WorldProtocol:
 		"""
 		await self._send_encrypted_packet(
 			'CMSG_GUILD_CREATE', packets.CMSG_GUILD_CREATE,
-			header={'size': len(guild_name)},
+			header={'size': len(guild_name) + 4},
 			guild_name=guild_name
 		)
 
@@ -571,8 +576,7 @@ class WorldProtocol:
 		"""
 		await self._send_encrypted_packet(
 			'CMSG_TIME_SYNC_RES', packets.CMSG_TIME_SYNC_RESP,
-			id=id,
-			client_ticks=client_ticks,
+			id=id, client_ticks=client_ticks,
 		)
 
 	async def receive_CMSG_TIME_SYNC_RES(self) -> packets.CMSG_TIME_SYNC_RESP:
@@ -591,4 +595,41 @@ class WorldProtocol:
 		"""
 		return await self._receive_encrypted_packet(
 			'SMSG_CHATMESSAGE', packets.SMSG_MESSAGECHAT
+		)
+
+	async def send_CMSG_MESSAGECHAT(self,
+		message: str, message_type: MessageType=MessageType.say,
+		language=Language.universal, receiver: Optional[str]=None,
+		channel: Optional[str]=None
+	):
+		"""
+		Sends an encrypted CMSG_MESSAGECHAT packet.
+		:return: None.
+		"""
+		size = 4 + 4 + len(message)
+		if message_type in (MessageType.whisper, MessageType.channel):
+			size += max(len(channel), len(receiver))
+
+		await self._send_encrypted_packet(
+			'CMSG_MESSAGECHAT', packets.CMSG_MESSAGECHAT,
+			header={'size': size + 5},
+			message=message, message_type=message_type, language=language,
+			receiver=receiver, channel=channel
+		)
+
+	async def receieve_CMSG_MESSAGECHAT(self,
+		message: str, message_type: MessageType=MessageType.say,
+		language=Language.universal, receiver: Optional[str]=None,
+		channel: Optional[str]=None
+	):
+		"""
+		Sends an encrypted CMSG_MESSAGECHAT packet.
+		:return: None.
+		"""
+		size = 4 + 4 + len(message)
+		if message_type in (MessageType.whisper, MessageType.channel):
+			size += max(len(channel), len(receiver))
+
+		await self._receive_encrypted_packet(
+			'CMSG_MESSAGECHAT', packets.CMSG_MESSAGECHAT,
 		)

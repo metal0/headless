@@ -2,7 +2,8 @@ import construct
 
 from pont.client.world.guid import Guid
 from pont.client.world.position import Position
-from pont.utility.construct import AddressPort, PackedGuid, PackedCoordinates
+from pont.utility.construct import AddressPort, GuidUnpacker, PackedCoordinates, unpack_guid, pack_guid
+
 
 def test_address_port():
 	# Test big endian encoding and decoding
@@ -28,12 +29,14 @@ def test_address_port2():
 
 def test_packed_guid():
 	guid = Guid(value=0x7000000003372cc)
-	data = PackedGuid(Guid).build(guid)
 
-	# TODO: Fix PackedGuid and its unit tests
-	packet = PackedGuid(Guid).parse(data)
+	print(guid)
+	print(Guid(value=unpack_guid(*pack_guid(guid.value))))
+	assert unpack_guid(*pack_guid(guid.value)) == guid.value
 
-	assert packet.mask
+	packed_guid = GuidUnpacker(Guid).build(guid)
+	parsed_guid = GuidUnpacker(Guid).parse(packed_guid)
+	assert parsed_guid == guid
 
 def test_packed_coordinates():
 	pos = Position(2.1, -33, 99.8)

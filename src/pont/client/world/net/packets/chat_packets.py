@@ -10,8 +10,17 @@ from ...language import Language
 
 CMSG_MESSAGECHAT = construct.Struct(
 	'header' / ClientHeader(Opcode.CMSG_MESSAGECHAT, 0),
-	'type' / PackEnum(MessageType, construct.Int32sl),
+	'message_type' / PackEnum(MessageType, construct.Int32sl),
 	'language' / PackEnum(Language, construct.Int32sl),
+	'channel' / construct.If(
+		construct.this.message_type == MessageType.channel,
+		construct.CString('utf-8')
+	),
+	'receiver' / construct.If(
+		construct.this.message_type == MessageType.whisper,
+		construct.CString('utf-8')
+	),
+	'message' / construct.CString('utf-8')
 )
 
 def make_messagechat_packet(gm_chat=False):
