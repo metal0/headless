@@ -1,13 +1,10 @@
 import json
 import random
-import traceback
 import trio
-import sys
+import loguru
 
 from pont.client.world.chat.message import MessageType
 from pont.client.world.language import Language
-
-sys.path.append('C:/Users/Owner/PycharmProjects/pont.client/src')
 
 import pont
 from pont.client import auth, world
@@ -41,17 +38,12 @@ async def run(server, proxy=None):
 					break
 
 			# Enter world with character
-			# TODO: aenter should start a scope/nursery in which all following in-game tasks run
-			#   aexit does the obvious scope.aexit
-			# async with client.enter_world(character):
-			await client.enter_world(character)
-			await trio.sleep(2)
+			async with client.enter_world(character):
+				await client.world.chat.send_message('bongour, brother', MessageType.guild, Language.universal)
+				await trio.sleep_forever()
 
-			await client.world.protocol.send_CMSG_MESSAGECHAT('hey', MessageType.say, Language.common)
-			await trio.sleep_forever()
-
-	except (OSError, trio.TooSlowError, auth.AuthError, world.WorldError):
-		traceback.print_exc()
+	except (Exception, trio.TooSlowError, auth.AuthError, world.WorldError):
+		loguru.logger.exception('Error')
 
 async def main():
 	login_filename = 'C:/Users/Owner/Documents/WoW/servers_config.json'

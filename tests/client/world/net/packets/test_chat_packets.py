@@ -17,14 +17,14 @@ async def test_SMSG_MESSAGECHAT():
 	assert packet.header.opcode == Opcode.SMSG_MESSAGECHAT
 	assert packet.header.size == 51
 
-	assert packet.type == MessageType.monster_say
+	assert packet.message_type == MessageType.monster_say
 	assert packet.language == Language.universal
 	assert packet.sender_guid == Guid(value=0xf130000dbe01376b)
 	assert packet.flags == 0
 	assert packet.info.sender == 'Thomas Miller'
 	assert packet.info.receiver_guid == Guid()
 	assert packet.info.receiver is None
-	assert packet.message == ''
+	assert packet.text == ''
 	assert packet.chat_tag == 0
 	assert packet.achievement_id is None
 
@@ -35,12 +35,12 @@ async def test_SMSG_MESSAGECHAT():
 	assert packet2.header.opcode == Opcode.SMSG_MESSAGECHAT
 	assert packet2.header.size == 35
 
-	assert packet2.type == MessageType.say
+	assert packet2.message_type == MessageType.say
 	assert packet2.language == Language.common
 	assert packet2.sender_guid == Guid(1)
 	assert packet2.flags == 0
 	assert packet2.info.receiver_guid == Guid(1)
-	assert packet2.message == 'ay'
+	assert packet2.text == 'ay'
 	assert packet2.chat_tag == 4
 	assert packet2.achievement_id is None
 
@@ -51,12 +51,12 @@ async def test_SMSG_MESSAGECHAT():
 	assert packet3.header.opcode == Opcode.SMSG_MESSAGECHAT
 	assert packet3.header.size == 37
 
-	assert packet3.type == MessageType.whisper
+	assert packet3.message_type == MessageType.whisper
 	assert packet3.language == Language.universal
 	assert packet3.sender_guid == Guid(1)
 	assert packet3.flags == 0
 	assert packet3.info.receiver_guid == Guid(1)
-	assert packet3.message == 'ayte'
+	assert packet3.text == 'ayte'
 	assert packet3.chat_tag == 4
 	assert packet3.achievement_id is None
 
@@ -67,12 +67,12 @@ async def test_SMSG_MESSAGECHAT():
 	assert packet4.header.size == 65
 	assert packet4.header.opcode == Opcode.SMSG_MESSAGECHAT
 
-	assert packet4.type == MessageType.guild
+	assert packet4.message_type == MessageType.guild
 	assert packet4.language == Language.addon
 	assert packet4.sender_guid == Guid(0x15)
 	assert packet4.flags == 0
 	assert packet4.info.receiver_guid == Guid()
-	assert packet4.message == 'Crb\tS% fa692e 7b5D}\'$s\'7*Wisplol'
+	assert packet4.text == 'Crb\tS% fa692e 7b5D}\'$s\'7*Wisplol'
 	assert packet4.chat_tag == 0
 	assert packet4.achievement_id is None
 
@@ -84,29 +84,29 @@ async def test_SMSG_GM_MESSAGECHAT():
 	assert packet.header.opcode == Opcode.SMSG_GM_MESSAGECHAT
 	assert packet.header.size == 54
 
-	assert packet.type == MessageType.party
+	assert packet.message_type == MessageType.party
 	assert packet.language == Language.addon
 	assert packet.sender_guid == Guid(1)
 	assert packet.flags == 0
 	assert packet.info.sender == 'Act'
 	assert packet.info.receiver_guid == Guid()
-	assert packet.message == 'DBMv4-Ver\tHi!'
+	assert packet.text == 'DBMv4-Ver\tHi!'
 	assert packet.chat_tag == 4
 	assert packet.achievement_id is None
 
-	data2 = data=b'\x01(\xb3\x03\x04\x00\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x04\x00\x00\x00Act\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x01\x00\x00Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor i\x00\x04'
+	data2 = b'\x01(\xb3\x03\x04\x00\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x04\x00\x00\x00Act\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x01\x00\x00Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor i\x00\x04'
 	packet2 = packets.SMSG_GM_MESSAGECHAT.parse(data2)
 	print(packet2)
 
 	assert packet2.header.opcode == Opcode.SMSG_GM_MESSAGECHAT
 	assert packet2.header.size == 296
 
-	assert packet2.type == MessageType.guild
+	assert packet2.message_type == MessageType.guild
 	assert packet2.language == Language.universal
 	assert packet2.sender_guid == Guid(1)
 	assert packet2.flags == 0
 	assert packet2.info.sender == 'Act'
 	assert packet2.info.receiver_guid == Guid()
-	assert packet2.message == 'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor i'
+	assert packet2.text == 'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor i'
 	assert packet2.chat_tag == 4
 	assert packet2.achievement_id is None

@@ -1,7 +1,5 @@
-from enum import Enum
-
 import construct
-
+from enum import Enum
 
 class GuildMemberDataType(Enum):
 	zone_id = 1
@@ -24,6 +22,32 @@ class GuildCommandType(Enum):
 	view_tab = 21
 	move_item = 22
 	repair = 25
+
+class GuildCommandError(Enum):
+	success = 0
+	internal_error = 1
+	already_in_guild = 2
+	already_in_guild_s              = 3
+	already_invited_to_guild = 4
+	already_invited_to_guild_s = 5
+	guild_name_invalid = 6
+	guild_name_exists = 7
+	error_leader_leave = 8
+	error_guild_permissions = 8
+	player_not_in_guild = 9
+	player_not_in_guild_s = 10
+	player_not_found_s = 11
+	not_allied = 12
+	rank_too_high_s = 13
+	rank_too_low_s = 14
+	ranks_locked = 17
+	rank_in_use = 18
+	ignoring_you_s = 19
+	unknown1 = 20 # Forces roster update
+	withdraw_limit = 25
+	not_enough_money = 26
+	bank_full = 28
+	item_not_found = 29
 
 # noinspection PyTypeChecker
 class GuildRankRights(Enum):

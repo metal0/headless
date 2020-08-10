@@ -13,7 +13,7 @@ ChallengeRequest = construct.Struct(
 	'packet_size' / construct.ByteSwapped(construct.Default(construct.Short, 30 + construct.len_(construct.this.account_name))),
 	'game' / construct.Default(construct.PaddedString(4, 'ascii'), 'WoW'),
 	'version' / construct.Default(VersionString(num_bytes=3), '3.3.5'),
-	'build' / construct.Default(construct.ByteSwapped(construct.Short), 12340),
+	'build' / construct.Default(construct.Int16ul, 12340),
 	'architecture' / construct.Default(PaddedStringByteSwapped(4), 'x86'),
 	'os' / construct.Default(PaddedStringByteSwapped(4), 'Win'),
 	'country' / construct.Default(PaddedStringByteSwapped(4), 'enUS'),

@@ -5,6 +5,7 @@ import trio
 from pont import client as pont
 from pont.client import auth, cryptography
 from pont.client.auth import AuthState, RealmType, RealmStatus
+from pont.client.auth.net import Response
 from pont.utility.string import bytes_to_int
 from tests.client.cryptography import load_test_servers
 
@@ -35,7 +36,7 @@ async def auth_server(stream):
 	proof_request = await protocol.receive_proof_request()
 	client_private = 143386892073113346271045296825355365119602324795205856098132479049957622403427006810653616896639308669514885320513042624825577275523311345156882292579472806120577841118102290052948040847318515534261288049316514160095147951671405527775489066400222418481863631312167863930538967927022064010646095222765545969242
 
-	srp = cryptography.WowSrpClient(
+	srp = cryptography.WoWSrpClient(
 		username=tc_login['username'], password=tc_login['password'],
 		prime=prime,
 		generator=generator,
@@ -49,7 +50,7 @@ async def auth_server(stream):
 	actual_session_proof_hash = 1022273791007009790071844123884488983605182042497
 	assert bytes_to_int(srp.session_proof_hash) == actual_session_proof_hash
 
-	await protocol.send_proof_response(session_proof_hash=actual_session_proof_hash)
+	await protocol.send_proof_response(session_proof_hash=actual_session_proof_hash, response=Response.success)
 	await protocol.receive_realmlist_request()
 
 	realms = [{

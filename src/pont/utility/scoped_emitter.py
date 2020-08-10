@@ -21,7 +21,7 @@ class BaseEmitter:
 		self._emitter.remove_all_listeners(event)
 
 	def emit(self, event, *args, **kwargs):
-		logger.info(f'emitted {event=}, {kwargs}')
+		logger.info(f'{event=}, {kwargs}')
 		self._emitter.emit(event, *args, **kwargs)
 
 	def once(self, event, fn = None):

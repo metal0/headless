@@ -1,5 +1,6 @@
 import hashlib
 import hmac
+import random
 from typing import Optional
 
 import trio
@@ -8,6 +9,7 @@ import traceback
 from construct import ConstructError
 
 from .opcode import Opcode
+from .packets.parse import WorldPacketParser
 from ..chat.message import MessageType
 from ..expansion import Expansion
 from ..language import Language
@@ -21,15 +23,19 @@ from ..guid import Guid
 from loguru import logger
 
 class WorldProtocol:
-	def __init__(self, stream: trio.abc.HalfCloseableStream):
-		self._stream = stream
+	def __init__(self, stream: trio.abc.HalfCloseableStream, server: bool=False):
+		self.stream = stream
+		self.parser = WorldPacketParser()
+
 		self._server_decrypt_key = bytes([0xCC, 0x98, 0xAE, 0x04, 0xE8, 0x97, 0xEA, 0xCA, 0x12, 0xDD, 0xC0, 0x93, 0x42, 0x91, 0x53, 0x57])
 		self._client_encrypt_key = bytes([0xC2, 0xB3, 0x72, 0x3C, 0xC6, 0xAE, 0xD9, 0xB5, 0x34, 0x3C, 0x53, 0xEE, 0x2F, 0x43, 0x67, 0xCE])
-		self._send_lock = trio.Lock()
-		self._read_lock = trio.Lock()
+
+		self._server_mode = server
+		self._send_lock, self._read_lock = trio.Lock(), trio.Lock()
+
 		self._has_encryption = False
-		self._encrypter = None
-		self._decrypter = None
+		self._encrypter, self._decrypter = None, None
+
 		self._num_packets_received = 0
 		self._num_packets_sent = 0
 
@@ -45,7 +51,7 @@ class WorldProtocol:
 		while True:
 			# Receive header first
 			async with self._read_lock:
-				header_data = await self._stream.receive_some(max_bytes=4)
+				header_data = await self.stream.receive_some(max_bytes=4)
 
 			if header_data is None or len(header_data) == 0:
 				raise Disconnected('received EOF from server')
@@ -54,7 +60,7 @@ class WorldProtocol:
 			try:
 				if headers.is_large_packet(header_data):
 					async with self._read_lock:
-						header_data += self.decrypt(await self._stream.receive_some(max_bytes=1))
+						header_data += self.decrypt(await self.stream.receive_some(max_bytes=1))
 
 					size = ((header_data[0] & 0x7F) << 16) | (header_data[1] << 8) | header_data[2]
 					opcode = Opcode(header_data[3] | (header_data[4] << 8))
@@ -72,14 +78,14 @@ class WorldProtocol:
 				if 'is not a valid Opcode' in str(e):
 					raise ProtocolError('Invalid opcode, stream might be out of sync')
 
-			header = packets.parser.parse_header(header_data)
+			header = self.parser.parse_header(header_data)
 			logger.log('PACKETS', f'{header=}')
 
 			if header.size - 2 > 0:
 				logger.log('PACKETS', f'Listening for {header.size - 2} bytes...')
 
 				async with self._read_lock:
-					data = header_data + await self._stream.receive_some(max_bytes=header.size - 2)
+					data = header_data + await self.stream.receive_some(max_bytes=header.size - 2)
 
 				if data is None or len(data) == 0:
 					raise ProtocolError('received EOF from server')
@@ -90,14 +96,14 @@ class WorldProtocol:
 			logger.log('PACKETS', f'{data=}')
 
 			try:
-				packet = packets.parser.parse(data)
+				packet = self.parser.parse(data)
 				yield packet
 				self._num_packets_received += 1
 
 			except (KeyError, ConstructError) as e:
 				await trio.lowlevel.checkpoint()
 				if type(e) is KeyError:
-					header = packets.parser.parse_header(header_data)
+					header = self.parser.parse_header(header_data)
 					logger.log('PACKETS', f'Dropped packet: {header=}')
 				else:
 					traceback.print_exc()
@@ -119,11 +125,11 @@ class WorldProtocol:
 	def has_encryption(self):
 		return self._has_encryption
 
-	def encrypt_packet(self, data: bytes):
+	def _encrypt_packet(self, data: bytes):
 		header = data[0:6]
 		return self.encrypt(header) + data[6:]
 
-	def decrypt_packet(self, data: bytes):
+	def _decrypt_packet(self, data: bytes):
 		if data is None or len(data) == 0:
 			return None
 
@@ -159,31 +165,35 @@ class WorldProtocol:
 
 	async def _receive_encrypted_packet(self, packet_name: str, packet):
 		async with self._read_lock:
-			packet = packet.parse(self.decrypt_packet(await self._stream.receive_some()))
-			logger.log('PACKETS', f' {packet}')
+			data = self._decrypt_packet(await self.stream.receive_some())
+			packet = packet.parse(data)
+			logger.log('PACKETS', f'{packet_name}: {packet}')
+			logger.log('PACKETS', f'{data=}')
 			self._num_packets_received += 1
 			return packet
 
 	async def _receive_unencrypted_packet(self, packet_name: str, packet):
 		async with self._read_lock:
-			data = await self._stream.receive_some()
+			data = await self.stream.receive_some()
 			packet = packet.parse(data)
 			logger.log('PACKETS', f'{packet_name}: {packet}')
+			logger.log('PACKETS', f'{data=}')
 			self._num_packets_received += 1
 			return packet
 
 	async def _send_unencrypted_packet(self, packet_name: str, packet, **params):
 		async with self._send_lock:
 			data = packet.build(params)
-			await self._stream.send_all(data)
+			await self.stream.send_all(data)
 			logger.log('PACKETS', f'{packet_name}: {packet.parse(data)}')
+			logger.log('PACKETS', f'{data=}')
 			self._num_packets_sent += 1
 
 	async def _send_encrypted_packet(self, packet_name: str, packet, **params):
 		async with self._send_lock:
 			data = packet.build(params)
-			encrypted = self.encrypt_packet(data)
-			await self._stream.send_all(encrypted)
+			encrypted = self._encrypt_packet(data)
+			await self.stream.send_all(encrypted)
 			logger.log('PACKETS', f'{packet_name}: {packet.parse(data)}')
 			logger.log('PACKETS', f'{data=}')
 			self._num_packets_sent += 1
@@ -195,14 +205,20 @@ class WorldProtocol:
 
 		server_hmac = hmac.new(key=self._server_decrypt_key, digestmod=hashlib.sha1)
 		server_hmac.update(session_key_bytes)
-		self._encrypter = rc4.RC4(client_hmac.digest())
+
+		if not self._server_mode:
+			decrypt_hmac, encrypt_hmac = server_hmac, client_hmac
+		else:
+			decrypt_hmac, encrypt_hmac = client_hmac, server_hmac
+
+		self._encrypter = rc4.RC4(encrypt_hmac.digest())
 		self._encrypter.encrypt(bytes([0] * 1024))
 
-		self._decrypter = rc4.RC4(server_hmac.digest())
+		self._decrypter = rc4.RC4(decrypt_hmac.digest())
 		self._decrypter.encrypt(bytes([0] * 1024))
 		self._has_encryption = True
 
-	async def send_SMSG_AUTH_CHALLENGE(self, server_seed, encryption_seed1, encryption_seed2):
+	async def send_SMSG_AUTH_CHALLENGE(self, server_seed: int=random.getrandbits(32), encryption_seed1: int=random.getrandbits(16), encryption_seed2: int=random.getrandbits(16)):
 		"""
 		Sends an unencrypted SMSG_AUTH_CHALLENGE packet.
 		:param server_seed:
@@ -254,14 +270,15 @@ class WorldProtocol:
 			'CMSG_AUTH_SESSION', packets.CMSG_AUTH_SESSION
 		)
 
-	async def send_SMSG_AUTH_RESPONSE(self, response: AuthResponse, expansion: Expansion=Expansion.wotlk):
+	async def send_SMSG_AUTH_RESPONSE(self, response: AuthResponse, expansion: Expansion=Expansion.wotlk, queue_position: Optional[int]=None):
 		"""
 		Sends an encrypted SMSG_AUTH_RESPONSE packet.
 		:return: None.
 		"""
 		await self._send_encrypted_packet(
 			'SMSG_AUTH_RESPONSE', packets.SMSG_AUTH_RESPONSE,
-			response=response, expansion=expansion
+			response=response, expansion=expansion,
+			queue_position=queue_position
 		)
 
 	async def receive_SMSG_AUTH_RESPONSE(self) -> packets.SMSG_AUTH_RESPONSE:
@@ -305,6 +322,20 @@ class WorldProtocol:
 		await self._send_encrypted_packet(
 			'CMSG_CHAR_ENUM', packets.CMSG_CHAR_ENUM,
 		)
+
+	async def receive_CMSG_CHAR_ENUM(self) -> packets.SMSG_CHAR_ENUM:
+		"""
+		Receives an encrypted CMSG_CHAR_ENUM packet.
+		:return: a parsed CMSG_CHAR_ENUM packet.
+		"""
+		return await self._receive_encrypted_packet('CMSG_CHAR_ENUM', packets.CMSG_CHAR_ENUM)
+
+	async def send_SMSG_CHAR_ENUM(self):
+		"""
+		Sends an encrypted SMSG_CHAR_ENUM packet.
+		:return: None.
+		"""
+		await self._send_encrypted_packet('SMSG_CHAR_ENUM', packets.SMSG_CHAR_ENUM)
 
 	async def receive_SMSG_CHAR_ENUM(self) -> packets.SMSG_CHAR_ENUM:
 		"""
@@ -405,6 +436,24 @@ class WorldProtocol:
 		"""
 		return await self._receive_encrypted_packet(
 			'CMSG_DUEL_ACCEPTED', packets.CMSG_DUEL_ACCEPTED
+		)
+
+	async def send_CMSG_GUILD_ROSTER(self):
+		"""
+		Sends an encrypted CMSG_GUILD_ROSTER packet.
+		:return: None.
+		"""
+		await self._send_encrypted_packet(
+			'CMSG_GUILD_ROSTER', packets.CMSG_GUILD_ROSTER
+		)
+
+	async def receive_CMSG_GUILD_ROSTER(self) -> packets.CMSG_GUILD_ROSTER:
+		"""
+		Receives an encrypted CMSG_GUILD_ROSTER packet.
+		:return: None.
+		"""
+		return await self._receive_encrypted_packet(
+			'CMSG_GUILD_ROSTER', packets.CMSG_GUILD_ROSTER
 		)
 
 	async def send_CMSG_GUILD_ACCEPT(self):
@@ -569,14 +618,14 @@ class WorldProtocol:
 			packets.SMSG_GROUP_INVITE
 		)
 
-	async def send_CMSG_TIME_SYNC_RES(self, id, client_ticks):
+	async def send_CMSG_TIME_SYNC_RES(self, id: int, client_ticks: int):
 		"""
 		Sends an encrypted CMSG_TIME_SYNC_RES packet.
 		:return: None.
 		"""
 		await self._send_encrypted_packet(
 			'CMSG_TIME_SYNC_RES', packets.CMSG_TIME_SYNC_RESP,
-			id=id, client_ticks=client_ticks,
+			id=id, client_ticks=(client_ticks & 0xFFFFFFFF),
 		)
 
 	async def receive_CMSG_TIME_SYNC_RES(self) -> packets.CMSG_TIME_SYNC_RESP:
@@ -598,7 +647,7 @@ class WorldProtocol:
 		)
 
 	async def send_CMSG_MESSAGECHAT(self,
-		message: str, message_type: MessageType=MessageType.say,
+		text: str, message_type: MessageType=MessageType.say,
 		language=Language.universal, receiver: Optional[str]=None,
 		channel: Optional[str]=None
 	):
@@ -606,14 +655,14 @@ class WorldProtocol:
 		Sends an encrypted CMSG_MESSAGECHAT packet.
 		:return: None.
 		"""
-		size = 4 + 4 + len(message)
+		size = 4 + 4 + len(text)
 		if message_type in (MessageType.whisper, MessageType.channel):
 			size += max(len(channel), len(receiver))
 
 		await self._send_encrypted_packet(
 			'CMSG_MESSAGECHAT', packets.CMSG_MESSAGECHAT,
 			header={'size': size + 5},
-			message=message, message_type=message_type, language=language,
+			text=text, message_type=message_type, language=language,
 			receiver=receiver, channel=channel
 		)
 

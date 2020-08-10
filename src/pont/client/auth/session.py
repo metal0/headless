@@ -15,7 +15,7 @@ class AuthSession:
 		self._nursery = nursery
 		self._emitter = emitter
 		self._stream: Optional[trio.abc.HalfCloseableStream] = None
-		self._srp: Optional[cryptography.WowSrpClient] = None
+		self._srp: Optional[cryptography.WoWSrpClient] = None
 		self._session_key = None
 		self._username = None
 		self._state = AuthState.not_connected
@@ -78,11 +78,11 @@ class AuthSession:
 		if debug:
 			client_private = debug['client_private']
 
-		self._srp = cryptography.WowSrpClient(username=username, password=password,
-		                                                      prime=challenge_response.prime,
-		                                                      generator=challenge_response.generator,
-		                                                      client_private=client_private
-		                                                      )
+		self._srp = cryptography.WoWSrpClient(username=username, password=password,
+		                                      prime=challenge_response.prime,
+		                                      generator=challenge_response.generator,
+		                                      client_private=client_private
+		                                      )
 
 		client_public, session_proof = self._srp.process(challenge_response.server_public, challenge_response.salt)
 		self._session_key = int.from_bytes(self._srp.session_key, byteorder='little')

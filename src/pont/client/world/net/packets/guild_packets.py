@@ -5,7 +5,7 @@ from pont.utility.construct import GuidConstruct, PackEnum
 from .headers import ServerHeader, ClientHeader
 from ..opcode import Opcode
 from ...guild.events import GuildEventType
-from ...guild.guild import GuildInfo
+from ...guild.guild import GuildInfo, GuildCommandType, GuildCommandError
 from ...guild.roster import GuildRankData, RosterMemberData
 
 CMSG_GUILD_INVITE = construct.Struct(
@@ -20,6 +20,15 @@ CMSG_GUILD_QUERY = construct.Struct(
 
 CMSG_GUILD_ROSTER = construct.Struct(
 	'header' / ClientHeader(Opcode.CMSG_GUILD_ROSTER, 0)
+)
+
+SMSG_GUILD_ROSTER = construct.Struct(
+	'header' / ServerHeader(Opcode.SMSG_GUILD_ROSTER, 0),
+	'total_members' / construct.Int32ul,
+	'motd' / construct.CString('ascii'),
+	'guild_info' / construct.CString('ascii'),
+	'ranks' / construct.PrefixedArray(construct.Int32ul, GuildRankData),
+	'members' / construct.Array(construct.this.total_members, RosterMemberData)
 )
 
 CMSG_GUILD_CREATE = construct.Struct(
@@ -41,6 +50,13 @@ CMSG_GUILD_SET_PUBLIC_NOTE = construct.Struct(
 	'note' / construct.CString('ascii')
 )
 
+SMSG_GUILD_COMMAND_RESULT = construct.Struct(
+	'header' / ServerHeader(Opcode.SMSG_GUILD_COMMAND_RESULT, 8 + 1),
+	'command_type' / PackEnum(GuildCommandType, construct.Int32ul),
+	'parameters' / construct.CString('utf-8'),
+	'error_code' / PackEnum(GuildCommandError, construct.Int32ul),
+)
+
 SMSG_GUILD_INVITE = construct.Struct(
 	'header' / ServerHeader(Opcode.SMSG_GUILD_INVITE, 10),
 	'inviter' / construct.CString('ascii'),
@@ -60,15 +76,6 @@ SMSG_GUILD_EVENT = construct.Struct(
 			GuildEventType.signed_off: GuidConstruct(Guid),
 		}
 	)
-)
-
-SMSG_GUILD_ROSTER = construct.Struct(
-	'header' / ServerHeader(Opcode.SMSG_GUILD_ROSTER, 0),
-	'total_members' / construct.Int32ul,
-	'motd' / construct.CString('ascii'),
-	'guild_info' / construct.CString('ascii'),
-	'ranks' / construct.PrefixedArray(construct.Int32ul, GuildRankData),
-	'members' / construct.Array(construct.this.total_members, RosterMemberData)
 )
 
 SMSG_GUILD_QUERY_RESPONSE = construct.Struct(

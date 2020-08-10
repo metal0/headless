@@ -1,11 +1,9 @@
-from enum import Enum
 
 import construct
-
+from enum import Enum
 from pont.utility.construct import PackEnum
 from ..opcode import Opcode
 from .headers import ServerHeader
-
 
 class ServerMessageType(Enum):
 	shutdown_time = 1
@@ -15,7 +13,7 @@ class ServerMessageType(Enum):
 	restart_cancelled = 5
 
 SMSG_SERVER_MESSAGE = construct.Struct(
-	'header' / ServerHeader(Opcode.SMSG_SERVER_MESSAGE, 4),
+	'header' / ServerHeader(Opcode.SMSG_SERVER_MESSAGE, 50),
 	'type' / PackEnum(ServerMessageType),
 	'text' / construct.CString('ascii')
 )

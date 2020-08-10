@@ -1,1 +1,1 @@
-from .handler import ConsoleHandler
+from .console import ConsoleHandler

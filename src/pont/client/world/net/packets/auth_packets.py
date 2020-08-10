@@ -70,10 +70,10 @@ SMSG_AUTH_RESPONSE = construct.Struct(
 	'billing_plan_flags' / construct.Default(construct.Byte, 0),
 	'billing_time_rested' / construct.ByteSwapped(construct.Default(construct.Int, 0)),
 	'expansion' / construct.Default(PackEnum(Expansion), Expansion.wotlk),
-	'queue_position' / construct.Switch(
+	'queue_position' / construct.Default(construct.Switch(
 		construct.this.response == AuthResponse.wait_queue, {
 			True: construct.Int32ul,
 			False: construct.Pass
 		}
-	)
+	), construct.Pass)
 )

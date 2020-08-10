@@ -16,7 +16,7 @@ from . import log as log_config
 @asynccontextmanager
 async def open_client(auth_server=None, proxy=None):
 	'''
-	Creates a client and
+	Creates a client bound to the given auth server, with the choice to connect through a SOCKS proxy server.
 	:param auth_server: the address of the auth server to connect to.
 	:param proxy: address of the proxy server to use.
 	:return: an unconnected Client
@@ -114,10 +114,10 @@ class Client(AsyncScopedEmitter):
 
 	async def select_realm(self, realm: Realm):
 		if self.world.state > WorldState.connected:
-			raise world.ProtocolError('Not logged in')
+			raise world.ProtocolError('Already connected to a realm')
 
 		if self.auth.session_key is None:
-			raise ValueError('Invalid session key')
+			raise auth.AuthError('Invalid session key')
 
 		await self.world.connect(realm, proxy=self._proxy)
 		await self.world.authenticate(self._username, self.auth.session_key)
@@ -125,13 +125,14 @@ class Client(AsyncScopedEmitter):
 	async def characters(self):
 		if self.world.state < WorldState.logged_in:
 			raise world.ProtocolError('Not logged in')
+
 		return await self.world.characters()
 
-	async def enter_world(self, character: CharacterInfo):
+	@asynccontextmanager
+	def enter_world(self, character: CharacterInfo):
 		if self.world.state < WorldState.logged_in:
 			raise world.ProtocolError('Not logged in')
-		await self.world.enter_world(character)
-		# return self.world
+		return self.world.enter_world(character).gen
 
 	async def logout(self):
 		await self.world.logout()

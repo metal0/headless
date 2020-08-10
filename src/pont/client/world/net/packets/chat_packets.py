@@ -20,18 +20,18 @@ CMSG_MESSAGECHAT = construct.Struct(
 		construct.this.message_type == MessageType.whisper,
 		construct.CString('utf-8')
 	),
-	'message' / construct.CString('utf-8')
+	'text' / construct.CString('utf-8')
 )
 
 def make_messagechat_packet(gm_chat=False):
 	return construct.Struct(
 		'header' / ServerHeader(Opcode.SMSG_GM_MESSAGECHAT if gm_chat else Opcode.SMSG_MESSAGECHAT, 0),
-		'type' / PackEnum(MessageType, construct.Int8sl),
+		'message_type' / PackEnum(MessageType, construct.Int8sl),
 		'language' / PackEnum(Language, construct.Int32sl),
 		'sender_guid' / GuidConstruct(Guid),
 		'flags' / construct.Default(construct.Int32ul, 0),
 		'info' / construct.Switch(
-			construct.this.type, {
+			construct.this.message_type, {
 				MessageType.monster_say: MonsterMessage,
 				MessageType.monster_emote: MonsterMessage,
 				MessageType.monster_party: MonsterMessage,
@@ -54,10 +54,10 @@ def make_messagechat_packet(gm_chat=False):
 			}, default=DefaultMessage(gm_chat=gm_chat)
 		),
 
-		'message' / construct.Prefixed(construct.Int32ul, construct.CString('utf-8')),
+		'text' / construct.Prefixed(construct.Int32ul, construct.CString('utf-8')),
 		'chat_tag' / construct.Byte, # 4 appears when a GM has their chat tag visible
 		'achievement_id' / construct.Switch(
-			construct.this.type, {
+			construct.this.message_type, {
 				MessageType.achievement: construct.Int32ul,
 				MessageType.guild_achievement: construct.Int32ul,
 			}

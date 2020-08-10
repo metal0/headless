@@ -9,7 +9,7 @@ def run_login_test(login: dict, expected_proof_hash: int, server_public: int,
                    prime: int, salt: int, client_private: int, generator: int = 7):
 
 	from pont.client.cryptography import srp
-	srp = srp.WowSrpClient(
+	srp = srp.WoWSrpClient(
 		username=login['username'], password=login['password'],
 		prime=prime, generator=generator, client_private=client_private
 	)

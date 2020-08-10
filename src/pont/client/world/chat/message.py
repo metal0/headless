@@ -3,8 +3,7 @@ import construct
 from enum import Enum
 
 from ..guid import Guid, GuidType
-from ..language import Language
-from pont.utility.construct import PackEnum, GuidConstruct
+from pont.utility.construct import GuidConstruct
 
 class MessageType(Enum):
 	system = 0x00

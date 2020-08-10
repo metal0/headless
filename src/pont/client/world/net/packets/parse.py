@@ -3,7 +3,8 @@ from typing import Dict, Optional
 import construct
 from construct import ConstructError
 
-from . import SMSG_DUEL_REQUESTED
+from . import SMSG_SERVER_MESSAGE
+from .duel_packets import SMSG_DUEL_REQUESTED
 from .addon_info import SMSG_ADDON_INFO
 from .auth_packets import SMSG_AUTH_RESPONSE, SMSG_AUTH_CHALLENGE
 from .bind_point import SMSG_BIND_POINT_UPDATE
@@ -21,6 +22,7 @@ from .ping import SMSG_PONG
 from .query_time import SMSG_QUERY_TIME_RESPONSE
 from .time_sync import SMSG_TIME_SYNC_REQ
 from .tutorial_flags import SMSG_TUTORIAL_FLAGS
+from .update_packets import SMSG_COMPRESSED_UPDATE_OBJECT, SMSG_UPDATE_OBJECT
 from .warden_packets import SMSG_WARDEN_DATA
 from .world_states import SMSG_INIT_WORLD_STATES
 
@@ -55,7 +57,10 @@ class WorldPacketParser:
 		self.set_parser(Opcode.SMSG_GUILD_INVITE, SMSG_GUILD_INVITE)
 		self.set_parser(Opcode.SMSG_GM_MESSAGECHAT, SMSG_GM_MESSAGECHAT)
 		self.set_parser(Opcode.SMSG_MESSAGECHAT, SMSG_MESSAGECHAT)
+		self.set_parser(Opcode.SMSG_SERVER_MESSAGE, SMSG_SERVER_MESSAGE)
 		self.set_parser(Opcode.SMSG_DUEL_REQUESTED, SMSG_DUEL_REQUESTED)
+		self.set_parser(Opcode.SMSG_UPDATE_OBJECT, SMSG_UPDATE_OBJECT)
+		self.set_parser(Opcode.SMSG_COMPRESSED_UPDATE_OBJECT, SMSG_COMPRESSED_UPDATE_OBJECT)
 
 	def set_parser(self, opcode: Opcode, parser: construct.Construct):
 		self._parsers[opcode] = parser
@@ -69,5 +74,3 @@ class WorldPacketParser:
 	def parse(self, data: bytes):
 		header = ServerHeader().parse(data)
 		return self._parsers[header.opcode].parse(data)
-
-parser = WorldPacketParser()

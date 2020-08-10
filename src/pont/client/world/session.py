@@ -1,26 +1,36 @@
 import random
-from typing import Optional, Tuple, Any
+from contextlib import asynccontextmanager
 
 import esper as esper
 import trio
 from trio_socks import socks5
+from typing import Optional, Tuple, Any
 
-from pont.client.cryptography import sha
-from .character_select import CharacterInfo
+from ..auth import Realm
+from ..cryptography import sha
+from .. import events, world
+
+from .chat import Chat
 from .errors import ProtocolError
+from .character_select import CharacterInfo
+
 from .net import WorldHandler, WorldProtocol, Opcode
 from .net.packets.auth_packets import AuthResponse
-from .. import events, world
-from ..auth import Realm
-from ...utility.enum import ComparableEnum
+
+from .state import WorldState
 from loguru import logger
 
 class WorldSession:
 	def __init__(self, nursery, emitter, proxy: Optional[Tuple[str, int]] = None):
+		self._state = WorldState.not_connected
+
 		self.proxy = proxy
 		self.protocol: Optional[WorldProtocol] = None
 		self.handler: WorldHandler = WorldHandler(emitter=emitter, world=self)
-		self._nursery = nursery
+		self.nursery = nursery
+		self.chat = None
+
+		self._old_nursery = nursery
 		self._emitter = emitter
 		self._stream: Optional[trio.abc.HalfCloseableStream] = None
 		self._session_key = None
@@ -30,7 +40,6 @@ class WorldSession:
 		self._encryption_seed1 = None
 		self._encryption_seed2 = None
 		self._username = None
-		self._state = WorldState.not_connected
 
 	@property
 	def state(self):
@@ -65,7 +74,7 @@ class WorldSession:
 		logger.debug('started')
 		while True:
 			await self.protocol.send_CMSG_KEEP_ALIVE()
-			self._emitter.emit(events.world.sent_CMSG_KEEP_ALIVE)
+			self._emitter.emit(events.world.sent_keep_alive)
 			r = random.betavariate(alpha=0.2, beta=0.7)
 			random_factor = r * 20 - 10
 			await trio.sleep(30 + random_factor)
@@ -84,7 +93,7 @@ class WorldSession:
 	# 		id += 1
 
 	async def _packet_handler(self):
-		logger.debug('started')
+		logger.log('PACKETS', 'started')
 		try:
 			async for packet in self.protocol.process_packets():
 				self._emitter.emit(events.world.received_packet, packet=packet)
@@ -104,12 +113,14 @@ class WorldSession:
 			logger.info(f'Using {stream} as world stream.')
 
 		if self._state > WorldState.not_connected:
-			raise ProtocolError('Already connected to another server!')
+			raise ProtocolError('Already connected to another realm!')
 
 		if stream is None:
 			if self.proxy is not None or proxy is not None:
-				self._stream = socks5.Socks5Stream(destination=realm.address,
-				                                   proxy=proxy or self.proxy or None)
+				self._stream = socks5.Socks5Stream(
+					destination=realm.address,
+					proxy=proxy or self.proxy or None
+				)
 				await self._stream.negotiate()
 
 			else:
@@ -147,7 +158,7 @@ class WorldSession:
 			self._session_key, out=int
 		)
 
-		self._emitter.emit(events.world.sent_CMSG_AUTH_SESSION)
+		self._emitter.emit(events.world.sent_auth_session)
 		await self.protocol.send_CMSG_AUTH_SESSION(
 			account_name=self._username,
 			client_seed=self._client_seed,
@@ -155,7 +166,8 @@ class WorldSession:
 			realm_id=self._realm.id
 		)
 
-		self._nursery.start_soon(self._packet_handler)
+		# TODO: Figure out how to transfer packet handler to the enter_world nursery
+		self.nursery.start_soon(self._packet_handler)
 		auth_response = await self.wait_for_packet(Opcode.SMSG_AUTH_RESPONSE)
 
 		if auth_response.response == AuthResponse.ok:
@@ -166,44 +178,50 @@ class WorldSession:
 			self._state = WorldState.in_queue
 			logger.info(f'In queue: {auth_response.queue_position}')
 
-		self._nursery.start_soon(self._keepalive)
+		self.nursery.start_soon(self._keepalive)
 
 	async def characters(self):
 		await self.protocol.send_CMSG_CHAR_ENUM()
-		self._emitter.emit(events.world.sent_CMSG_CHAR_ENUM)
+		self._emitter.emit(events.world.sent_char_enum)
 
 		char_enum = await self.wait_for_packet(Opcode.SMSG_CHAR_ENUM)
 		return char_enum.characters
 
+	@asynccontextmanager
 	async def enter_world(self, character: CharacterInfo):
 		logger.info(f'Entering world as {character.name}...')
 		await self.protocol.send_CMSG_PLAYER_LOGIN(character.guid)
+		self._state = WorldState.loading
 
-		self._emitter.emit(events.world.sent_CMSG_PLAYER_LOGIN)
+		self._emitter.emit(events.world.sent_player_login)
 		await self.wait_for_packet(Opcode.SMSG_LOGIN_VERIFY_WORLD)
-
-		self._emitter.emit(events.world.entered_world)
-		self._state = WorldState.in_game
 		logger.info('Entered world')
 
+		async with trio.open_nursery() as nursery:
+			try:
+				self._old_nursery = self.nursery
+				self._state = WorldState.in_game
+				self.nursery = nursery
+				self.chat = Chat(self)
+				self._emitter.emit(events.world.entered_world)
+
+				yield nursery
+				await self.logout()
+
+			finally:
+				nursery.cancel_scope.cancel()
+				self.nursery = self._old_nursery
+
 	async def logout(self):
-		logger.debug('logout called')
-		self._emitter.emit(events.world.sent_CMSG_LOGOUT_REQUEST)
+		logger.info('Logging out...')
+		self._emitter.emit(events.world.sent_logout_request)
 		await self.protocol.send_CMSG_LOGOUT_REQUEST()
 
 		logout_response = await self.wait_for_packet(Opcode.SMSG_LOGOUT_RESPONSE)
 		await self.wait_for_packet(Opcode.SMSG_LOGOUT_COMPLETE)
+
+		# This is strange, but we are "logging out" of being "in-game" to the character select screen, essentially.
 		self._state = WorldState.logged_in
-
-class WorldState(ComparableEnum):
-	disconnected = -1
-	not_connected = 0
-	connected = 1
-	logging_in = 2
-	in_queue = 3
-	logged_in = 4
-
-	loading = 5
-	in_game = 6
+		logger.info('Logged out')
 
 __all__ = ['WorldSession', 'WorldState']

@@ -42,7 +42,7 @@ BuildInfo = construct.Struct(
 	'major' / construct.Default(construct.Byte, 3),
 	'minor' / construct.Default(construct.Byte, 3),
 	'bugfix' / construct.Default(construct.Byte, 5),
-	'build' / construct.Default(construct.ByteSwapped(construct.Short), 12340),
+	'build' / construct.Default(construct.Int16ul, 12340),
 )
 
 Realm = construct.Struct(
