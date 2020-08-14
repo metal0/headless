@@ -57,6 +57,7 @@ class WorldProtocol:
 				raise Disconnected('received EOF from server')
 
 			header_data = self.decrypt(header_data)
+			logger.log('PACKETS', f'Incoming packet...')
 			try:
 				if headers.is_large_packet(header_data):
 					async with self._read_lock:
@@ -74,6 +75,7 @@ class WorldProtocol:
 					'opcode': Opcode(opcode),
 					'size': (0xFFFF & size)
 				})
+
 			except ValueError as e:
 				if 'is not a valid Opcode' in str(e):
 					raise ProtocolError('Invalid opcode, stream might be out of sync')

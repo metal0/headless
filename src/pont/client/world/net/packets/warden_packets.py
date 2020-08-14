@@ -5,7 +5,6 @@ from .headers import ServerHeader, ClientHeader
 from ..opcode import Opcode
 from pont.utility.construct import PackEnum
 
-# TODO: Warden on mac is much less robust than on windows, so we have better chances with os='OSX'
 SMSG_WARDEN_DATA = construct.Struct(
 	'header' / ServerHeader(Opcode.SMSG_WARDEN_DATA, size=39),
 	'command' / construct.Byte,

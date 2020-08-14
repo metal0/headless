@@ -4,10 +4,18 @@ from pont.client.world.language import Language
 from pont.client.world.net import packets, Opcode
 
 async def test_CMSG_MESSAGECHAT():
-	# data = b''
-	# packet = packets.CMSG_MESSAGECHAT.parse(data)
-	# print(packet)
-	pass
+	data = b'\x00\x1d\x95\x00\x00\x00\x04\x00\x00\x00\x00\x00\x00\x00bongour, brother\x00'
+	packet = packets.CMSG_MESSAGECHAT.parse(data)
+	print(packet)
+
+	assert packet.header.opcode == Opcode.CMSG_MESSAGECHAT
+	assert packet.header.size == 29
+
+	assert packet.message_type == MessageType.guild
+	assert packet.language == Language.universal
+	assert packet.channel is None
+	assert packet.receiver is None
+	assert packet.text == 'bongour, brother'
 
 async def test_SMSG_MESSAGECHAT():
 	data = b'\x003\x96\x00\x0c\x00\x00\x00\x00k7\x01\xbe\r\x000\xf1\x00\x00\x00\x00\x0e\x00\x00\x00Thomas Miller\x00\x00\x00\x00\x00\x00\x00\x00\x00\x01\x00\x00\x00\x00\x00'

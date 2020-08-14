@@ -1,7 +1,7 @@
 import random
 from contextlib import asynccontextmanager
 
-import esper as esper
+# import esper as esper
 import trio
 from trio_socks import socks5
 from typing import Optional, Tuple, Any
@@ -78,19 +78,6 @@ class WorldSession:
 			r = random.betavariate(alpha=0.2, beta=0.7)
 			random_factor = r * 20 - 10
 			await trio.sleep(30 + random_factor)
-
-	# async def ping(self) -> int:
-	# 	await self.protocol.send_CMSG_PING()
-
-	# async def _ping_every_30_seconds(self):
-	# 	logger.debug('[_ping_every_30_seconds] started')
-	# 	id = 0
-	# 	while True:
-	# 		await self.protocol.send_CMSG_PING(id)
-	# 		self._emitter.emit(events.world.sent_CMSG_PING)
-	# 		random_factor = random.betavariate(alpha=0.2, beta=0.7) * 20 - 10
-	# 		await trio.sleep(30 + random_factor)
-	# 		id += 1
 
 	async def _packet_handler(self):
 		logger.log('PACKETS', 'started')

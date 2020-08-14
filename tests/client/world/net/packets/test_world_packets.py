@@ -21,7 +21,7 @@ def test_SMSG_CLIENTCACHE_VERSION():
 	print(packet)
 
 def test_SMSG_WARDEN_DATA():
-	data = bytes.fromhex('0022E6026CA213466EB28B199C9CBBA176D81DB89558D8ABDFBC65D71ABFF97183873601')
+	data = b'\x00"\xe6\x02l\xa2\x13Fn\xb2\x8b\x19\x9c\x9c\xbb\xa1v\xd8\x1d\xb8\x95X\xd8\xab\xdf\xbce\xd7\x1a\xbf\xf9q\x83\x876\x01'
 	packet = world.net.packets.SMSG_WARDEN_DATA.parse(data)
 	print(packet)
 

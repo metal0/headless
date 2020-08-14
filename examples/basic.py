@@ -3,11 +3,10 @@ import random
 import trio
 import loguru
 
-from pont.client.world.chat.message import MessageType
-from pont.client.world.language import Language
-
 import pont
 from pont.client import auth, world
+from pont.client.world.chat.message import MessageType
+from pont.client.world.language import Language
 
 def load_login(server: str, filename: str):
 	with open(filename, 'r') as f:
