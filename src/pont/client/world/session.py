@@ -117,6 +117,9 @@ class WorldSession:
 		self._state = WorldState.connected
 		self._emitter.emit(events.world.connected, self._realm.address)
 
+	# TODO: Write unit tests to test this function.
+	#   Test the packet order and assert when our packet handler should be running
+	#   Ensure self._parent_nursery.child_tasks contains a task whose name is _packet_hnadler.
 	async def authenticate(self, username, session_key):
 		logger.info(f'Logging in with username {username}...')
 		if self.state < WorldState.connected:
@@ -161,8 +164,6 @@ class WorldSession:
 			self._state = WorldState.in_queue
 			logger.info(f'In queue: {auth_response.queue_position}')
 
-		# Create a subnursery for the world session
-
 	async def characters(self):
 		await self.protocol.send_CMSG_CHAR_ENUM()
 		self._emitter.emit(events.world.sent_char_enum)
@@ -200,9 +201,6 @@ class WorldSession:
 		logout_response = await self.wait_for_packet(Opcode.SMSG_LOGOUT_RESPONSE)
 		await self.wait_for_packet(Opcode.SMSG_LOGOUT_COMPLETE)
 		self.chat = None
-
-		if self.nursery is not None:
-			self.nursery.cancel_scope.cancel()
 
 		# This is strange, but we are "logging out" of being "in-game" to the character select screen, essentially.
 		self._state = WorldState.logged_in
