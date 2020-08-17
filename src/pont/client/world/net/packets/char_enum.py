@@ -1,7 +1,8 @@
 import construct
+
 from .headers import ServerHeader, ClientHeader
 from ..opcode import Opcode
-from ...character_select import CharacterInfo
+from ...character import CharacterInfo
 
 CMSG_CHAR_ENUM = construct.Struct(
 	'header' / ClientHeader(Opcode.CMSG_CHAR_ENUM, 0),

@@ -1,17 +1,17 @@
-import pyee
-import trio
 from contextlib import asynccontextmanager
 from typing import Tuple
 
+import pyee
+import trio
+
 from . import auth, world
-from .auth.session import AuthState
 from .auth import AuthSession, Realm
+from .auth.session import AuthState
 from .config import Config
-from .world.character_select import CharacterInfo
+from .world.character import CharacterInfo
 from .world.session import WorldSession, WorldState
 from ..utility import AsyncScopedEmitter, enum
-from loguru import logger
-from . import log as log_config
+
 
 @asynccontextmanager
 async def open_client(auth_server=None, proxy=None):
@@ -93,9 +93,13 @@ class Client(AsyncScopedEmitter):
 		self._reset()
 		await super().aclose()
 
-	async def login(self, username: str, password: str):
+	async def login(self, username: str, password: str, country: str='enUS', arch: str='x86', os: str='OSX', build: int=12340):
 		'''
 		Connect to the auth server and then authenticate using the given username and password.
+		:param os: The operating system string to send to the auth server
+		:param build: The game build to send
+		:param arch: The architecture of the game (x86 or x64)
+		:param country: The localization (e.g. enUS)
 		:param username: username to use.
 		:param password: password to use.
 		:return: None

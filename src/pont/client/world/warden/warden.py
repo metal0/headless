@@ -6,7 +6,7 @@ import construct
 class ServerCommand(Enum):
 	module_use = 0
 	module_cache = 1
-	cheat_checks_request = 2
+	cheat_checks_request = 26
 	module_initialize = 3
 	memory_check_request = 4
 	hash_request = 5

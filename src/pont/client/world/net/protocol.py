@@ -1,26 +1,26 @@
 import hashlib
 import hmac
 import random
+import traceback
 from typing import Optional
 
 import trio
-import traceback
-
 from construct import ConstructError
+from loguru import logger
 
 from .opcode import Opcode
 from .packets.parse import WorldPacketParser
 from ..chat.message import MessageType
-from ..expansion import Expansion
-from ..language import Language
-from ...cryptography import rc4
 from ..errors import ProtocolError, Disconnected
+from ..expansions import Expansion
+from ..guid import Guid
+from ..language import Language
 from ..net import packets
 from ..net.packets import headers
 from ..net.packets.auth_packets import AuthResponse, default_addon_bytes
 from ..net.packets.headers import ServerHeader
-from ..guid import Guid
-from loguru import logger
+from ...cryptography import rc4
+
 
 class WorldProtocol:
 	def __init__(self, stream: trio.abc.HalfCloseableStream, server: bool=False):
@@ -31,7 +31,7 @@ class WorldProtocol:
 		self._client_encrypt_key = bytes([0xC2, 0xB3, 0x72, 0x3C, 0xC6, 0xAE, 0xD9, 0xB5, 0x34, 0x3C, 0x53, 0xEE, 0x2F, 0x43, 0x67, 0xCE])
 
 		self._server_mode = server
-		self._send_lock, self._read_lock = trio.Lock(), trio.Lock()
+		self._send_lock, self._read_lock = trio.StrictFIFOLock(), trio.StrictFIFOLock()
 
 		self._has_encryption = False
 		self._encrypter, self._decrypter = None, None
@@ -47,7 +47,7 @@ class WorldProtocol:
 	def num_packets_received(self):
 		return self._num_packets_received
 
-	async def process_packets(self):
+	async def decrypted_packets(self):
 		while True:
 			# Receive header first
 			async with self._read_lock:

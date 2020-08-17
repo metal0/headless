@@ -1,11 +1,12 @@
 import os
 import random
-
 from typing import Tuple, Optional
+
+from loguru import logger
+
 from pont.client.auth.errors import InvalidLogin
 from pont.utility.string import int_to_bytes, bytes_to_int
 from .sha import sha1, sha1v
-from loguru import logger
 
 default_prime = 62100066509156017342069496140902949863249758336000796928566441170293728648119
 default_generator = 7
@@ -108,12 +109,12 @@ class WoWSrpServer(WoWSrp):
 		return self.session_key, self.session_proof
 
 class WoWSrpClient(WoWSrp):
-	def __init__(self, username: str, password: str, prime: int, generator: int, client_private = None):
+	def __init__(self, username: str, password: str, prime: int, generator: int, client_private=None):
 		super().__init__(username, password, prime, generator)
 		self.client_private = random.getrandbits(1024) if client_private is None else client_private
 
 		logger.debug(f'{self.client_private=}')
-		self.client_public = pow(self.generator, client_private, self.prime)
+		self.client_public = pow(self.generator, self.client_private, self.prime)
 		if self.client_public == 0:
 			raise InvalidLogin('client_public must not be zero')
 

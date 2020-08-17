@@ -1,36 +1,34 @@
 import random
 from contextlib import asynccontextmanager
+from typing import Optional, Tuple, Any
 
 # import esper as esper
 import trio
+from loguru import logger
 from trio_socks import socks5
-from typing import Optional, Tuple, Any
 
-from ..auth import Realm
-from ..cryptography import sha
-from .. import events, world
-
+from .character import CharacterInfo
 from .chat import Chat
 from .errors import ProtocolError
-from .character_select import CharacterInfo
-
 from .net import WorldHandler, WorldProtocol, Opcode
 from .net.packets.auth_packets import AuthResponse
-
 from .state import WorldState
-from loguru import logger
+from .. import events, world
+from ..auth import Realm
+from ..cryptography import sha
+
 
 class WorldSession:
-	def __init__(self, nursery, emitter, proxy: Optional[Tuple[str, int]] = None):
+	def __init__(self, nursery: trio.Nursery, emitter, proxy: Optional[Tuple[str, int]] = None):
 		self._state = WorldState.not_connected
 
 		self.proxy = proxy
 		self.protocol: Optional[WorldProtocol] = None
 		self.handler: WorldHandler = WorldHandler(emitter=emitter, world=self)
-		self.nursery = nursery
-		self.chat = None
+		self.nursery: Optional[trio.Nursery] = None
+		self.chat: Optional[Chat] = None
 
-		self._old_nursery = nursery
+		self._parent_nursery = nursery
 		self._emitter = emitter
 		self._stream: Optional[trio.abc.HalfCloseableStream] = None
 		self._session_key = None
@@ -82,7 +80,7 @@ class WorldSession:
 	async def _packet_handler(self):
 		logger.log('PACKETS', 'started')
 		try:
-			async for packet in self.protocol.process_packets():
+			async for packet in self.protocol.decrypted_packets():
 				self._emitter.emit(events.world.received_packet, packet=packet)
 				await self.handler.handle(packet)
 
@@ -145,7 +143,6 @@ class WorldSession:
 			self._session_key, out=int
 		)
 
-		self._emitter.emit(events.world.sent_auth_session)
 		await self.protocol.send_CMSG_AUTH_SESSION(
 			account_name=self._username,
 			client_seed=self._client_seed,
@@ -153,8 +150,7 @@ class WorldSession:
 			realm_id=self._realm.id
 		)
 
-		# TODO: Figure out how to transfer packet handler to the enter_world nursery
-		self.nursery.start_soon(self._packet_handler)
+		self._parent_nursery.start_soon(self._packet_handler)
 		auth_response = await self.wait_for_packet(Opcode.SMSG_AUTH_RESPONSE)
 
 		if auth_response.response == AuthResponse.ok:
@@ -165,7 +161,7 @@ class WorldSession:
 			self._state = WorldState.in_queue
 			logger.info(f'In queue: {auth_response.queue_position}')
 
-		self.nursery.start_soon(self._keepalive)
+		# Create a subnursery for the world session
 
 	async def characters(self):
 		await self.protocol.send_CMSG_CHAR_ENUM()
@@ -184,21 +180,18 @@ class WorldSession:
 		await self.wait_for_packet(Opcode.SMSG_LOGIN_VERIFY_WORLD)
 		logger.info('Entered world')
 
-		async with trio.open_nursery() as nursery:
+		async with trio.open_nursery() as n:
+			self.nursery = n
 			try:
-				self._old_nursery = self.nursery
 				self._state = WorldState.in_game
-				self.nursery = nursery
 				self.chat = Chat(self)
 				self._emitter.emit(events.world.entered_world)
-
-				yield nursery
-				await self.logout()
+				yield self.nursery
 
 			finally:
-				nursery.cancel_scope.cancel()
-				self.nursery = self._old_nursery
+				self.nursery.cancel_scope.cancel()
 
+	# TODO: Figure out how to logout properly since we still seem to receive ingame packets after "logging out"
 	async def logout(self):
 		logger.info('Logging out...')
 		self._emitter.emit(events.world.sent_logout_request)
@@ -206,6 +199,10 @@ class WorldSession:
 
 		logout_response = await self.wait_for_packet(Opcode.SMSG_LOGOUT_RESPONSE)
 		await self.wait_for_packet(Opcode.SMSG_LOGOUT_COMPLETE)
+		self.chat = None
+
+		if self.nursery is not None:
+			self.nursery.cancel_scope.cancel()
 
 		# This is strange, but we are "logging out" of being "in-game" to the character select screen, essentially.
 		self._state = WorldState.logged_in

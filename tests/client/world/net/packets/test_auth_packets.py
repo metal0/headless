@@ -1,9 +1,10 @@
 import random
 
 from pont.client import world
-from pont.client.world.expansion import Expansion
+from pont.client.world.expansions import Expansion
 from pont.client.world.net import Opcode
 from pont.client.world.net.packets.auth_packets import AuthResponse
+
 
 def test_world_auth_packet():
 	data = bytes.fromhex('002aec01010000004c6f82e4ab892d3d480a9898d510f879f862479fad62c8815ff00fd85e5ab6b4031684e9')
@@ -78,12 +79,3 @@ def test_auth_response():
 	assert packet.billing_time_rested == 0
 	assert packet.expansion == Expansion.wotlk
 	assert packet.queue_position is None
-
-def test_unk():
-	packet = b'\x8duyZ(5\x08C\xf0[\x19L\xfa\xacS5s\x96wT\xc1\x08\x16\x86_\x98Cm\xc9W7\x1fSzJ\xdb5A>\xb3\xb8'
-
-	try:
-		header = world.net.packets.parser.parse_header(packet)
-		print(f'[_packet_dispatcher] header: {header=}')
-	except:
-		pass

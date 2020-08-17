@@ -1,12 +1,15 @@
-import trio
-from trio_socks import socks5
 from typing import Optional, Tuple
+
+import trio
+from loguru import logger
+from trio_socks import socks5
+
 from pont.client.auth.net.protocol import AuthProtocol
 from .errors import InvalidLogin
 from .. import events, cryptography
 from ...utility.enum import ComparableEnum
 from ...utility.string import bytes_to_int
-from loguru import logger
+
 
 class AuthSession:
 	def __init__(self, nursery, emitter, proxy: Optional[Tuple[str, int]]=None):
@@ -62,27 +65,24 @@ class AuthSession:
 		self._emitter.emit(events.auth.connected)
 		logger.info('Connected!')
 
-	async def authenticate(self, username, password, debug=None):
+	async def authenticate(self, username, password, debug=None, country='enUS', arch='x86', os='OSX', build=12340):
 		logger.info(f'Logging in with username {username}...')
 		self._state = AuthState.logging_in
 		self._username = username
 		self._emitter.emit(events.auth.logging_in)
 
-		await self.protocol.send_challenge_request(username=username, os='OSX')
+		await self.protocol.send_challenge_request(username=username, country=country, arch=arch, os=os, build=build)
 		logger.debug('sent challenge request')
 
 		challenge_response = await self.protocol.receive_challenge_response()
 		logger.debug('received challenge response')
 
-		client_private = None
-		if debug:
-			client_private = debug['client_private']
-
+		client_private = debug['client_private'] if debug is not None else None
 		self._srp = cryptography.WoWSrpClient(username=username, password=password,
-		                                      prime=challenge_response.prime,
-		                                      generator=challenge_response.generator,
-		                                      client_private=client_private
-		                                      )
+            prime=challenge_response.prime,
+	        generator=challenge_response.generator,
+	        client_private=client_private
+        )
 
 		client_public, session_proof = self._srp.process(challenge_response.server_public, challenge_response.salt)
 		self._session_key = int.from_bytes(self._srp.session_key, byteorder='little')
