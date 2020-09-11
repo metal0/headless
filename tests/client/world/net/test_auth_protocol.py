@@ -2,7 +2,6 @@ import traceback
 
 import trio
 
-from pont.client import world
 from tests.client.cryptography import load_test_servers
 
 logins_filename = 'C:/Users/dinne/Documents/Projects/pont/servers_config.json'
@@ -12,7 +11,7 @@ ac_login = test_servers['acore']['account']
 async def client_login(auth_address, stream):
 	try:
 		session_key = 0
-		protocol = world.net.WorldProtocol(stream)
+		protocol = pont.world.net.WorldProtocol(stream)
 		auth_challenge = await protocol.receive_SMSG_AUTH_CHALLENGE()
 
 		assert auth_challenge.server_seed == 7
@@ -24,7 +23,7 @@ async def client_login(auth_address, stream):
 
 async def world_server(stream):
 	try:
-		protocol = world.net.WorldProtocol(stream)
+		protocol = pont.world.net.WorldProtocol(stream)
 		await protocol.send_SMSG_AUTH_CHALLENGE(
 			server_seed=7,
 			encryption_seed1=31,

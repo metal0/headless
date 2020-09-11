@@ -4,12 +4,12 @@ from typing import Tuple
 import pyee
 import trio
 
-from . import auth, world
-from .auth import AuthSession, Realm
-from .auth.session import AuthState
+from pont.auth import AuthSession, Realm
+from pont.auth.session import AuthState
+from pont.world import WorldSession, WorldState
+from pont.world.character import CharacterInfo
 from .config import Config
-from .world.character import CharacterInfo
-from .world.session import WorldSession, WorldState
+from .. import auth, world
 from ..utility import AsyncScopedEmitter, enum
 
 

@@ -2,10 +2,9 @@ import traceback
 
 import trio
 
-from pont import client as pont
-from pont.client import auth, cryptography
-from pont.client.auth import AuthState, RealmType, RealmStatus
-from pont.client.auth.net import Response
+from pont import client as pont, cryptography
+from pont.auth import AuthState, RealmType, RealmStatus
+from pont.auth.net import Response
 from pont.utility.string import bytes_to_int
 from tests.client.cryptography import load_test_servers
 
@@ -14,7 +13,7 @@ test_servers = load_test_servers(logins_filename)
 tc_login = test_servers['trinity-core-3.3.5']['account']
 
 async def auth_server(stream):
-	protocol = auth.net.AuthProtocol(stream)
+	protocol = pont.auth.net.AuthProtocol(stream)
 	challenge_request = await protocol.receive_challenge_request()
 
 	assert challenge_request.packet_size == 30 + len(challenge_request.account_name)

@@ -1,8 +1,8 @@
 import construct
 
-from pont.client.world.guid import Guid
-from pont.client.world.position import Position
 from pont.utility.construct import AddressPort, GuidUnpacker, PackedCoordinates, unpack_guid, pack_guid
+from pont.world import Position
+from pont.world.guid import Guid
 
 
 def test_address_port():

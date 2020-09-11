@@ -1,7 +1,7 @@
-from pont.client.world import Guid
-from pont.client.world.chat.message import MessageType
-from pont.client.world.language import Language
-from pont.client.world.net import packets, Opcode
+from pont.world import Guid
+from pont.world.chat.message import MessageType
+from pont.world.language import Language
+from pont.world.net import packets, Opcode
 
 async def test_CMSG_MESSAGECHAT():
 	data = b'\x00\x1d\x95\x00\x00\x00\x04\x00\x00\x00\x00\x00\x00\x00bongour, brother\x00'

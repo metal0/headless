@@ -1,5 +1,5 @@
-from pont.client.auth.net import packets
-from pont.client.auth.realm import RealmType, RealmStatus, RealmFlags, Realm
+from pont.auth.net import packets
+from pont.auth.realm import RealmType, RealmStatus, RealmFlags
 
 
 def  test_realmlist_response_decode_encode():

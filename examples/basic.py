@@ -5,9 +5,9 @@ import loguru
 import trio
 
 import pont
-from pont.client import auth, world
-from pont.client.world.chat.message import MessageType
-from pont.client.world.language import Language
+from pont import auth, world
+from pont.world.chat.message import MessageType
+from pont.world.language import Language
 
 
 def load_login(server: str, filename: str):
@@ -41,13 +41,10 @@ async def run(server, proxy=None):
 			# Enter world with character
 			async with client.enter_world(character):
 				await client.world.chat.send_message('bongour, brother', MessageType.guild, Language.universal)
-				await trio.sleep(2)
-				await client.logout()
+				await trio.sleep_forever()
 
-			print('we should still be fine for a few seconds')
-			await trio.sleep(3)
-
-			print('test')
+				# await trio.sleep(2)
+				# await client.logout()
 
 	except (Exception, trio.TooSlowError, auth.AuthError, world.WorldError):
 		loguru.logger.exception('Error')
