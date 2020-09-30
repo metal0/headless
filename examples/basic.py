@@ -51,7 +51,7 @@ async def run(server, proxy=None):
 
 async def main():
 	login_filename = 'C:/Users/dinne/Documents/Projects/pont/servers_config.json'
-	acore = load_login('acore', login_filename)
+	acore = load_login('dalaran-wow', login_filename)
 	# proxy = ('tower', 1664)
 	proxy = None
 

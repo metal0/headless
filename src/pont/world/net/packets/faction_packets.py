@@ -1,6 +1,6 @@
 import construct
 
-from pont.world.net import Opcode
+from pont.world.net.opcode import Opcode
 from pont.world.net.packets.headers import ServerHeader
 
 SMSG_INITIALIZE_FACTIONS = construct.Struct(

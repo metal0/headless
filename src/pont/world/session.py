@@ -8,13 +8,14 @@ from loguru import logger
 from trio_socks import socks5
 
 from pont.auth import Realm
-from pont.client import events, world
+from pont.client import events
 from .character import CharacterInfo
 from .chat import Chat
 from .errors import ProtocolError
 from .net import WorldHandler, WorldProtocol, Opcode
 from .net.packets.auth_packets import AuthResponse
 from .state import WorldState
+from .. import world
 from ..cryptography import sha
 
 

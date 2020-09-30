@@ -6,8 +6,9 @@ import trio
 
 from pont.auth import AuthSession, Realm
 from pont.auth.session import AuthState
-from pont.world import WorldSession, WorldState
+from pont.world import WorldSession
 from pont.world.character import CharacterInfo
+from pont.world.state import WorldState
 from .config import Config
 from .. import auth, world
 from ..utility import AsyncScopedEmitter, enum
@@ -24,7 +25,8 @@ async def open_client(auth_server=None, proxy=None):
 	async with trio.open_nursery() as nursery:
 		client = Client(nursery, auth_server=auth_server, proxy=proxy)
 		try:
-			yield client
+			async with client:
+				yield client
 			nursery.cancel_scope.cancel()
 		finally:
 			await client.aclose()

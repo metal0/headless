@@ -4,7 +4,6 @@ import time
 from loguru import logger
 
 from pont.client import events
-from pont.world.net import SMSG_AUTH_RESPONSE, SMSG_PONG, SMSG_WARDEN_DATA
 from . import packets
 from .opcode import Opcode
 from .packets.auth_packets import AuthResponse
@@ -113,7 +112,7 @@ class WorldHandler:
 		self._emitter.emit(events.world.received_tutorial_flags, packet=packet)
 		logger.log('PACKETS', f'packet={packet}')
 
-	def handle_auth_response(self, packet: SMSG_AUTH_RESPONSE):
+	def handle_auth_response(self, packet: packets.SMSG_AUTH_RESPONSE):
 		self._emitter.emit(events.world.received_auth_response, packet=packet)
 		logger.log('PACKETS', f'packet={packet}')
 		if packet.response == AuthResponse.ok:
@@ -134,10 +133,10 @@ class WorldHandler:
 		self._emitter.emit(events.world.entered_world)
 		logger.log('PACKETS', f'packet={packet}')
 
-	def handle_warden_data(self, packet: SMSG_WARDEN_DATA):
+	def handle_warden_data(self, packet: packets.SMSG_WARDEN_DATA):
 		self._emitter.emit(events.world.received_warden_data, packet=packet)
 		logger.log('PACKETS', f'packet={packet}')
 
-	def handle_pong(self, packet: SMSG_PONG):
+	def handle_pong(self, packet: packets.SMSG_PONG):
 		self._emitter.emit(events.world.received_pong, packet=packet)
 		logger.log('PACKETS', f'packet={packet}')

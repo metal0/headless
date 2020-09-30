@@ -1,5 +1,6 @@
 import time
 
+import pont
 from pont.auth.net import packets
 from pont.utility.string import bytes_to_int
 

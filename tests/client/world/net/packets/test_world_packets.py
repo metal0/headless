@@ -1,6 +1,7 @@
-from pont.world.entities import Race, Gender, CombatClass
+import pont
+from pont.world.entities.player import Race, Gender, CombatClass
 from pont.world.guid import Guid, GuidType
-from pont.world.net import Opcode
+from pont.world.net.opcode import Opcode
 
 
 def test_SMSG_LOGIN_VERIFY_WORLD():

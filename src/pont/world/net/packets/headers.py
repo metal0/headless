@@ -4,7 +4,7 @@ from ..opcode import Opcode
 
 
 def ClientHeader(opcode = None, size = 0):
-	from .....utility.construct import PackEnum
+	from ....utility.construct import PackEnum
 	if opcode is None:
 		opcode_con = construct.ByteSwapped(PackEnum(Opcode, construct.Int))
 	else:
@@ -16,7 +16,7 @@ def ClientHeader(opcode = None, size = 0):
 	)
 
 def ServerHeader(opcode = None, size = 0):
-	from .....utility.construct import PackEnum
+	from ....utility.construct import PackEnum
 	if opcode is None:
 		opcode_con = construct.ByteSwapped(PackEnum(Opcode, construct.Short))
 	else:

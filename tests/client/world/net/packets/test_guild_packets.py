@@ -1,6 +1,7 @@
-from pont.world.entities import CombatClass, Gender
+import pont
+from pont.world.entities.player import CombatClass, Gender
 from pont.world.guid import Guid
-from pont.world.guild import GuildEventType
+from pont.world.guild.events import GuildEventType
 from pont.world.guild.member import MemberStatus
 
 

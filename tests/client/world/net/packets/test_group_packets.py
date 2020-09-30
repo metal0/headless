@@ -1,3 +1,5 @@
+import pont
+
 async def test_group_invite():
 	data = b'\x00\x10o\x00\x01Act\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
 	packet = pont.world.net.packets.SMSG_GROUP_INVITE.parse(data)

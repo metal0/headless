@@ -2,7 +2,8 @@ import traceback
 
 import trio
 
-from pont import client as pont, cryptography
+import pont
+from pont import cryptography
 from pont.auth import AuthState, RealmType, RealmStatus
 from pont.auth.net import Response
 from pont.utility.string import bytes_to_int

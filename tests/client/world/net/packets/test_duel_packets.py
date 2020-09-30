@@ -1,3 +1,4 @@
+import pont
 from pont.world import Guid
 
 def test_SMSG_DUEL_REQUESTED():
