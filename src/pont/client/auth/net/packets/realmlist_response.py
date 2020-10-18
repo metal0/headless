@@ -1,6 +1,6 @@
 import construct
 
-from pont.auth.realm import Realm
+from pont.client.auth.realm import Realm
 from pont.utility.construct import PackEnum
 from ..opcode import Opcode
 

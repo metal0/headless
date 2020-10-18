@@ -1,12 +1,12 @@
 import pont
-from pont.world.entities.player import Race, Gender, CombatClass
-from pont.world.guid import Guid, GuidType
-from pont.world.net.opcode import Opcode
+from pont.client.world.entities.player import Race, Gender, CombatClass
+from pont.client.world.guid import Guid, GuidType
+from pont.client.world.net import Opcode
 
 
 def test_SMSG_LOGIN_VERIFY_WORLD():
 	data = b'\x00\x166\x02\x01\x00\x00\x00ke\xb7E\x7f\xb3\x82\xc5D\xb7\xceD\xa0\xf8E@'
-	packet = pont.world.net.packets.SMSG_LOGIN_VERIFY_WORLD.parse(data)
+	packet = pont.client.world.net.packets.SMSG_LOGIN_VERIFY_WORLD.parse(data)
 	assert packet.map == 1
 	assert packet.position.x == 1653.72705078125
 	assert packet.position.y == -4182.43701171875
@@ -16,30 +16,30 @@ def test_SMSG_LOGIN_VERIFY_WORLD():
 
 def test_SMSG_CLIENTCACHE_VERSION():
 	data = bytes.fromhex('0006AB0403000000')
-	packet = pont.world.net.packets.SMSG_CLIENTCACHE_VERSION.parse(data)
+	packet = pont.client.world.net.packets.SMSG_CLIENTCACHE_VERSION.parse(data)
 	assert packet.version == 3
 	print(packet)
 
 def test_SMSG_WARDEN_DATA():
 	data = b'\x00"\xe6\x02l\xa2\x13Fn\xb2\x8b\x19\x9c\x9c\xbb\xa1v\xd8\x1d\xb8\x95X\xd8\xab\xdf\xbce\xd7\x1a\xbf\xf9q\x83\x876\x01'
-	packet = pont.world.net.packets.SMSG_WARDEN_DATA.parse(data)
+	packet = pont.client.world.net.packets.SMSG_WARDEN_DATA.parse(data)
 	print(packet)
 
 	assert False
 
 def test_SMSG_TUTORIAL_FLAGS():
 	data = bytes.fromhex('0022FD00F7BFEFFCE3A3F503000000000000000000000000000000000000000000000000')
-	packet = pont.world.net.packets.SMSG_TUTORIAL_FLAGS.parse(data)
+	packet = pont.client.world.net.packets.SMSG_TUTORIAL_FLAGS.parse(data)
 	print(packet)
 
 def test_SMSG_ADDON_INFO():
 	data = bytes.fromhex('00BEEF020201000000000000020100000000000002010000000000000201000000000000020100000000000002010000000000000201000000000000020100000000000002010000000000000201000000000000020100000000000002010000000000000201000000000000020100000000000002010000000000000201000000000000020100000000000002010000000000000201000000000000020100000000000002010000000000000201000000000000020100000000000000000000')
-	packet = pont.world.net.packets.SMSG_ADDON_INFO.parse(data)
+	packet = pont.client.world.net.packets.SMSG_ADDON_INFO.parse(data)
 	print(packet)
 
 def test_SMSG_CHAR_ENUM():
 	data = bytes.fromhex('03423B0003CC72330000000007537465616B6F000607000A04000106011100000001000000AA83B8C477C605C5ABC3BA42000000700000000200000000000000000000000000000000000000000000000000000000000000000000000000000000000000004A27000004000000000000000000000000000000000000000000004227000007000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000004A14000015000000002A4900000E0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000087EA4A000000000753646764666A676B6A000B0501010507060101C40D0000120200003D9A77C5CDAC59C6E13AC94200000070000000020000000000000000000000000000000000000000000000000000000000000000000000000000000000000000A609000004000000002A8D00001400000000000000000000000000BC0C00000700000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000624800001100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000C2E14E0000000007526F676D6F6F000404010504030507097906000001000000D2211846F0672745E598A44400000070000000020000000000000000000000000000000000000000000000000000000000000000000000000000000000000000B22600000400000000000000000000000000E32000000600000000374200000700000000BB26000008000000000000000000000000008F1E00000A00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000FA5000001100000000000000000000000000FB9C0000190000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000')
-	char_enum = pont.world.net.packets.SMSG_CHAR_ENUM.parse(data)
+	char_enum = pont.client.world.net.packets.SMSG_CHAR_ENUM.parse(data)
 	print(f'{char_enum}')
 
 	steako = char_enum.characters[0]
@@ -88,7 +88,7 @@ def test_SMSG_CHAR_ENUM():
 	assert rogmoo.map == 1
 
 	data2 = bytes.fromhex('01143B00010100000000000000416374000109010202080902506A020000010000006B65B7457FB382C544B7CE4401000000000000020000000000000000000000000000000000209E00000100000000000000000000000000EC9E00000300000000A81E00000400000000229E000014000000000000000000000000007601000007000000001256000008000000000000000000000000001F9E00000A000000000000000000000000000000000000000000000000000000000000000000000000000000007BF000001000000000000000000000000000000000000000000000000000000000000000000000000000000000B82C00001200000000000000000000000000000000000000000000000000000000000000')
-	char_enum2 = pont.world.net.packets.SMSG_CHAR_ENUM.parse(data2)
+	char_enum2 = pont.client.world.net.packets.SMSG_CHAR_ENUM.parse(data2)
 	print(f'{char_enum2}')
 
 	act = char_enum2.characters[0]
@@ -107,60 +107,60 @@ def test_SMSG_CHAR_ENUM():
 
 def test_CMSG_CHAR_ENUM():
 	data = bytes.fromhex('000437000000')
-	char_enum_request = pont.world.net.packets.CMSG_CHAR_ENUM.parse(data)
+	char_enum_request = pont.client.world.net.packets.CMSG_CHAR_ENUM.parse(data)
 	print(f'{char_enum_request}')
 
 def test_CMSG_PLAYER_LOGIN():
 	data = bytes.fromhex('000C3D0000000100000000000000')
-	packet = pont.world.net.packets.CMSG_PLAYER_LOGIN.parse(data)
+	packet = pont.client.world.net.packets.CMSG_PLAYER_LOGIN.parse(data)
 	assert packet.player_guid == Guid(counter=1, type=GuidType.player)
 	print(packet)
 
 def test_SMSG_TIME_SYNC_REQ():
 	data = bytes.fromhex('000690033E010000')
-	packet = pont.world.net.packets.SMSG_TIME_SYNC_REQ.parse(data)
-	assert packet.header.size == 6
+	packet = pont.client.world.net.packets.SMSG_TIME_SYNC_REQ.parse(data)
+	assert packet.header.packet_size == 6
 	assert packet.id == 318
 	print(packet)
 
 	data2 = b'\x00\x06\x90\x03\x19\x00\x00\x00'
-	packet2 = pont.world.net.packets.SMSG_TIME_SYNC_REQ.parse(data2)
-	assert packet2.header.size == 6
+	packet2 = pont.client.world.net.packets.SMSG_TIME_SYNC_REQ.parse(data2)
+	assert packet2.header.packet_size == 6
 	assert packet2.id == 25
 	print(packet2)
 
 	data3 = b'\x00\x06\x90\x03g\x00\x00\x00'
-	packet3 = pont.world.net.packets.SMSG_TIME_SYNC_REQ.parse(data3)
-	assert packet3.header.size == 6
+	packet3 = pont.client.world.net.packets.SMSG_TIME_SYNC_REQ.parse(data3)
+	assert packet3.header.packet_size == 6
 	print(packet3)
 
 	data4 = b'\x00\x06\x90\x03h\x00\x00\x00'
-	packet4 = pont.world.net.packets.SMSG_TIME_SYNC_REQ.parse(data4)
-	assert packet4.header.size == 6
+	packet4 = pont.client.world.net.packets.SMSG_TIME_SYNC_REQ.parse(data4)
+	assert packet4.header.packet_size == 6
 	assert packet3.id == packet4.id - 1
 	print(packet4)
 
 def test_CMSG_TIME_SYNC_REQ():
 	data = bytes.fromhex('000A9103000005000000D5C30000')
-	packet = pont.world.net.packets.CMSG_TIME_SYNC_RESP.parse(data)
+	packet = pont.client.world.net.packets.CMSG_TIME_SYNC_RESP.parse(data)
 	print(packet)
 
-	assert packet.header.size == 10
+	assert packet.header.packet_size == 10
 	assert packet.id == 5
 	assert packet.client_ticks == 50133
 
 def test_CMSG_NAME_QUERY():
 	data = b'\x00\x0cP\x00\x00\x00\x1f\x00\x00\x00\x00\x00\x00\x00'
-	packet = pont.world.net.packets.CMSG_NAME_QUERY.parse(data)
+	packet = pont.client.world.net.packets.CMSG_NAME_QUERY.parse(data)
 	print(packet)
 
-	assert packet.header.size == 12
+	assert packet.header.packet_size == 12
 	assert packet.header.opcode == Opcode.CMSG_NAME_QUERY
 	assert packet.guid == Guid(counter=0x1f)
 
 def test_SMSG_NAME_QUERY():
 	data = b'\x00\x0eQ\x00\x01\x1f\x00Eco\x00\x00\x01\x01\x04\x00'
-	packet = pont.world.net.packets.SMSG_NAME_QUERY_RESPONSE.parse(data)
+	packet = pont.client.world.net.packets.SMSG_NAME_QUERY_RESPONSE.parse(data)
 	print(packet)
 
 	assert packet.found == True
@@ -171,7 +171,7 @@ def test_SMSG_NAME_QUERY():
 
 def test_SMSG_INIT_WORLD_STATES():
 	data = bytes.fromhex('0050C20200000000EF050000EF0500000800D808000000000000D708000000000000D608000000000000D508000000000000D408000000000000D308000000000000770C0000010000003D0F000008000000')
-	packet = pont.world.net.packets.SMSG_INIT_WORLD_STATES.parse(data)
+	packet = pont.client.world.net.packets.SMSG_INIT_WORLD_STATES.parse(data)
 	print(packet)
 
 	assert packet.map_id == 0
@@ -180,10 +180,10 @@ def test_SMSG_INIT_WORLD_STATES():
 
 def test_SMSG_BIND_POINT_UPDATE():
 	data = bytes.fromhex('00165501CDD70BC6357E04C3F90FA742000000000C000000')
-	packet = pont.world.net.packets.SMSG_BIND_POINT_UPDATE.parse(data)
+	packet = pont.client.world.net.packets.SMSG_BIND_POINT_UPDATE.parse(data)
 	print(packet)
 
-	assert packet.header.size == 22
+	assert packet.header.packet_size == 22
 	assert packet.header.opcode == Opcode.SMSG_BIND_POINT_UPDATE
 	assert packet.position.x == 83.53119659423828
 	assert packet.position.y == -132.4929962158203

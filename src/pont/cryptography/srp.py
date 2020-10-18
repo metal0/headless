@@ -4,7 +4,7 @@ from typing import Tuple, Optional
 
 from loguru import logger
 
-from pont.auth.errors import InvalidLogin
+from pont.client.auth.errors import InvalidLogin
 from pont.utility.string import int_to_bytes, bytes_to_int
 from .sha import sha1, sha1v
 
@@ -29,7 +29,7 @@ def sha_interleave(value: int) -> bytes:
 	for i in range(0, 20):
 		result[i * 2] = sha[i]
 
-	# TODO: Investigate "IndexError: index out of range" bug
+	# TODO: "IndexError: index out of range" bug happens when t has odd length
 	try:
 		for i in range(0, 16):
 			t1[i] = t[i * 2 + 1]

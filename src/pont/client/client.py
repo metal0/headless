@@ -4,13 +4,13 @@ from typing import Tuple
 import pyee
 import trio
 
-from pont.auth import AuthSession, Realm
-from pont.auth.session import AuthState
-from pont.world import WorldSession
-from pont.world.character import CharacterInfo
-from pont.world.state import WorldState
+from pont.client.auth import AuthSession, Realm
+from pont.client.auth.session import AuthState
+from pont.client.world import WorldSession
+from pont.client.world.character import CharacterInfo
+from pont.client.world.state import WorldState
 from .config import Config
-from .. import auth, world
+from . import auth, world
 from ..utility import AsyncScopedEmitter, enum
 
 

@@ -2,7 +2,7 @@ from typing import Dict, Optional
 
 import construct
 
-from pont.auth.errors import InvalidLogin
+from pont.client.auth.errors import InvalidLogin
 from .challenge_response import ChallengeResponse
 from .header import ResponseHeader
 from .proof_response import ProofResponse

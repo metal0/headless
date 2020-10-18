@@ -1,7 +1,7 @@
 import construct
 
-from pont.world.net.opcode import Opcode
-from pont.world.net.packets.headers import ServerHeader
+from pont.client.world.net.opcode import Opcode
+from pont.client.world.net.packets.headers import ServerHeader
 
 SMSG_TRIGGER_CINEMATIC = construct.Struct(
 	'header' / ServerHeader(Opcode.SMSG_TRIGGER_CINEMATIC, 4),

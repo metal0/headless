@@ -206,3 +206,6 @@ class GuidUnpacker(construct.Adapter):
 
 		mask, data = pack_guid(obj.value)
 		return {"mask": mask, "data": data}
+
+def int8(num: int):
+	return 0xFF & num

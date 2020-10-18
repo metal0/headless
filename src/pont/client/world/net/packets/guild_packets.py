@@ -1,7 +1,7 @@
 import construct
 
 from pont.utility.construct import GuidConstruct, PackEnum
-from pont.world.guid import Guid
+from pont.client.world.guid import Guid
 from .headers import ServerHeader, ClientHeader
 from ..opcode import Opcode
 from ...guild.events import GuildEventType

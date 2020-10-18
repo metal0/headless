@@ -1,9 +1,9 @@
 import pont
-from pont.world import Guid
+from pont.client.world import Guid
 
 def test_SMSG_DUEL_REQUESTED():
 	data = b'\x00\x12g\x01`\xf1 \xb0T\x00\x10\xf1\x01\x00\x00\x00\x00\x00\x00\x00'
-	packet = pont.world.net.packets.SMSG_DUEL_REQUESTED.parse(data)
+	packet = pont.client.world.net.packets.SMSG_DUEL_REQUESTED.parse(data)
 	print(packet)
 
 	assert packet.requester == Guid(value=0x1)

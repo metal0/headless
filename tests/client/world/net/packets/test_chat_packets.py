@@ -1,7 +1,9 @@
-from pont.world import Guid
-from pont.world.chat.message import MessageType
-from pont.world.language import Language
-from pont.world.net import packets, Opcode
+from pont.client.world import Guid
+from pont.client.world.chat.message import MessageType
+from pont.client.world.language import Language
+from pont.client.world.net import Opcode
+from pont.client.world.net import packets
+
 
 async def test_CMSG_MESSAGECHAT():
 	data = b'\x00\x1d\x95\x00\x00\x00\x04\x00\x00\x00\x00\x00\x00\x00bongour, brother\x00'
@@ -9,7 +11,7 @@ async def test_CMSG_MESSAGECHAT():
 	print(packet)
 
 	assert packet.header.opcode == Opcode.CMSG_MESSAGECHAT
-	assert packet.header.size == 29
+	assert packet.header.packet_size == 29
 
 	assert packet.message_type == MessageType.guild
 	assert packet.language == Language.universal
@@ -23,7 +25,7 @@ async def test_SMSG_MESSAGECHAT():
 	print(packet)
 
 	assert packet.header.opcode == Opcode.SMSG_MESSAGECHAT
-	assert packet.header.size == 51
+	assert packet.header.packet_size == 51
 
 	assert packet.message_type == MessageType.monster_say
 	assert packet.language == Language.universal
@@ -41,7 +43,7 @@ async def test_SMSG_MESSAGECHAT():
 	print(data2)
 
 	assert packet2.header.opcode == Opcode.SMSG_MESSAGECHAT
-	assert packet2.header.size == 35
+	assert packet2.header.packet_size == 35
 
 	assert packet2.message_type == MessageType.say
 	assert packet2.language == Language.common
@@ -57,7 +59,7 @@ async def test_SMSG_MESSAGECHAT():
 	print(packet3)
 
 	assert packet3.header.opcode == Opcode.SMSG_MESSAGECHAT
-	assert packet3.header.size == 37
+	assert packet3.header.packet_size == 37
 
 	assert packet3.message_type == MessageType.whisper
 	assert packet3.language == Language.universal
@@ -72,7 +74,7 @@ async def test_SMSG_MESSAGECHAT():
 	packet4 = packets.SMSG_MESSAGECHAT.parse(data4)
 	print(packet4)
 
-	assert packet4.header.size == 65
+	assert packet4.header.packet_size == 65
 	assert packet4.header.opcode == Opcode.SMSG_MESSAGECHAT
 
 	assert packet4.message_type == MessageType.guild
@@ -90,7 +92,7 @@ async def test_SMSG_GM_MESSAGECHAT():
 	print(packet)
 
 	assert packet.header.opcode == Opcode.SMSG_GM_MESSAGECHAT
-	assert packet.header.size == 54
+	assert packet.header.packet_size == 54
 
 	assert packet.message_type == MessageType.party
 	assert packet.language == Language.addon
@@ -107,7 +109,7 @@ async def test_SMSG_GM_MESSAGECHAT():
 	print(packet2)
 
 	assert packet2.header.opcode == Opcode.SMSG_GM_MESSAGECHAT
-	assert packet2.header.size == 296
+	assert packet2.header.packet_size == 296
 
 	assert packet2.message_type == MessageType.guild
 	assert packet2.language == Language.universal

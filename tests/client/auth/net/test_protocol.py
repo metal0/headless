@@ -4,17 +4,17 @@ import trio
 
 import pont
 from pont import cryptography
-from pont.auth import AuthState, RealmType, RealmStatus
-from pont.auth.net import Response
+from pont.client.auth import AuthState, RealmType, RealmStatus
+from pont.client.auth.net import Response
 from pont.utility.string import bytes_to_int
 from tests.client.cryptography import load_test_servers
 
-logins_filename = 'C:/Users/dinne/Documents/Projects/pont/servers_config.json'
+logins_filename = 'C:/Users/Owner/Documents/WoW/servers_config.json'
 test_servers = load_test_servers(logins_filename)
 tc_login = test_servers['trinity-core-3.3.5']['account']
 
 async def auth_server(stream):
-	protocol = pont.auth.net.AuthProtocol(stream)
+	protocol = pont.client.auth.net.AuthProtocol(stream)
 	challenge_request = await protocol.receive_challenge_request()
 
 	assert challenge_request.packet_size == 30 + len(challenge_request.account_name)

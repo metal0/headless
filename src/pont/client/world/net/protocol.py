@@ -8,6 +8,7 @@ import trio
 from construct import ConstructError
 from loguru import logger
 
+from pont.utility.construct import int8
 from .opcode import Opcode
 from .packets.parse import WorldPacketParser
 from ..chat.message import MessageType
@@ -19,7 +20,7 @@ from ..net import packets
 from ..net.packets import headers
 from ..net.packets.auth_packets import AuthResponse, default_addon_bytes
 from ..net.packets.headers import ServerHeader
-from ...cryptography import rc4
+from pont.cryptography import rc4
 
 
 class WorldProtocol:
@@ -58,22 +59,28 @@ class WorldProtocol:
 
 			header_data = self.decrypt(header_data)
 			logger.log('PACKETS', f'Incoming packet...')
+			header_size = 2
+
 			try:
+				# TODO: Build this into ServerHeader somehow?
 				if headers.is_large_packet(header_data):
+					logger.warning(f'large packet: {header_data=}')
+					header_size = 3
 					async with self._read_lock:
 						header_data += self.decrypt(await self.stream.receive_some(max_bytes=1))
 
-					size = ((header_data[0] & 0x7F) << 16) | (header_data[1] << 8) | header_data[2]
-					opcode = Opcode(header_data[3] | (header_data[4] << 8))
+					size = (int8(header_data[0]) << 16) | (int8(header_data[1]) << 8) | int8(header_data[2])
+					opcode = int8(header_data[3]) | (int8(header_data[4]) << 8)
 					logger.warning(f'[process_packets] large packet {size=}')
 
 				else:
-					size = (header_data[0] << 8) | header_data[1]
-					opcode = Opcode(header_data[2] | (header_data[3] << 8))
+					size = (int8(header_data[0]) << 8) | int8(header_data[1])
+					opcode = int8(header_data[2]) | (int8(header_data[3]) << 8)
+					logger.log('PACKETS', f'{size=}, {opcode=}, {header_data.hex()}')
 
 				header_data = ServerHeader().build({
 					'opcode': Opcode(opcode),
-					'size': (0xFFFF & size)
+					'packet_size': (0xFFFF & size)
 				})
 
 			except ValueError as e:
@@ -83,11 +90,11 @@ class WorldProtocol:
 			header = self.parser.parse_header(header_data)
 			logger.log('PACKETS', f'{header=}')
 
-			if header.size - 2 > 0:
-				logger.log('PACKETS', f'Listening for {header.size - 2} bytes...')
+			if header.packet_size - header_size > 0:
+				logger.log('PACKETS', f'Listening for {header.packet_size - header_size} bytes...')
 
 				async with self._read_lock:
-					data = header_data + await self.stream.receive_some(max_bytes=header.size - 2)
+					data = header_data + await self.stream.receive_some(max_bytes=header.packet_size - header_size)
 
 				if data is None or len(data) == 0:
 					raise ProtocolError('received EOF from server')
@@ -148,7 +155,7 @@ class WorldProtocol:
 			opcode = Opcode(decrypted[3] | (decrypted[4] << 8))
 			header = ServerHeader().build({
 				'opcode': Opcode(opcode),
-				'size': size
+				'packet_size': size
 			})
 
 			body = data[5:]
@@ -157,7 +164,7 @@ class WorldProtocol:
 			opcode = Opcode(decrypted[2] | (decrypted[3] << 8))
 			header = ServerHeader().build({
 				'opcode': Opcode(opcode),
-				'size': size
+				'packet_size': size
 			})
 
 			body = data[4:]
@@ -260,7 +267,7 @@ class WorldProtocol:
 			realm_id=realm_id,
 			account_hash=account_hash,
 			addon_info=addon_info,
-			header={'size': 61 + len(addon_info) + len(account_name)}
+			header={'packet_size': 61 + len(addon_info) + len(account_name)}
 		)
 
 	async def receive_CMSG_AUTH_SESSION(self) -> packets.CMSG_AUTH_SESSION:
@@ -517,7 +524,7 @@ class WorldProtocol:
 		"""
 		await self._send_encrypted_packet(
 			'SMSG_GUILD_INVITE', packets.SMSG_GUILD_INVITE,
-			header={'size': len(inviter) + len(guild) + 2},
+			header={'packet_size': len(inviter) + len(guild) + 2},
 			inviter=inviter,
 			guild=guild
 		)
@@ -536,7 +543,7 @@ class WorldProtocol:
 		"""
 		await self._send_encrypted_packet(
 			'CMSG_GUILD_CREATE', packets.CMSG_GUILD_CREATE,
-			header={'size': len(guild_name) + 4},
+			header={'packet_size': len(guild_name) + 4},
 			guild_name=guild_name
 		)
 
@@ -583,7 +590,7 @@ class WorldProtocol:
 		"""
 		await self._send_encrypted_packet(
 			'CMSG_GROUP_INVITE', packets.CMSG_GROUP_INVITE,
-			header={'size': len(invitee) + 4},
+			header={'packet_size': len(invitee) + 4},
 			invitee=invitee,
 			unknown=0,
 		)
@@ -605,7 +612,7 @@ class WorldProtocol:
 		"""
 		await self._send_encrypted_packet(
 			'SMSG_GROUP_INVITE', packets.SMSG_GROUP_INVITE,
-			header={'size': 1 + len(inviter) + 4 + 1 + 4},
+			header={'packet_size': 1 + len(inviter) + 4 + 1 + 4},
 			in_group=in_group,
 			inviter=inviter
 		)
@@ -663,7 +670,7 @@ class WorldProtocol:
 
 		await self._send_encrypted_packet(
 			'CMSG_MESSAGECHAT', packets.CMSG_MESSAGECHAT,
-			header={'size': size + 5},
+			header={'packet_size': size + 5},
 			text=text, message_type=message_type, language=language,
 			receiver=receiver, channel=channel
 		)

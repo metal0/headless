@@ -4,12 +4,12 @@ import trio
 from loguru import logger
 from trio_socks import socks5
 
-from pont.auth.net import AuthProtocol
+from pont.client.auth.net import AuthProtocol
 from pont.client import events
 from pont.utility.enum import ComparableEnum
 from pont.utility.string import bytes_to_int
 from .errors import InvalidLogin
-from .. import cryptography
+from pont import cryptography
 
 
 class AuthSession:

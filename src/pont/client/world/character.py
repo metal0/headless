@@ -1,8 +1,8 @@
 import construct
 
 from pont.utility.construct import Coordinates, PackEnum, GuidConstruct
-from pont.world.entities.player import Race, CombatClass, Gender
-from pont.world.guid import Guid
+from pont.client.world.entities.player import Race, CombatClass, Gender
+from pont.client.world.guid import Guid
 
 DisplayInfo = construct.Struct(
 	'skin' / construct.Byte,

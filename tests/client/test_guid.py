@@ -1,4 +1,4 @@
-from pont.world.guid import Guid, GuidType
+from pont.client.world.guid import Guid, GuidType
 
 def test_guid():
 	guid = Guid(counter=3, high=7)
