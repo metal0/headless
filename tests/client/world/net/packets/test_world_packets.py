@@ -163,7 +163,7 @@ def test_SMSG_NAME_QUERY():
 	packet = pont.client.world.net.packets.SMSG_NAME_QUERY_RESPONSE.parse(data)
 	print(packet)
 
-	assert packet.found == True
+	assert packet.found is True
 	assert packet.info.name == 'Eco'
 	assert packet.info.realm_name == ''
 	assert packet.info.race == Race.human
