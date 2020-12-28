@@ -1,39 +1,33 @@
 import traceback
-
+import pont
 import trio
 
 from tests.client.cryptography import load_test_servers
 
-logins_filename = 'C:/Users/Owner/Documents/WoW/servers_config.json'
+logins_filename = '/home/fure/work/pont/servers_config.json'
 test_servers = load_test_servers(logins_filename)
 ac_login = test_servers['acore']['account']
 
 async def client_login(auth_address, stream):
-	try:
-		session_key = 0
-		protocol = pont.world.net.WorldProtocol(stream)
-		auth_challenge = await protocol.receive_SMSG_AUTH_CHALLENGE()
+	session_key = 0
+	protocol = pont.world.net.WorldProtocol(stream)
+	auth_challenge = await protocol.receive_SMSG_AUTH_CHALLENGE()
 
-		assert auth_challenge.server_seed == 7
-		assert auth_challenge.encryption_seed1 == 31
-		assert auth_challenge.encryption_seed1 == 73
+	assert auth_challenge.server_seed == 7
+	assert auth_challenge.encryption_seed1 == 31
+	assert auth_challenge.encryption_seed1 == 73
 
-	except:
-		traceback.print_exc()
 
 async def world_server(stream):
-	try:
-		protocol = pont.world.net.WorldProtocol(stream)
-		await protocol.send_SMSG_AUTH_CHALLENGE(
-			server_seed=7,
-			encryption_seed1=31,
-			encryption_seed2=71
-		)
+	protocol = pont.world.net.WorldProtocol(stream)
+	await protocol.send_SMSG_AUTH_CHALLENGE(
+		server_seed=7,
+		encryption_seed1=31,
+		encryption_seed2=71
+	)
 
-		# auth_session = await protocol.receive_CMSG_AUTH_SESSION()
+	# auth_session = await protocol.receive_CMSG_AUTH_SESSION()
 
-	except:
-		traceback.print_exc()
 
 async def test_auth_protocol():
 	(client_stream, server_stream) = trio.testing.memory_stream_pair()

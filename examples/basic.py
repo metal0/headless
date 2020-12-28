@@ -2,8 +2,8 @@ import json
 import random
 import loguru
 import trio
-
 import pont
+
 from pont.client import auth, world
 from pont.client.world.chat.message import MessageType
 from pont.client.world.language import Language
@@ -49,9 +49,9 @@ async def run(server, proxy=None):
 		loguru.logger.exception('Error')
 
 async def main():
-	login_filename = 'C:/Users/Owner/Documents/WoW/servers_config.json'
-	acore = load_login('dalaran-wow', login_filename)
-	# proxy = ('tower', 1664)
+	login_filename = '/home/fure/work/pont/servers_config.json'
+	acore = load_login('acore', login_filename)
+	# proxy = ('server', 1664)
 	proxy = None
 
 	while True:
