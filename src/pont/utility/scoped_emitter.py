@@ -21,7 +21,7 @@ class BaseEmitter:
 		self._emitter.remove_all_listeners(event)
 
 	def emit(self, event, *args, **kwargs):
-		logger.info(f'{event=}, {kwargs}')
+		logger.log('EVENTS', f'{event=}, {kwargs}')
 		self._emitter.emit(event, *args, **kwargs)
 
 	def once(self, event, fn = None):
@@ -31,7 +31,7 @@ class BaseEmitter:
 				await trio.lowlevel.checkpoint()
 				return fn(*args, **kwargs)
 
-			logger.info(f'installed {event=} {fn=}')
+			logger.log('EVENTS', f'installed {event=} {fn=}')
 			if not inspect.iscoroutinefunction(fn):
 				target_fn = fn_async
 
@@ -49,7 +49,7 @@ class BaseEmitter:
 				await trio.lowlevel.checkpoint()
 				return fn(*args, **kwargs)
 
-			logger.info(f'installed {event=} {fn=}')
+			logger.log('EVENTS', f'installed {event=} {fn=}')
 			if not inspect.iscoroutinefunction(fn):
 				target_fn = fn_async
 
@@ -63,7 +63,6 @@ class BaseEmitter:
 
 class AsyncScopedEmitter(BaseEmitter):
 	async def aclose(self):
-		logger.debug(f'{type(self).__name__} aclose')
 		for event, fn_list in self._events.items():
 			await trio.lowlevel.checkpoint()
 			for fn in fn_list:
@@ -78,7 +77,6 @@ class AsyncScopedEmitter(BaseEmitter):
 
 class ScopedEmitter(BaseEmitter):
 	def close(self):
-		logger.debug(f'{type(self).__name__} close')
 		for event, fn_list in self._events.items():
 			for fn in fn_list:
 				if fn in self._emitter.listeners(event):

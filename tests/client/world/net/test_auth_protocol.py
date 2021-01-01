@@ -4,11 +4,11 @@ import trio
 
 from tests.client.cryptography import load_test_servers
 
-logins_filename = '/home/fure/work/pont/servers_config.json'
+logins_filename = 'C:\\Users\\Owner\\Documents\\WoW\\servers_config.json'
 test_servers = load_test_servers(logins_filename)
 ac_login = test_servers['acore']['account']
 
-async def client_login(auth_address, stream):
+async def client_login(stream):
 	session_key = 0
 	protocol = pont.world.net.WorldProtocol(stream)
 	auth_challenge = await protocol.receive_SMSG_AUTH_CHALLENGE()
@@ -16,7 +16,6 @@ async def client_login(auth_address, stream):
 	assert auth_challenge.server_seed == 7
 	assert auth_challenge.encryption_seed1 == 31
 	assert auth_challenge.encryption_seed1 == 73
-
 
 async def world_server(stream):
 	protocol = pont.world.net.WorldProtocol(stream)
@@ -31,8 +30,7 @@ async def world_server(stream):
 
 async def test_auth_protocol():
 	(client_stream, server_stream) = trio.testing.memory_stream_pair()
-	auth_address = ('10.179.205.114', 3724)
 	with trio.fail_after(1):
 		async with trio.open_nursery() as nursery:
-			nursery.start_soon(client_login, auth_address, client_stream)
+			nursery.start_soon(client_login, client_stream)
 			nursery.start_soon(world_server, server_stream)

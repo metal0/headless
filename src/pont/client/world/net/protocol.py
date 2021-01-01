@@ -2,7 +2,7 @@ import hashlib
 import hmac
 import random
 import traceback
-from typing import Optional
+from typing import Optional, List
 
 import trio
 from construct import ConstructError
@@ -445,6 +445,62 @@ class WorldProtocol:
 		"""
 		return await self._receive_encrypted_packet(
 			'CMSG_DUEL_ACCEPTED', packets.CMSG_DUEL_ACCEPTED
+		)
+
+	async def send_CMSG_GUILD_QUERY(self, guild_id: int):
+		"""
+		Sends an encrypted CMSG_GUILD_QUERY packet.
+		:return: None.
+		"""
+		await self._send_encrypted_packet(
+			'CMSG_GUILD_QUERY', packets.CMSG_GUILD_QUERY,
+			guild_id=guild_id
+		)
+
+	async def receive_CMSG_GUILD_QUERY(self) -> packets.CMSG_GUILD_QUERY:
+		"""
+		Receives an encrypted CMSG_GUILD_QUERY packet.
+		:return: None.
+		"""
+		return await self._receive_encrypted_packet(
+			'CMSG_GUILD_QUERY', packets.CMSG_GUILD_QUERY,
+		)
+
+	async def send_SMSG_GUILD_QUERY_RESPONSE(self,
+		guild_id: int,
+		name: str,
+		ranks: List[str],
+		emblem_style: int,
+		emblem_color: int,
+		border_style: int,
+		border_color: int,
+		background_color: int,
+		num_ranks: int,
+	):
+		"""
+		Sends an encrypted SMSG_GUILD_QUERY_RESPONSE packet.
+		:return: None.
+		"""
+		await self._send_encrypted_packet(
+			'SMSG_GUILD_QUERY_RESPONSE', packets.SMSG_GUILD_QUERY_RESPONSE,
+			guild_id=guild_id,
+			name=name,
+			ranks=ranks,
+			emblem_style=emblem_style,
+			emblem_color=emblem_color,
+			border_style=border_style,
+			border_color=border_color,
+			background_color=background_color,
+			num_ranks=num_ranks,
+		)
+
+	async def receive_SMSG_GUILD_QUERY_RESPONSE(self) -> packets.SMSG_GUILD_QUERY_RESPONSE:
+		"""
+		Receives an encrypted SMSG_GUILD_QUERY_RESPONSE packet.
+		:return: None.
+		"""
+		return await self._receive_encrypted_packet(
+			'SMSG_GUILD_QUERY_RESPONSE', packets.SMSG_GUILD_QUERY_RESPONSE
 		)
 
 	async def send_CMSG_GUILD_ROSTER(self):

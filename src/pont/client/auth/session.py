@@ -1,8 +1,8 @@
-from typing import Optional, Tuple
-
 import trio
+# import transitions
 from loguru import logger
 from trio_socks import socks5
+from typing import Optional, Tuple
 
 from pont.client.auth.net import AuthProtocol
 from pont.client import events
@@ -11,7 +11,7 @@ from pont.utility.string import bytes_to_int
 from .errors import InvalidLogin
 from pont import cryptography
 
-
+# TODO: transitions
 class AuthSession:
 	def __init__(self, nursery, emitter, proxy: Optional[Tuple[str, int]]=None):
 		self.proxy = proxy
@@ -80,10 +80,10 @@ class AuthSession:
 
 		client_private = debug['client_private'] if debug is not None else None
 		self._srp = cryptography.WoWSrpClient(username=username, password=password,
-		                                      prime=challenge_response.prime,
-		                                      generator=challenge_response.generator,
-		                                      client_private=client_private
-		                                      )
+			prime=challenge_response.prime,
+			generator=challenge_response.generator,
+			client_private=client_private
+		)
 
 		client_public, session_proof = self._srp.process(challenge_response.server_public, challenge_response.salt)
 		self._session_key = int.from_bytes(self._srp.session_key, byteorder='little')

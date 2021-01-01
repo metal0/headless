@@ -23,7 +23,8 @@ class LogManager:
 		self._format = format
 
 def _config_logger():
-	packets = logger.level('PACKETS', no=38, color='<blue>', icon='PACKETS')
+	logger.level('PACKETS', no=38, color='<blue>', icon='PACKETS')
+	logger.level('EVENTS', no=40, color='<yellow>', icon='EVENTS')
 	# logger.
 
 

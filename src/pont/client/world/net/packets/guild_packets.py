@@ -5,7 +5,7 @@ from pont.client.world.guid import Guid
 from .headers import ServerHeader, ClientHeader
 from ..opcode import Opcode
 from ...guild.events import GuildEventType
-from ...guild.guild import GuildInfo, GuildCommandType, GuildCommandError
+from ...guild.guild import GuildCommandType, GuildCommandError, Guild
 from ...guild.roster import GuildRankData, RosterMemberData
 
 CMSG_GUILD_INVITE = construct.Struct(
@@ -80,11 +80,19 @@ SMSG_GUILD_EVENT = construct.Struct(
 
 SMSG_GUILD_QUERY_RESPONSE = construct.Struct(
 	'header' / ServerHeader(Opcode.SMSG_GUILD_QUERY_RESPONSE, 96),
-	'info' / GuildInfo
+	'guild_id' / construct.Int32ul,
+	'name' / construct.CString('ascii'),
+	'ranks' / construct.Array(Guild.max_ranks, construct.CString('ascii')),
+	'emblem_style' / construct.Int32ul,
+	'emblem_color' / construct.Int32ul,
+	'border_style' / construct.Int32ul,
+	'border_color' / construct.Int32ul,
+	'background_color' / construct.Int32ul,
+	'num_ranks' / construct.Int32ul,
 )
 
 SMSG_GUILD_INFO = construct.Struct(
-	'header' / ClientHeader(Opcode.SMSG_GUILD_INFO, 0),
+	'header' / ClientHeader(Opcode.SMSG_GUILD_INFO, 0 + 1 + 4 + 4),
 	'guild' / construct.CString('ascii'),
 	'created' / construct.Byte,
 	'num_members' / construct.Int32ul,

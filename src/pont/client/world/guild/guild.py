@@ -1,6 +1,10 @@
 from enum import Enum
+from typing import Optional
 
 import construct
+
+from pont.client.world.errors import ProtocolError
+from pont.client.world.state import WorldState
 
 
 class GuildMemberDataType(Enum):
@@ -29,7 +33,7 @@ class GuildCommandError(Enum):
 	success = 0
 	internal_error = 1
 	already_in_guild = 2
-	already_in_guild_s              = 3
+	already_in_guild_s = 3
 	already_invited_to_guild = 4
 	already_invited_to_guild_s = 5
 	guild_name_invalid = 6
@@ -77,14 +81,22 @@ class Guild:
 	max_ranks = 10
 	min_ranks = 5
 
-GuildInfo = construct.Struct(
-	'guild_id' / construct.Int32ul,
-	'name' / construct.CString('ascii'),
-	'ranks' / construct.Array(Guild.max_ranks, construct.CString('ascii')),
-	'emblem_style' / construct.Int32ul,
-	'emblem_color' / construct.Int32ul,
-	'border_style' / construct.Int32ul,
-	'border_color' / construct.Int32ul,
-	'background_color' / construct.Int32ul,
-	'num_ranks' / construct.Int32ul,
-)
+	def __init__(self, world, name: Optional[str]=None):
+		self._info = None
+		self._world = world
+		self._name = name
+
+		if world.state < WorldState.in_game:
+			raise ProtocolError(f'Must be in-game to send a chat message; world state is {self._world.state} instead')
+
+	@property
+	def name(self):
+		if self._info is not None:
+			return self._info.name
+
+	@property
+	def ranks(self):
+		if self._info is not None:
+			return self._info.ranks
+
+	# async def _send_query

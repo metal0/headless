@@ -31,17 +31,25 @@ class WorldEvent(Enum):
 	disconnected = uuid.uuid4()
 
 	received_group_invite = uuid.uuid4()
+
 	received_guild_invite = uuid.uuid4()
+	received_guild_event = uuid.uuid4()
+	received_guild_roster = uuid.uuid4()
+	received_guild_query_response = uuid.uuid4()
 
 	received_chat_message = uuid.uuid4()
 	received_gm_chat_message = uuid.uuid4()
 	received_duel_request = uuid.uuid4()
 	received_name_query_response = uuid.uuid4()
+	received_bind_point = uuid.uuid4()
 
 	received_packet = uuid.uuid4()
 	received_auth_challenge = uuid.uuid4()
 	received_auth_response = uuid.uuid4()
 	received_char_enum = uuid.uuid4()
+	received_server_message = uuid.uuid4()
+	received_notification = uuid.uuid4()
+	received_motd = uuid.uuid4()
 	received_pong = uuid.uuid4()
 	received_login_world = uuid.uuid4()
 	received_warden_data = uuid.uuid4()
@@ -59,6 +67,7 @@ class WorldEvent(Enum):
 	sent_logout_request = uuid.uuid4()
 	sent_logout_cancel = uuid.uuid4()
 	sent_auth_session = uuid.uuid4()
+	sent_chat_message = uuid.uuid4()
 
 world = WorldEvent
 

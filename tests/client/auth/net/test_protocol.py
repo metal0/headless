@@ -8,7 +8,7 @@ from pont.client.auth.net import Response
 from pont.utility.string import bytes_to_int
 from tests.client.cryptography import load_test_servers
 
-logins_filename = '/home/fure/work/pont/servers_config.json'
+logins_filename = 'C:\\Users\\Owner\\Documents\\WoW\\servers_config.json'
 test_servers = load_test_servers(logins_filename)
 tc_login = test_servers['trinity-core-3.3.5']['account']
 

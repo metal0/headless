@@ -19,3 +19,9 @@ SMSG_INIT_WORLD_STATES = construct.Struct(
 	'area_id' / construct.Int32ul,
 	'world_states' / construct.PrefixedArray(construct.Int16ul, construct.Sequence(construct.Int32ul, construct.Int32ul)),
 )
+
+SMSG_UPDATE_WORLD_STATES = construct.Struct(
+	'header' / ServerHeader(Opcode.SMSG_UPDATE_WORLD_STATE, 4 + 4),
+	'field' / construct.Int32ul,
+	'value' / construct.Int32ul
+)

@@ -18,7 +18,7 @@ def run_login_test(login: dict, expected_proof_hash: int, server_public: int,
 	if srp.session_proof_hash != expected_proof_hash:
 		pytest.fail(f'Expected proof hash does not match wow.auth.srp\'s proof hash\nExpected: {expected_proof_hash}, Actual: {srp.session_proof_hash}')
 
-logins_filename = '/home/fure/work/pont/servers_config.json'
+logins_filename = 'C:\\Users\\Owner\\Documents\\WoW\\servers_config.json'
 test_servers = load_test_servers(logins_filename)
 
 def test_srp_sha1_1():

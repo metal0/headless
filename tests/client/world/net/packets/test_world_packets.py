@@ -14,6 +14,11 @@ def test_SMSG_LOGIN_VERIFY_WORLD():
 	assert packet.rotation == 3.0932998657226562
 	print(packet)
 
+def test_SMSG_NOTIFICATION():
+	data = b'\x00\x13\xcb\x01Unknown language\x00'
+	packet = pont.client.world.net.packets.SMSG_NOTIFICATION.parse(data)
+	assert packet.message == "Unknown language"
+
 def test_SMSG_CLIENTCACHE_VERSION():
 	data = bytes.fromhex('0006AB0403000000')
 	packet = pont.client.world.net.packets.SMSG_CLIENTCACHE_VERSION.parse(data)

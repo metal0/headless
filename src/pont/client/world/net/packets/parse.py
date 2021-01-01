@@ -20,7 +20,7 @@ from .motd import SMSG_MOTD
 from .name_query import SMSG_NAME_QUERY_RESPONSE
 from .ping import SMSG_PONG
 from .query_time import SMSG_QUERY_TIME_RESPONSE
-from .server_message import SMSG_SERVER_MESSAGE
+from .server_message import SMSG_SERVER_MESSAGE, SMSG_NOTIFICATION
 from .time_sync import SMSG_TIME_SYNC_REQ
 from .tutorial_flags import SMSG_TUTORIAL_FLAGS
 from .update_packets import SMSG_COMPRESSED_UPDATE_OBJECT, SMSG_UPDATE_OBJECT
@@ -60,10 +60,11 @@ class WorldPacketParser:
 		self.set_parser(Opcode.SMSG_GM_MESSAGECHAT, SMSG_GM_MESSAGECHAT)
 		self.set_parser(Opcode.SMSG_MESSAGECHAT, SMSG_MESSAGECHAT)
 		self.set_parser(Opcode.SMSG_SERVER_MESSAGE, SMSG_SERVER_MESSAGE)
+		self.set_parser(Opcode.SMSG_NOTIFICATION, SMSG_NOTIFICATION)
 		self.set_parser(Opcode.SMSG_DUEL_REQUESTED, SMSG_DUEL_REQUESTED)
 		self.set_parser(Opcode.SMSG_UPDATE_OBJECT, SMSG_UPDATE_OBJECT)
 		self.set_parser(Opcode.SMSG_COMPRESSED_UPDATE_OBJECT, SMSG_COMPRESSED_UPDATE_OBJECT)
-		self.set_parser(Opcode.SMSG_INITIALIZE_FACTIONS, SMSG_INITIALIZE_FACTIONS)
+		# self.set_parser(Opcode.SMSG_INITIALIZE_FACTIONS, SMSG_INITIALIZE_FACTIONS)
 
 	def set_parser(self, opcode: Opcode, parser: construct.Construct):
 		self._parsers[opcode] = parser

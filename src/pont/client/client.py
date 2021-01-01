@@ -44,7 +44,7 @@ class ClientState(enum.ComparableEnum):
 class Client(AsyncScopedEmitter):
 	def __init__(self, nursery, auth_server: Tuple[str, int], proxy=None):
 		super().__init__(emitter=pyee.TrioEventEmitter(nursery=nursery))
-		self._auth_server = auth_server
+		self._auth_server_address = auth_server
 		self._proxy = proxy
 		self._username = None
 		self._reset()
@@ -65,15 +65,15 @@ class Client(AsyncScopedEmitter):
 		await super().__aexit__(exc_type, exc_val, exc_tb)
 
 	@property
-	def auth_server(self):
-		return self._auth_server
+	def auth_server_address(self):
+		return self._auth_server_address
 
-	@auth_server.setter
-	def auth_server(self, other: Tuple[str, int]):
+	@auth_server_address.setter
+	def auth_server_address(self, other: Tuple[str, int]):
 		if self.auth.state > AuthState.not_connected:
 			raise auth.ProtocolError('Already connected to an auth server')
 
-		self._auth_server = other
+		self._auth_server_address = other
 
 	def _reset(self):
 		self._state = ClientState.not_connected
@@ -108,7 +108,7 @@ class Client(AsyncScopedEmitter):
 		'''
 		self._username = username
 		if self.auth.state < AuthState.connected:
-			await self.auth.connect(self._auth_server, proxy=self._proxy)
+			await self.auth.connect(self._auth_server_address, proxy=self._proxy)
 
 		await self.auth.authenticate(username=username, password=password)
 

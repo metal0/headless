@@ -20,3 +20,9 @@ SMSG_SERVER_MESSAGE = construct.Struct(
 	'type' / PackEnum(ServerMessageType),
 	'text' / construct.CString('ascii')
 )
+
+
+SMSG_NOTIFICATION = construct.Struct(
+	'header' / ServerHeader(Opcode.SMSG_NOTIFICATION, 1),
+	'message' / construct.CString('ascii')
+)
