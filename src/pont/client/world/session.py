@@ -9,37 +9,51 @@ from trio_socks import socks5
 
 from pont.client.auth import Realm
 from pont.client import events
+from .cache import NameCache
 from .character import CharacterInfo
 from .chat import Chat
 from .errors import ProtocolError
-from .net import WorldHandler, WorldProtocol, Opcode
+from .net import WorldHandler, Opcode
 from .net.packets.auth_packets import AuthResponse
+from .net.protocol import WorldClientProtocol
 from .player import LocalPlayer
 from .state import WorldState
 from pont.client import world
 from pont.cryptography import sha
 
+class WorldCrypto:
+	def __init__(self, session_key, server_seed, encryption_seed1, encryption_seed2):
+		self.session_key = session_key
+		self.server_seed = server_seed
+		self.encryption_seed1 = encryption_seed1
+		self.encryption_seed2 = encryption_seed2
+		self.client_seed = random.getrandbits(32)
+
+	def account_hash(self, username: str):
+		return sha.sha1(
+			username, bytes([0] * 4),
+			self.client_seed,
+			self.server_seed,
+			self.session_key, out=int
+		)
+
 class WorldSession:
 	def __init__(self, nursery: trio.Nursery, emitter, proxy: Optional[Tuple[str, int]] = None):
-		self._state = WorldState.not_connected
-
 		self.proxy = proxy
-		self.protocol: Optional[WorldProtocol] = None
 		self.handler: WorldHandler = WorldHandler(emitter=emitter, world=self)
-		self.nursery: Optional[trio.Nursery] = None
 		self.emitter = emitter
-		self.local_player = LocalPlayer(self)
-		self.chat: Optional[Chat] = None
 
+		self.nursery: Optional[trio.Nursery] = None
+		self.local_player: Optional[LocalPlayer] = None
+		self.protocol: Optional[WorldClientProtocol] = None
+
+		self._state = WorldState.not_connected
 		self._parent_nursery = nursery
 		self._stream: Optional[trio.abc.HalfCloseableStream] = None
-		self._session_key = None
+		self._crypto: Optional[WorldCrypto] = None
 		self._realm = None
-		self._client_seed = None
-		self._server_seed = None
-		self._encryption_seed1 = None
-		self._encryption_seed2 = None
 		self._username = None
+		self.names = NameCache(self)
 
 	@property
 	def state(self):
@@ -61,6 +75,7 @@ class WorldSession:
 	#   functions are awaited in between, then wait_for_packet will definitely see the packet that arrived before
 	#   I/O was polled. The context manager idea might still be valid for those cases where we have to await some
 	#   async function in between sending and receiving the packet.
+	#   ?????
 	async def wait_for_packet(self, opcode: Opcode) -> Any:
 		receive_event = trio.Event()
 		result = None
@@ -147,36 +162,32 @@ class WorldSession:
 	# TODO: Write unit tests to test this function.
 	#   Test the packet order and assert when our packet handler should be running
 	#   Ensure self._parent_nursery.child_tasks contains a task whose name is _packet_hnadler.
-	async def authenticate(self, username, session_key):
-		logger.info(f'Logging in with username {username}...')
+	async def transfer(self, username, session_key):
+		logger.info(f'Transferring {username} to world session {session_key}')
 		if self.state < WorldState.connected:
 			raise ProtocolError('Not connected to world server')
 
 		self._state = WorldState.logging_in
 		self.emitter.emit(events.world.logging_in)
 
-		self.protocol = WorldProtocol(stream=self._stream)
-		self.protocol.init_encryption(session_key=session_key)
-		self._session_key = session_key
+		self.protocol = WorldClientProtocol(stream=self._stream, session_key=session_key)
 		self._username = username.upper()
 
 		auth_challenge = await self.protocol.receive_SMSG_AUTH_CHALLENGE()
-		self._server_seed = auth_challenge.server_seed
-		self._encryption_seed1 = auth_challenge.encryption_seed1
-		self._encryption_seed2 = auth_challenge.encryption_seed2
+		if auth_challenge.header.opcode != Opcode.SMSG_AUTH_CHALLENGE:
+			raise ProtocolError(f'Expected Opcode.SMSG_AUTH_CHALLENGE, but got {auth_challenge.header.opcode}')
 
-		self._client_seed = random.getrandbits(32)
-		account_hash = sha.sha1(
-			self._username, bytes([0] * 4),
-			self._client_seed,
-			self._server_seed,
-			self._session_key, out=int
+		self._crypto = WorldCrypto(
+			session_key,
+			auth_challenge.server_seed,
+			auth_challenge.encryption_seed1,
+			auth_challenge.encryption_seed2
 		)
 
 		await self.protocol.send_CMSG_AUTH_SESSION(
 			account_name=self._username,
-			client_seed=self._client_seed,
-			account_hash=account_hash,
+			client_seed=self._crypto.client_seed,
+			account_hash=self._crypto.account_hash(self._username),
 			realm_id=self._realm.id
 		)
 
@@ -185,10 +196,13 @@ class WorldSession:
 
 		if auth_response.response == AuthResponse.ok:
 			self._state = WorldState.logged_in
-			logger.info('Logged in!')
+			self.emitter.emit(events.world.logged_in)
+			logger.info('Transfer complete')
 
 		elif auth_response.response == AuthResponse.wait_queue:
 			self._state = WorldState.in_queue
+			self.emitter.emit(events.world.in_queue, auth_response.queue_position)
+			logger.info('Transfer complete')
 			logger.info(f'In queue: {auth_response.queue_position}')
 
 	async def characters(self):
@@ -197,9 +211,6 @@ class WorldSession:
 
 		char_enum = await self.wait_for_packet(Opcode.SMSG_CHAR_ENUM)
 		return char_enum.characters
-
-	# async def _get_guild_info(self):
-
 
 	@asynccontextmanager
 	async def enter_world(self, character: CharacterInfo):
@@ -215,15 +226,20 @@ class WorldSession:
 			self.nursery = n
 			try:
 				self._state = WorldState.in_game
-				self.chat = Chat(self)
-
+				self.local_player = LocalPlayer(self)
 				self.emitter.emit(events.world.entered_world)
 				yield self.nursery
 
+			except Exception as e:
+				logger.critical(e)
+
 			finally:
+				if self.state >= WorldState.in_game:
+					await self.logout()
+
 				self.nursery.cancel_scope.cancel()
 
-	# TODO: Figure out how to logout properly since we still seem to receive ingame packets after "logging out"
+	# TODO: Figure out how to logout properly since we still seem to receive ingame packets after logging out
 	async def logout(self):
 		logger.info('Logging out...')
 		self.emitter.emit(events.world.sent_logout_request)
@@ -231,10 +247,9 @@ class WorldSession:
 
 		logout_response = await self.wait_for_packet(Opcode.SMSG_LOGOUT_RESPONSE)
 		await self.wait_for_packet(Opcode.SMSG_LOGOUT_COMPLETE)
-		self.chat = None
 
-		# This is strange, but we are "logging out" of being "in-game" to the character select screen, essentially.
+		self.local_player = None
 		self._state = WorldState.logged_in
 		logger.info('Logged out')
 
-__all__ = ['WorldSession', 'WorldState']
+__all__ = ['WorldSession', 'WorldState', 'WorldCrypto']

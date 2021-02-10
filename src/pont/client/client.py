@@ -10,6 +10,7 @@ from pont.client.world import WorldSession
 from pont.client.world.character import CharacterInfo
 from pont.client.world.state import WorldState
 from .config import Config
+from .log import logger
 from . import auth, world
 from ..utility import AsyncScopedEmitter, enum
 
@@ -42,8 +43,11 @@ class ClientState(enum.ComparableEnum):
 	in_game = 8
 
 class Client(AsyncScopedEmitter):
-	def __init__(self, nursery, auth_server: Tuple[str, int], proxy=None):
-		super().__init__(emitter=pyee.TrioEventEmitter(nursery=nursery))
+	def __init__(self, nursery, auth_server: Tuple[str, int], proxy=None, emitter=None):
+		if emitter is None:
+			emitter = pyee.TrioEventEmitter(nursery=nursery)
+
+		super().__init__(emitter=emitter)
 		self._auth_server_address = auth_server
 		self._proxy = proxy
 		self._username = None
@@ -59,9 +63,11 @@ class Client(AsyncScopedEmitter):
 		self.world = WorldSession(nursery=self.nursery, emitter=self, proxy=self._proxy)
 
 	async def __aexit__(self, exc_type, exc_val, exc_tb):
-		if self.world.state >= WorldState.in_game:
-			await self.logout()
+		if exc_type is not None:
+			logger.exception(f'{exc_type=}, {exc_val=}, {exc_tb=}')
 
+		logger.debug(f'Shutting down...')
+		self.nursery.cancel_scope.cancel()
 		await super().__aexit__(exc_type, exc_val, exc_tb)
 
 	@property
@@ -126,7 +132,7 @@ class Client(AsyncScopedEmitter):
 			raise auth.AuthError('Invalid session key')
 
 		await self.world.connect(realm, proxy=self._proxy)
-		await self.world.authenticate(self._username, self.auth.session_key)
+		await self.world.transfer(self._username, self.auth.session_key)
 
 	async def characters(self):
 		if self.world.state < WorldState.logged_in:

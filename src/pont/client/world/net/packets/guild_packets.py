@@ -8,11 +8,6 @@ from ...guild.events import GuildEventType
 from ...guild.guild import GuildCommandType, GuildCommandError, Guild
 from ...guild.roster import GuildRankData, RosterMemberData
 
-CMSG_GUILD_INVITE = construct.Struct(
-	'header' / ClientHeader(Opcode.CMSG_GUILD_INVITE, 48),
-	'name' / construct.PaddedString(48, 'ascii'),
-)
-
 CMSG_GUILD_QUERY = construct.Struct(
 	'header' / ClientHeader(Opcode.CMSG_GUILD_QUERY, 4),
 	'guild_id' / construct.Int32ul,
@@ -57,6 +52,11 @@ SMSG_GUILD_COMMAND_RESULT = construct.Struct(
 	'error_code' / PackEnum(GuildCommandError, construct.Int32ul),
 )
 
+CMSG_GUILD_INVITE = construct.Struct(
+	'header' / ClientHeader(Opcode.CMSG_GUILD_INVITE, 48),
+	'name' / construct.PaddedString(48, 'ascii'),
+)
+
 SMSG_GUILD_INVITE = construct.Struct(
 	'header' / ServerHeader(Opcode.SMSG_GUILD_INVITE, 10),
 	'inviter' / construct.CString('ascii'),
@@ -79,7 +79,7 @@ SMSG_GUILD_EVENT = construct.Struct(
 )
 
 SMSG_GUILD_QUERY_RESPONSE = construct.Struct(
-	'header' / ServerHeader(Opcode.SMSG_GUILD_QUERY_RESPONSE, 96),
+	'header' / ServerHeader(Opcode.SMSG_GUILD_QUERY_RESPONSE, 4 + 0 + Guild.max_ranks * 0 + 4 * 6),
 	'guild_id' / construct.Int32ul,
 	'name' / construct.CString('ascii'),
 	'ranks' / construct.Array(Guild.max_ranks, construct.CString('ascii')),

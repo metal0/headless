@@ -1,33 +1,108 @@
 import construct
 
-from pont.utility.construct import int8
 from ..opcode import Opcode
+from .....utility.construct import PackEnum, int8
+from pont.client.log import logger
 
+def is_large_server_packet(data) -> bool:
+	if type(data) is bytes:
+		return (0x80 & int8(data[0])) == 0x80
+	elif type(data) is int:
+		return data > 0x7FFF
+	else:
+		return is_large_server_packet(data.size)
 
 def ClientHeader(opcode = None, size = 0):
-	from .....utility.construct import PackEnum
 	if opcode is None:
 		opcode_con = construct.ByteSwapped(PackEnum(Opcode, construct.Int))
 	else:
 		opcode_con = construct.ByteSwapped(construct.Default(construct.Const(opcode, PackEnum(Opcode, construct.Int)), opcode))
 
 	return construct.Struct(
-		'packet_size' / construct.Default(construct.Short, size + 4),
+		'size' / construct.Default(construct.Short, size + 4),
 		'opcode' / opcode_con
 	)
 
+def _is_large_mask(context):
+	return is_large_server_packet(bytes([context.mask]))
+
+ServerSizeMask = construct.Struct(
+	'mask' / construct.Byte,
+	'rest' / construct.IfThenElse(
+		_is_large_mask,
+		construct.Bytes(2),
+		construct.Bytes(1)
+	)
+)
+
+class ServerSize(construct.Adapter):
+	def __init__(self):
+		super().__init__(ServerSizeMask)
+
+	def _decode(self, obj, context, path) -> int:
+		if is_large_server_packet(bytes([obj.mask])):
+			return (int8(obj.mask << 16) & ~0x80) | (int8(obj.rest[0]) << 8) | int8(obj.rest[1])
+
+		return (int8(obj.mask) << 8) | int8(obj.rest[0])
+
+	def _encode(self, obj: int, context, path):
+		if is_large_server_packet(obj):
+			mask = (0x80 | int8(obj >> 16))
+			rest = bytes([int8(obj >> 8), int8(obj)])
+
+		else:
+			mask = int8(obj >> 8)
+			rest = bytes([int8(obj)])
+
+		return dict(mask=mask, rest=rest)
+
 def ServerHeader(opcode = None, size = 0):
-	from .....utility.construct import PackEnum
 	if opcode is None:
 		opcode_con = construct.ByteSwapped(PackEnum(Opcode, construct.Short))
 	else:
 		opcode_con = construct.ByteSwapped(construct.Default(construct.Const(opcode, PackEnum(Opcode, construct.Short)), opcode))
 
 	return construct.Struct(
-		'packet_size' / construct.Default(construct.Short, size + 2),
+		'size' / construct.Default(ServerSize(), size + 2),
 		'opcode' / opcode_con
 	)
 
-def is_large_packet(data: bytes) -> bool:
-	return (0x80 & int8(data[0])) == 0x80
-	# return size > 0x7FFF
+def parse_client_header(data: bytes):
+	return ClientHeader().parse(data)
+
+def parse_server_header(header: bytes):
+	if is_large_server_packet(header):
+		size = (int8(header[0] << 16) & ~0x80) | (int8(header[1]) << 8) | int8(header[2])
+		opcode = (int8(header[4]) << 8) | int8(header[3])
+		return ServerHeader().parse(ServerHeader().build(dict(opcode=opcode, size=size)))
+	else:
+		return ServerHeader().parse(header)
+
+	# else:
+	# 	size = (header[0] << 8) + header[1]
+	# 	opcode = (header[2] << 8) + header[3]
+	#
+	# return Opcode(opcode), size
+
+def unpack_server_header(header: bytes):
+	if is_large_server_packet(header):
+		logger.debug(f'large packet {header[:min(len(header), 5)]=}')
+		size = (int8(header[0] << 16) & ~0x80) | (int8(header[1]) << 8) | int8(header[2])
+		opcode = (int8(header[4]) << 8) | int8(header[3])
+		# ServerHeader()
+	return header
+
+def pack_server_header(opcode: Opcode, size: int) -> bytes:
+	if type(opcode) is Opcode:
+		opcode = opcode.value
+
+	header = bytearray()
+	if size > 0x7FFF:
+		header.append(0x80 | int8(size >> 16))
+
+	header.append(int8(size >> 8))
+	header.append(int8(size))
+
+	header.append(int8(opcode))
+	header.append(int8(opcode >> 8))
+	return bytes(header)

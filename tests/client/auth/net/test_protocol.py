@@ -16,7 +16,7 @@ async def auth_server(stream):
 	protocol = pont.client.auth.net.AuthProtocol(stream)
 	challenge_request = await protocol.receive_challenge_request()
 
-	assert challenge_request.packet_size == 30 + len(challenge_request.account_name)
+	assert challenge_request.size == 30 + len(challenge_request.account_name)
 	assert challenge_request.game == 'WoW'
 	assert challenge_request.version == '3.3.5'
 	assert challenge_request.build == 12340

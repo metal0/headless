@@ -1,6 +1,20 @@
+import datetime
 import ipaddress
 import construct
 from typing import Tuple, Union, NamedTuple
+
+class TypedConstruct(construct.Struct):
+	def _find_subcon(self, name: str):
+		for subcon in self.subcons:
+			if subcon.name == name:
+				return subcon
+		return None
+
+	def __getattr__(self, item):
+		subcon = self._find_subcon(item)
+		if subcon is not None:
+			return self
+		super().__getattribute__(item)
 
 class GuidConstruct(construct.Adapter):
 	def __init__(self, guid_type):
@@ -129,6 +143,29 @@ Coordinates = lambda float_con = construct.Float32b: construct.Struct(
 	'z' / float_con,
 )
 
+class PackedDateTime(construct.Adapter):
+	def __init__(self):
+		super().__init__(construct.Int)
+
+	def _decode(self, obj: int, context, path) -> datetime.datetime:
+		minute = obj & 0b111111
+		hour = (obj >> 6) & 0b11111
+		day = ((obj >> 14) & 0b111111) + 1
+		weekday = (obj >> 11) & 0b111
+		month = (obj >> 20) & 0b1111
+		year = ((obj >> 24) & 0b11111) + 100
+		return datetime.datetime(year, month, day, hour, minute)
+
+	def _encode(self, obj: datetime.datetime, context, path) -> int:
+		result = (obj.year - 100) << 24
+		result |= obj.month << 20
+		result |= (obj.day - 1) << 14
+		result |= obj.weekday() << 11
+		result |= obj.hour << 6
+		result |= obj.minute
+		return result
+		# return ((obj.year - 100) << 24) | (obj.month << 20) | ((obj.day - 1) << 14)  | (obj.weekday() << 11) | (obj.hour << 6) | obj.minute
+
 class PackedCoordinates(construct.Adapter):
 	def __init__(self, position_type):
 		super().__init__(construct.Int)
@@ -147,31 +184,25 @@ class PackedCoordinates(construct.Adapter):
 		value |= (int(obj.z / 0.25) & 0x3FF) << 22
 		return value
 
-def _compute_packed_guid_byte_size(mask) -> int:
+def compute_packed_guid_byte_size(mask) -> int:
 	return sum(1 for i in range(8) if mask & (1 << i))
 
-def compute_mask_size(context) -> int:
-	return _compute_packed_guid_byte_size(context.mask)
+def _compute_guid_mask_size(context) -> int:
+	return compute_packed_guid_byte_size(context.mask)
 
 def pack_guid(guid: int):
 	mask = 0
 	result = bytearray()
-
-	print(f'pack_guid: {guid=}')
-	print(f'{guid >> 7 * 8}')
 
 	for i in range(8):
 		if guid == 0:
 			break
 
 		if guid & 0xFF:
-			print(f'pack_guid: {guid=}, {i=}, {bin(mask)=}, {result=}')
 			mask |= (1 << i)
 			result.append(guid & 0xFF)
 
 		guid >>= 8
-
-	# result.append((guid >> 7 * 8) & )
 
 	return mask, bytes(result)
 
@@ -189,23 +220,24 @@ class GuidUnpacker(construct.Adapter):
 	def __init__(self, guid_type):
 		super().__init__(construct.Struct(
 			"mask" / construct.Byte,
-			"data" / construct.Bytes(compute_mask_size)
+			"data" / construct.Bytes(_compute_guid_mask_size)
 		))
 
 		self.guid_type = guid_type
 
 	def _decode(self, obj, context, path):
-		print(f'_decode: {context=}')
-		print(obj)
-
+		#
 		return self.guid_type(value=unpack_guid(obj.mask, obj.data))
 
 	def _encode(self, obj, context, path):
-		print(f'_encode: {context=}')
-		print(obj)
-
 		mask, data = pack_guid(obj.value)
 		return {"mask": mask, "data": data}
 
 def int8(num: int):
-	return 0xFF & num
+	return (2 ** 8 - 1) & num
+
+def int16(num: int):
+	return (2 ** 16 - 1) & num
+
+def int32(num: int):
+	return (2 ** 32 - 1) & num

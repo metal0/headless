@@ -11,9 +11,9 @@ class AuthEvent(Enum):
 	realmlist_ready = uuid.uuid4()
 
 	#
-	logging_in = uuid.uuid4()
+	authenticating = uuid.uuid4()
 	invalid_login = uuid.uuid4()
-	login_success = uuid.uuid4()
+	authenticated = uuid.uuid4()
 
 auth = AuthEvent
 
@@ -38,7 +38,7 @@ class WorldEvent(Enum):
 	received_guild_query_response = uuid.uuid4()
 
 	received_chat_message = uuid.uuid4()
-	received_gm_chat_message = uuid.uuid4()
+	# received_gm_chat_message = uuid.uuid4()
 	received_duel_request = uuid.uuid4()
 	received_name_query_response = uuid.uuid4()
 	received_bind_point = uuid.uuid4()

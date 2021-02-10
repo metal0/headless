@@ -8,5 +8,5 @@ from ..opcode import Opcode
 #  Though I don't know how effective this will be in the context of TCP streams.
 SMSG_ADDON_INFO = construct.Struct(
 	'header' / ServerHeader(Opcode.SMSG_ADDON_INFO, 4),
-	'unk' / construct.GreedyBytes,
+	'data' / construct.GreedyBytes,
 )

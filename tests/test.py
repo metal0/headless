@@ -25,21 +25,21 @@ def test_close_all():
 
     c = CloseMe()
     with close_all() as to_close:
-        to_close.add(c)
+        to_close.load(c)
     assert c.closed
 
     c = CloseMe()
     with pytest.raises(RuntimeError):
         with close_all() as to_close:
-            to_close.add(c)
+            to_close.load(c)
             raise RuntimeError
     assert c.closed
 
     c = CloseMe()
     with pytest.raises(OSError):
         with close_all() as to_close:
-            to_close.add(CloseKiller())
-            to_close.add(c)
+            to_close.load(CloseKiller())
+            to_close.load(c)
     assert c.closed
 
 

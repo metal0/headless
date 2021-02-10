@@ -30,7 +30,7 @@ class AuthProtocol:
 			'account_name': username,
 			'ip': ip,
 			'os': os,
-			'packet_size': 30 + len(username),
+			'size': 30 + len(username),
 		}))
 
 	async def send_challenge_response(self, prime: int, server_public: int, salt: int, response: Response=Response.success,
@@ -91,15 +91,15 @@ class AuthProtocol:
 		return packets.RealmlistRequest.parse(data)
 
 	async def send_realmlist_response(self, realms):
-		packet_size = 8
+		size = 8
 		for realm in realms:
-			packet_size += 3 + len(realm['name']) + 1 + len(':'.join(map(str, realm['address']))) + 1 + 4 + 3
+			size += 3 + len(realm['name']) + 1 + len(':'.join(map(str, realm['address']))) + 1 + 4 + 3
 			if 'flags' in realm and (realm['flags'] & RealmFlags.specify_build) == RealmFlags.specify_build.value:
-				packet_size += 5
+				size += 5
 
 		await self._send_all(packets.RealmlistResponse.build({
 			'realms': realms,
-			'packet_size': packet_size
+			'size': size
 		}) + b'\x10\x00')
 
 	async def receive_realmlist_response(self) -> packets.RealmlistResponse:

@@ -60,12 +60,16 @@ class AuthResponse(Enum):
 	suspended = 0x20
 	parental_control = 0x21
 
+BillingInfo = construct.Struct(
+	'time_left' / construct.ByteSwapped(construct.Default(construct.Int, 0)),
+	'plan' / construct.Default(construct.Byte, 0),
+	'time_rested' / construct.ByteSwapped(construct.Default(construct.Int, 0)),
+)
+
 SMSG_AUTH_RESPONSE = construct.Struct(
 	'header' / ServerHeader(Opcode.SMSG_AUTH_RESPONSE, 15),
 	'response' / PackEnum(AuthResponse),
-	'billing_time_remaining' / construct.ByteSwapped(construct.Default(construct.Int, 0)),
-	'billing_plan_flags' / construct.Default(construct.Byte, 0),
-	'billing_time_rested' / construct.ByteSwapped(construct.Default(construct.Int, 0)),
+	'billing' / BillingInfo,
 	'expansion' / construct.Default(PackEnum(Expansion), Expansion.wotlk),
 	'queue_position' / construct.Default(construct.Switch(
 		construct.this.response == AuthResponse.wait_queue, {

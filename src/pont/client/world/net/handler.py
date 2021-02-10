@@ -7,17 +7,21 @@ from pont.client import events
 from . import packets
 from .opcode import Opcode
 from .packets.auth_packets import AuthResponse
+from ..chat.message import ChatMessage
 from ..errors import ProtocolError
 
 class WorldHandler:
 	def __init__(self, emitter, world):
 		self._emitter = emitter
+		self._world = world
 		self._packet_map = {
-			Opcode.SMSG_AUTH_RESPONSE: self.handle_auth_response,
 			Opcode.SMSG_TIME_SYNC_REQ: self.handle_time_sync_request,
+			Opcode.SMSG_MESSAGECHAT: self.handle_received_chat_message,
+			Opcode.SMSG_GM_MESSAGECHAT: self.handle_received_chat_message,
 		}
 
 		self._opcode_event_map = {
+			Opcode.SMSG_AUTH_RESPONSE: events.world.received_auth_response,
 			Opcode.SMSG_TUTORIAL_FLAGS: events.world.received_tutorial_flags,
 			Opcode.SMSG_LOGOUT_CANCEL_ACK: events.world.logout_cancelled,
 			Opcode.SMSG_LOGOUT_RESPONSE: events.world.received_logout_response,
@@ -29,8 +33,6 @@ class WorldHandler:
 			Opcode.SMSG_GUILD_EVENT: events.world.received_guild_event,
 			Opcode.SMSG_GUILD_ROSTER: events.world.received_guild_roster,
 			Opcode.SMSG_GUILD_QUERY_RESPONSE: events.world.received_guild_query_response,
-			Opcode.SMSG_MESSAGECHAT: events.world.received_chat_message,
-			Opcode.SMSG_GM_MESSAGECHAT: events.world.received_gm_chat_message,
 			Opcode.SMSG_DUEL_REQUESTED: events.world.received_duel_request,
 			Opcode.SMSG_PONG: events.world.received_pong,
 			Opcode.SMSG_WARDEN_DATA: events.world.received_warden_data,
@@ -44,6 +46,9 @@ class WorldHandler:
 		self._world = world
 		self._time_sync_count = 0
 		self._handler_start_time = time.time()
+
+	def set_handler(self, event, handler):
+		self._packet_map[event] = handler
 
 	def default_handle_event_packet(self, packet, event):
 		self._emitter.emit(event, packet=packet)
@@ -66,7 +71,6 @@ class WorldHandler:
 				return fn(packet)
 
 		except KeyError:
-
 			# If there is no specific handler then try the default event packet handler
 			try:
 				event = self._opcode_event_map[packet.header.opcode]
@@ -90,13 +94,10 @@ class WorldHandler:
 		self._emitter.emit(events.world.sent_time_sync, id=packet.id, ticks=ticks)
 		self._time_sync_count += 1
 
-	def handle_auth_response(self, packet: packets.SMSG_AUTH_RESPONSE):
-		self.default_handle_event_packet(packet, events.world.received_auth_response)
-		if packet.response == AuthResponse.ok:
-			self._emitter.emit(events.world.logged_in)
+	async def _handle_chat_message(self, packet):
+		message = await ChatMessage.load_message(self._world, packet)
+		self._emitter.emit(events.world.received_chat_message, message=message)
+		logger.log('PACKETS', f'packet={packet}')
 
-		elif packet.response == AuthResponse.wait_queue:
-			self._emitter.emit(events.world.in_queue, packet.queue_position)
-
-		else:
-			raise ProtocolError(str(packet.response))
+	async def handle_received_chat_message(self, packet: packets.SMSG_MESSAGECHAT):
+		self._world.nursery.start_soon(self._handle_chat_message, packet)

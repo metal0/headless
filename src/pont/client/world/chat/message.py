@@ -1,8 +1,10 @@
 import datetime
-from enum import Enum
-
 import construct
 
+from enum import Enum
+from typing import Optional
+
+from pont.client.log import logger
 from pont.utility.construct import GuidConstruct
 from ..guid import Guid, GuidType
 
@@ -120,7 +122,38 @@ def DefaultMessage(gm_chat=False):
 			'receiver_guid' / GuidConstruct(Guid),
 		)
 
-class Message:
-	def __init__(self, text: str):
-		self.text = text
+class ChatMessage:
+	@staticmethod
+	async def load_message(world, packet):
+		sender = await world.names.lookup(packet.sender_guid)
+		receiver = await world.names.lookup(packet.info.receiver_guid)
+		return ChatMessage(world, packet, sender, receiver)
+
+	def __init__(self, world, packet, sender: str, receiver: Optional[str]):
+		self._world = world
+		self._packet = packet
+		self._sender = sender
+		self._receiver = receiver
+
 		self.time = datetime.time()
+
+	@property
+	def text(self):
+		return self._packet.text
+
+	@property
+	def type(self):
+		return self._packet.message_type
+
+	def __str__(self):
+		receiver_message = f''
+		if self.receiver() is not None:
+			receiver_message = f' -> {self.receiver().name}'
+
+		return f'[{self.sender().name}{receiver_message}] [{self.type}]: {self.text}'
+
+	def sender(self):
+		return self._sender
+
+	def receiver(self):
+		return self._receiver

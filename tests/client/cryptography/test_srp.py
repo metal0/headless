@@ -1,6 +1,9 @@
 import json
 import pytest
 
+from pont.cryptography.srp import sha_interleave
+
+
 def load_test_servers(filename: str):
 	with open(filename) as f:
 		return json.load(f)
@@ -32,6 +35,10 @@ def test_srp_sha1_1():
 def test_srp_sha1_2():
 	from pont.cryptography import sha1
 	assert sha1('hello there', out=hex) == '6e71b3cac15d32fe2d36c270887df9479c25c640'
+
+def test_sha_interleave_bug():
+	# This particular client premaster secret causes an IndexError to be thrown
+	sha_interleave(407391322519203461383069596634004513669516857100933963214653502998367330243)
 
 def test_trinity_core_login():
 	run_login_test(

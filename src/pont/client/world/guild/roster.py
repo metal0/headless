@@ -29,9 +29,9 @@ RosterMemberData = construct.Struct(
 )
 
 class GuildRoster:
-	def __init__(self):
-		self._members = {}
+	def __init__(self, member_data: RosterMemberData):
+		self._member_data = member_data
 
-	def __getitem__(self, name: str):
-		return self._members[name]
-
+	@property
+	def guid(self):
+		return self._

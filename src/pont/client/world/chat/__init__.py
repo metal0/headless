@@ -1,2 +1,2 @@
 from .chat import Chat
-from .message import Message, MessageType
+from .message import ChatMessage, MessageType

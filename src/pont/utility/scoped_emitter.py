@@ -1,4 +1,6 @@
 import inspect
+
+import pyee
 import trio
 from loguru import logger
 
@@ -31,7 +33,7 @@ class BaseEmitter:
 				await trio.lowlevel.checkpoint()
 				return fn(*args, **kwargs)
 
-			logger.log('EVENTS', f'installed {event=} {fn=}')
+			logger.log('EVENTS', f'installed listener: {event=} is handled once by {fn=}')
 			if not inspect.iscoroutinefunction(fn):
 				target_fn = fn_async
 
@@ -49,7 +51,7 @@ class BaseEmitter:
 				await trio.lowlevel.checkpoint()
 				return fn(*args, **kwargs)
 
-			logger.log('EVENTS', f'installed {event=} {fn=}')
+			logger.log('EVENTS', f'installed listener: {event=} is handled by {fn=}')
 			if not inspect.iscoroutinefunction(fn):
 				target_fn = fn_async
 
@@ -64,7 +66,6 @@ class BaseEmitter:
 class AsyncScopedEmitter(BaseEmitter):
 	async def aclose(self):
 		for event, fn_list in self._events.items():
-			await trio.lowlevel.checkpoint()
 			for fn in fn_list:
 				if fn in self._emitter.listeners(event):
 					self._emitter.remove_listener(event, fn)

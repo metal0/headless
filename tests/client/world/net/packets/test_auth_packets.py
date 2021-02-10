@@ -9,7 +9,7 @@ from pont.client.world.net.packets.auth_packets import AuthResponse
 def test_world_auth_packet():
 	data = bytes.fromhex('002aec01010000004c6f82e4ab892d3d480a9898d510f879f862479fad62c8815ff00fd85e5ab6b4031684e9')
 	auth_challenge = pont.client.world.net.packets.SMSG_AUTH_CHALLENGE.parse(data)
-	assert auth_challenge.header.packet_size == len(data) - 2
+	assert auth_challenge.header.size == len(data) - 2
 	assert auth_challenge.server_seed == 3833753420
 	assert auth_challenge.encryption_seed1 == 211717911769230637244251202614564063659
 	assert auth_challenge.encryption_seed2 == 310395952709835516542653712987794727597
@@ -17,7 +17,7 @@ def test_world_auth_packet():
 
 	data0 = bytes.fromhex('010000008ECC9FDBCD1F27CEABF0E9AA76AB9A09BEC6DDB30191D5023A19737F2C41F060128CC796')
 	auth_challenge = pont.client.world.net.packets.SMSG_AUTH_CHALLENGE.parse(data)
-	# assert auth_challenge.header.packet_size + 2 == len(data0)
+	# assert auth_challenge.header.size + 2 == len(data0)
 	assert auth_challenge.server_seed == 3833753420
 	assert auth_challenge.encryption_seed1 == 211717911769230637244251202614564063659
 	assert auth_challenge.encryption_seed2 == 310395952709835516542653712987794727597
@@ -34,13 +34,13 @@ def test_world_auth_packet():
 	assert auth_session.region_id == 0
 	assert auth_session.battlegroup_id == 0
 	assert auth_session.realm_id == 1
-	assert len(data1) == auth_session.header.packet_size + 2
+	assert len(data1) == auth_session.header.size + 2
 
 	data2 = bytes.fromhex('012fed010000343000000000000041444d494e00000000008a58920b0000000000000000010000000200000000000000b37231a713f7ace4197c3d14e3f1f095ded6683e9e020000789c75d2414ec33010055077c11958949bb022a91445d49bc6acab893d24a3d8e368e294b6f7e0089c8bab209040200debaf37df1ecdad31a68a74bd8284e3831f094f9890cb536b36e9e56e6ffee4820c7ab2fa4299bfb3edfbcddb4f5681f428cb98679556504ac467c2182c312598b519c481785007d410910388c2ea9c7a28fb3c68ec2b73782e0adc61bf0e2ee7b828b2b1f50845fd6b63bb554e78511fdac4cb3cea6ca5182ae049752d2f337abdb02d98baec272cffadc78297acda03505089fbdca8dee728a105860145837942fd089c40c06ea218f546016294dff4fe75f7f8015c7eda99')
 	auth_session3 = pont.client.world.net.packets.CMSG_AUTH_SESSION.parse(data2)
 	print(f'good packet: {auth_session3}')
 	print(len(data2))
-	assert len(data2) == auth_session3.header.packet_size + 2
+	assert len(data2) == auth_session3.header.size + 2
 
 	data3 = bytes.fromhex('012fed010000343000000000000041444d494e0000000000cd182e5400000000000000000100000001000000000000003d21ef05c54be91dc684aeab15b93a8b79e61e609e020000789c75d2414ec33010055077c11958949bb022a91445d49bc6acab893d24a3d8e368e294b6f7e0089c8bab209040200debaf37df1ecdad31a68a74bd8284e3831f094f9890cb536b36e9e56e6ffee4820c7ab2fa4299bfb3edfbcddb4f5681f428cb98679556504ac467c2182c312598b519c481785007d410910388c2ea9c7a28fb3c68ec2b73782e0adc61bf0e2ee7b828b2b1f50845fd6b63bb554e78511fdac4cb3cea6ca5182ae049752d2f337abdb02d98baec272cffadc78297acda03505089fbdca8dee728a105860145837942fd089c40c06ea218f546016294dff4fe75f7f8015c7eda99')
 	print(pont.client.world.net.packets.CMSG_AUTH_SESSION.parse(data3))
@@ -52,11 +52,11 @@ def test_world_auth_packets2():
 	client_data = bytes.fromhex('012fed010000343000000000000041444d494e0000000000f32ebd3f000000000000000001000000000000000000000012516f1d035e11da1dbb2b69faa6cfd86a3b4e109e020000789c75d2414ec33010055077c11958949bb022a91445d49bc6acab893d24a3d8e368e294b6f7e0089c8bab209040200debaf37df1ecdad31a68a74bd8284e3831f094f9890cb536b36e9e56e6ffee4820c7ab2fa4299bfb3edfbcddb4f5681f428cb98679556504ac467c2182c312598b519c481785007d410910388c2ea9c7a28fb3c68ec2b73782e0adc61bf0e2ee7b828b2b1f50845fd6b63bb554e78511fdac4cb3cea6ca5182ae049752d2f337abdb02d98baec272cffadc78297acda03505089fbdca8dee728a105860145837942fd089c40c06ea218f546016294dff4fe75f7f8015c7eda99')
 	client_auth_session = pont.client.world.net.packets.CMSG_AUTH_SESSION.parse(client_data)
 	print(f'{client_auth_session}')
-	assert len(client_data) == client_auth_session.header.packet_size + 2
+	assert len(client_data) == client_auth_session.header.size + 2
 
 	client_seed = random.randint(0, 10000000)
 	session_args = {
-		'header': {'packet_size': 61 + 237 + len('Garygarygary')},
+		'header': {'size': 61 + 237 + len('Garygarygary')},
 		'account_name': 'GarygaryGary',
 		'client_seed': client_seed,
 		'account_hash': 0,
@@ -64,18 +64,18 @@ def test_world_auth_packets2():
 
 	pont_packet = pont.client.world.net.packets.CMSG_AUTH_SESSION.build(session_args)
 	pont_session = pont.client.world.net.packets.CMSG_AUTH_SESSION.parse(pont_packet)
-	assert len(pont_packet) == pont_session.header.packet_size + 2
+	assert len(pont_packet) == pont_session.header.size + 2
 	assert pont_session.client_seed == client_seed
 	assert pont_session.account_name == 'GARYGARYGARY'
 
 def test_auth_response():
 	data = bytes.fromhex('000DEE010C00000000000000000002')
 	packet = pont.client.world.net.packets.SMSG_AUTH_RESPONSE.parse(data)
-	assert packet.header.packet_size == len(data) - 2
+	assert packet.header.size == len(data) - 2
 	assert packet.header.opcode == Opcode.SMSG_AUTH_RESPONSE
 	assert packet.response == AuthResponse.ok
-	assert packet.billing_time_remaining == 0
-	assert packet.billing_plan_flags == 0
-	assert packet.billing_time_rested == 0
+	assert packet.billing.time_left == 0
+	assert packet.billing.plan == 0
+	assert packet.billing.time_rested == 0
 	assert packet.expansion == Expansion.wotlk
 	assert packet.queue_position is None

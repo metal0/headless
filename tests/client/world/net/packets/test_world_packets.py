@@ -2,6 +2,7 @@ import pont
 from pont.client.world.entities.player import Race, Gender, CombatClass
 from pont.client.world.guid import Guid, GuidType
 from pont.client.world.net import Opcode
+from pont.client.world.net.packets import CMSG_PLAYER_LOGIN, SMSG_LOGOUT_RESPONSE, SMSG_MOTD
 
 
 def test_SMSG_LOGIN_VERIFY_WORLD():
@@ -13,6 +14,14 @@ def test_SMSG_LOGIN_VERIFY_WORLD():
 	assert packet.position.z == 5868.67724609375
 	assert packet.rotation == 3.0932998657226562
 	print(packet)
+
+def test_SMSG_LOGOUT_RESPONSE():
+	data = b'\x00\x07L\x00\x00\x00\x00\x00\x01'
+	packet = SMSG_LOGOUT_RESPONSE.parse(data)
+
+	assert packet.header.size == 7
+	assert packet.reason == 0
+	assert packet.instant_logout is True
 
 def test_SMSG_NOTIFICATION():
 	data = b'\x00\x13\xcb\x01Unknown language\x00'
@@ -38,7 +47,8 @@ def test_SMSG_TUTORIAL_FLAGS():
 	print(packet)
 
 def test_SMSG_ADDON_INFO():
-	data = bytes.fromhex('00BEEF020201000000000000020100000000000002010000000000000201000000000000020100000000000002010000000000000201000000000000020100000000000002010000000000000201000000000000020100000000000002010000000000000201000000000000020100000000000002010000000000000201000000000000020100000000000002010000000000000201000000000000020100000000000002010000000000000201000000000000020100000000000000000000')
+	data = b'\x00\xbe\xef\x02\x02\x01\x00\x00\x00\x00\x00\x00\x02\x01\x00\x00\x00\x00\x00\x00\x02\x01\x00\x00\x00\x00\x00\x00\x02\x01\x00\x00\x00\x00\x00\x00\x02\x01\x00\x00\x00\x00\x00\x00\x02\x01\x00\x00\x00\x00\x00\x00\x02\x01\x00\x00\x00\x00\x00\x00\x02\x01\x00\x00\x00\x00\x00\x00\x02\x01\x00\x00\x00\x00\x00\x00\x02\x01\x00\x00\x00\x00\x00\x00\x02\x01\x00\x00\x00\x00\x00\x00\x02\x01\x00\x00\x00\x00\x00\x00\x02\x01\x00\x00\x00\x00\x00\x00\x02\x01\x00\x00\x00\x00\x00\x00\x02\x01\x00\x00\x00\x00\x00\x00\x02\x01\x00\x00\x00\x00\x00\x00\x02\x01\x00\x00\x00\x00\x00\x00\x02\x01\x00\x00\x00\x00\x00\x00\x02\x01\x00\x00\x00\x00\x00\x00\x02\x01\x00\x00\x00\x00\x00\x00\x02\x01\x00\x00\x00\x00\x00\x00\x02\x01\x00\x00\x00\x00\x00\x00\x02\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+
 	packet = pont.client.world.net.packets.SMSG_ADDON_INFO.parse(data)
 	print(packet)
 
@@ -118,30 +128,38 @@ def test_CMSG_CHAR_ENUM():
 def test_CMSG_PLAYER_LOGIN():
 	data = bytes.fromhex('000C3D0000000100000000000000')
 	packet = pont.client.world.net.packets.CMSG_PLAYER_LOGIN.parse(data)
+
+	assert packet.header.size == 12
 	assert packet.player_guid == Guid(counter=1, type=GuidType.player)
 	print(packet)
+
+	data = b'\x00\x0c=\x00\x00\x000\x00\x00\x00\x00\x00\x00\x00'
+	packet = CMSG_PLAYER_LOGIN.parse(data)
+
+	assert packet.header.size == 12
+	assert packet.player_guid == Guid(0x30)
 
 def test_SMSG_TIME_SYNC_REQ():
 	data = bytes.fromhex('000690033E010000')
 	packet = pont.client.world.net.packets.SMSG_TIME_SYNC_REQ.parse(data)
-	assert packet.header.packet_size == 6
+	assert packet.header.size == 6
 	assert packet.id == 318
 	print(packet)
 
 	data2 = b'\x00\x06\x90\x03\x19\x00\x00\x00'
 	packet2 = pont.client.world.net.packets.SMSG_TIME_SYNC_REQ.parse(data2)
-	assert packet2.header.packet_size == 6
+	assert packet2.header.size == 6
 	assert packet2.id == 25
 	print(packet2)
 
 	data3 = b'\x00\x06\x90\x03g\x00\x00\x00'
 	packet3 = pont.client.world.net.packets.SMSG_TIME_SYNC_REQ.parse(data3)
-	assert packet3.header.packet_size == 6
+	assert packet3.header.size == 6
 	print(packet3)
 
 	data4 = b'\x00\x06\x90\x03h\x00\x00\x00'
 	packet4 = pont.client.world.net.packets.SMSG_TIME_SYNC_REQ.parse(data4)
-	assert packet4.header.packet_size == 6
+	assert packet4.header.size == 6
 	assert packet3.id == packet4.id - 1
 	print(packet4)
 
@@ -150,7 +168,7 @@ def test_CMSG_TIME_SYNC_REQ():
 	packet = pont.client.world.net.packets.CMSG_TIME_SYNC_RESP.parse(data)
 	print(packet)
 
-	assert packet.header.packet_size == 10
+	assert packet.header.size == 10
 	assert packet.id == 5
 	assert packet.client_ticks == 50133
 
@@ -159,7 +177,7 @@ def test_CMSG_NAME_QUERY():
 	packet = pont.client.world.net.packets.CMSG_NAME_QUERY.parse(data)
 	print(packet)
 
-	assert packet.header.packet_size == 12
+	assert packet.header.size == 12
 	assert packet.header.opcode == Opcode.CMSG_NAME_QUERY
 	assert packet.guid == Guid(counter=0x1f)
 
@@ -188,10 +206,20 @@ def test_SMSG_BIND_POINT_UPDATE():
 	packet = pont.client.world.net.packets.SMSG_BIND_POINT_UPDATE.parse(data)
 	print(packet)
 
-	assert packet.header.packet_size == 22
+	assert packet.header.size == 22
 	assert packet.header.opcode == Opcode.SMSG_BIND_POINT_UPDATE
 	assert packet.position.x == 83.53119659423828
 	assert packet.position.y == -132.4929962158203
 	assert packet.position.z == -8949.9501953125
 	assert packet.map_id == 0
 	assert packet.area_id == 12
+
+def test_SMSG_MOTD():
+	data = b'\x00t=\x03\x02\x00\x00\x00Welcome to an AzerothCore server.\x00|cffFF4A2DThis server runs on AzerothCore|r |cff3CE7FFwww.azerothcore.org|r\x00'
+	packet = SMSG_MOTD.parse(data)
+
+	assert packet.header.size == 116
+	assert packet.lines == [
+		'Welcome to an AzerothCore server.',
+		'|cffFF4A2DThis server runs on AzerothCore|r |cff3CE7FFwww.azerothcore.org|r'
+	]

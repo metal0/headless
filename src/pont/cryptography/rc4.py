@@ -20,12 +20,7 @@ def import_cryptography_backend():
 	logger.info('cryptography.io library backend selected')
 	return create_encryptor
 
-def import_custom_backend():
-	from .rc4_backend import RC4Backend
-	logger.info('custom python backend selected')
-	return lambda key: lambda data: RC4Backend(key).encrypt(data)
-
-backends = [import_arc4_backend, import_cryptography_backend, import_custom_backend]
+backends = [import_arc4_backend, import_cryptography_backend]
 backend_encrypt = None
 
 for import_backend in backends:
@@ -45,4 +40,7 @@ class RC4:
 		self._encrypt = backend_encrypt(key)
 
 	def encrypt(self, data):
+		return self._encrypt(data)
+
+	def decrypt(self, data):
 		return self._encrypt(data)

@@ -20,7 +20,7 @@ NameInfo = construct.Struct(
 	'declined' / construct.Default(construct.Flag, False)
 )
 
-class NotFlag(construct.Adapter):
+class NegatedFlag(construct.Adapter):
 	def __init__(self):
 		super().__init__(construct.Flag)
 
@@ -33,6 +33,6 @@ class NotFlag(construct.Adapter):
 SMSG_NAME_QUERY_RESPONSE = construct.Struct(
 	'header' / ServerHeader(Opcode.SMSG_NAME_QUERY_RESPONSE, 8+1+1+1+1+1+10),
 	'guid' / GuidUnpacker(Guid),
-	'found' / NotFlag(),
+	'found' / NegatedFlag(),
 	'info' / construct.If(construct.this.found, NameInfo)
 )

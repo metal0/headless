@@ -8,7 +8,7 @@ from pont.client.world.guild.member import MemberStatus
 def test_CMSG_GUILD_QUERY():
 	data = bytes.fromhex('00065400000001000000')
 	packet = pont.client.world.net.packets.CMSG_GUILD_QUERY.parse(data)
-	assert packet.header.packet_size == 6
+	assert packet.header.size == 6
 	assert packet.guild_id == 1
 	print(packet)
 
@@ -17,10 +17,10 @@ def test_SMSG_GUILD_QUERY_RESPONSE():
 	packet = pont.client.world.net.packets.SMSG_GUILD_QUERY_RESPONSE.parse(data)
 	print(packet)
 
-	assert packet.header.packet_size == 99
-	assert packet.info.guild_id == 1
-	assert packet.info.name == 'Carpe Kindergarten'
-	ranks = list(packet.info.ranks)
+	assert packet.header.size == 99
+	assert packet.guild_id == 1
+	assert packet.name == 'Carpe Kindergarten'
+	ranks = list(packet.ranks)
 	try:
 		while True:
 			ranks.remove('')
@@ -28,11 +28,11 @@ def test_SMSG_GUILD_QUERY_RESPONSE():
 		pass
 
 	assert ranks == ['Guild Master', 'Officer', 'Veteran', 'Member', 'Initiate']
-	assert packet.info.emblem_style == 0
-	assert packet.info.emblem_color == 0
-	assert packet.info.border_style == 0
-	assert packet.info.border_color == 0
-	assert packet.info.num_ranks == 5
+	assert packet.emblem_style == 0
+	assert packet.emblem_color == 0
+	assert packet.border_style == 0
+	assert packet.border_color == 0
+	assert packet.num_ranks == 5
 
 # def test_SMSG_
 
@@ -41,7 +41,7 @@ def test_SMSG_GUILD_ROSTER():
 	packet = pont.client.world.net.packets.SMSG_GUILD_ROSTER.parse(data)
 	print(packet)
 
-	assert packet.header.packet_size == 958
+	assert packet.header.size == 958
 	assert packet.total_members == 20
 	assert packet.motd == 'hello brate'
 	assert packet.guild_info == ''
@@ -91,24 +91,38 @@ def test_SMSG_GUILD_EVENT():
 	packet = pont.client.world.net.packets.SMSG_GUILD_EVENT.parse(data)
 	print(packet)
 
-	assert packet.header.packet_size == 11
+	assert packet.header.size == 11
 	assert packet.type == GuildEventType.motd
 	assert packet.parameters[0] == 'ayyyyy'
 	assert packet.guid is None
 
-	data2 = bytes.fromhex('00109200020168656C6C6F20627261746500')
-	packet2 = pont.client.world.net.packets.SMSG_GUILD_EVENT.parse(data2)
-	print(packet2)
+	data = bytes.fromhex('00109200020168656C6C6F20627261746500')
+	packet = pont.client.world.net.packets.SMSG_GUILD_EVENT.parse(data)
+	print(packet)
 
-	assert packet2.header.packet_size == 16
-	assert packet2.type == GuildEventType.motd
-	assert packet2.parameters[0] == 'hello brate'
-	assert packet2.guid is None
+	assert packet.header.size == 16
+	assert packet.type == GuildEventType.motd
+	assert packet.parameters[0] == 'hello brate'
+	assert packet.guid is None
+
+	data = b'\x00\x11\x92\x00\r\x01Pont\x000\x00\x00\x00\x00\x00\x00\x00'
+	packet = pont.client.world.net.packets.SMSG_GUILD_EVENT.parse(data)
+
+	assert packet.header.size == 17
+	assert packet.type == GuildEventType.signed_off
+	assert packet.parameters == ['Pont']
+	assert packet.guid == Guid(0x30)
+
+# type = GuildEventType.signed_off
+# parameters = ListContainer:
+# Pont
+# guid = 0x30, GuidType.player
 
 def test_SMSG_GUILD_INVITE():
 	data = b'\x00\x19\x83\x00Act\x00Carpe Kindergarten\x00'
 	packet = pont.client.world.net.packets.SMSG_GUILD_INVITE.parse(data)
 	print(packet)
 
+	assert packet.header.size == 25
 	assert packet.inviter == 'Act'
 	assert packet.guild == 'Carpe Kindergarten'

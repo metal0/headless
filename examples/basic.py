@@ -7,6 +7,7 @@ import pont
 from pont.client import auth, world
 from pont.client.world.chat.message import MessageType
 from pont.client.world.language import Language
+from pont.client.world.net import Opcode
 
 
 def load_login(server: str, filename: str):
@@ -38,20 +39,23 @@ async def run(server, proxy=None):
 				if character.name == account['character']:
 					break
 
-			# Enter world with character
-			async with client.enter_world(character):
-				# await client.world.chat.send_message('bongour, brother', MessageType.guild, Language.common)
-				me = client.world.local_player
-				await me.say('hello!')
+			while True:
+				# Enter world with character
+				async with client.enter_world(character):
+					me = client.world.local_player
+					await me.chat.guild('hello!')
 
-				# if me.guild is not None:
-					# client.world.local_player
+					await client.world.protocol.send_CMSG_GUILD_ROSTER()
+					roster = await client.world.wait_for_packet(Opcode.SMSG_GUILD_ROSTER)
+					print(roster)
 
-				await trio.sleep_forever()
+					# await me.chat.whisper('Hey!', 'Meow')
 
-				# await trio.sleep(2)
-					# await client.logout()
+					# if me.guild is not None:
 
+					await trio.sleep_forever()
+					# await trio.sleep(2)
+				await trio.sleep(2)
 
 	except (Exception, trio.TooSlowError, auth.AuthError, world.WorldError):
 		loguru.logger.exception('Error')
@@ -59,8 +63,8 @@ async def run(server, proxy=None):
 async def main():
 	login_filename = 'C:\\Users\\Owner\\Documents\\WoW\\servers_config.json'
 	acore = load_login('acore', login_filename)
-	# proxy = ('server', 1664)
-	proxy = None
+	proxy = ('server', 1069)
+	# proxy = None
 
 	while True:
 		await run(acore, proxy=proxy)

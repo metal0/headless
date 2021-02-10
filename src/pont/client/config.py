@@ -25,6 +25,9 @@ class EmittingValue:
 		self.value = value
 		self.__emitter.emit(self.event, old=previous_value, new=self.value)
 
+def _internal_name(name: str):
+	return name.replace('.', '_')
+
 # TODO: Config with modular hierarchy
 class Config:
 	def __init__(self, emitter, **named_args):
@@ -32,12 +35,15 @@ class Config:
 		self.__config_names = named_args.keys()
 
 		for name, arg in named_args.items():
-			self.__make_property(name, default=arg)
+			self.__make_property(_internal_name(name), default=arg)
+
+	def __getattr__(self, item):
+		return super().__getattribute__(_internal_name(item))
 
 	def __str__(self):
 		result = {}
 		for name in self.__config_names:
-			result[name] = str(self.__getattribute__(name))
+			result[_internal_name(name)] = str(self.__getattribute__(_internal_name(name)))
 		return json.dumps(result)
 
 	def __make_property(self, name: str, default):
@@ -52,7 +58,7 @@ class Config:
 			def getter(self):
 				return emitting_value.get()
 
-			setattr(Config, name, property(fget=getter, fset=setter))
+			setattr(Config, _internal_name(name), property(fget=getter, fset=setter))
 
 		except AttributeError as e:
 			logger.error(f'Attribute Error (probably as a result of eval in Config.make_property): {e}')
@@ -68,14 +74,14 @@ class Config:
 		config = json.loads(file_data)
 		logger.debug(f'load {path=}: {config=}')
 		for name in self.__config_names:
-			self.__setattr__(name, json.loads(config[name]))
+			self.__setattr__(_internal_name(name), json.loads(config[_internal_name(name)]))
 
 	async def save(self, path: str):
 		logger.debug(f'save {path=}')
 		async with await trio.open_file(path, 'w') as f:
 			result = {}
 			for name in self.__config_names:
-				result[name] = json.dumps(self.__getattribute__(name))
+				result[_internal_name(name)] = json.dumps(self.__getattribute__(_internal_name(name)))
 			await f.write(json.dumps(result))
 
 

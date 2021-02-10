@@ -2,9 +2,9 @@ import trio
 # import transitions
 from loguru import logger
 from trio_socks import socks5
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Any
 
-from pont.client.auth.net import AuthProtocol
+from pont.client.auth.net import AuthProtocol, Opcode
 from pont.client import events
 from pont.utility.enum import ComparableEnum
 from pont.utility.string import bytes_to_int
@@ -53,6 +53,7 @@ class AuthSession:
 				raise ValueError('Both stream and address cannot be None!')
 
 			if self.proxy is not None or proxy is not None:
+				logger.info(f'Using SOCKS proxy server: {proxy}')
 				self._stream = socks5.Socks5Stream(destination=address, proxy=proxy or self.proxy or None)
 				await self._stream.negotiate()
 
@@ -67,10 +68,10 @@ class AuthSession:
 		logger.info('Connected!')
 
 	async def authenticate(self, username, password, debug=None, country='enUS', arch='x86', os='OSX', build=12340):
-		logger.info(f'Logging in with username {username}...')
+		logger.info(f'Authenticating with username {username}...')
 		self._state = AuthState.logging_in
 		self._username = username
-		self._emitter.emit(events.auth.logging_in)
+		self._emitter.emit(events.auth.authenticating)
 
 		await self.protocol.send_challenge_request(username=username, country=country, arch=arch, os=os, build=build)
 		logger.debug('sent challenge request')
@@ -104,9 +105,9 @@ class AuthSession:
 			raise InvalidLogin('Invalid username or password')
 
 		self._state = AuthState.logged_in
-		self._emitter.emit(events.auth.login_success)
+		self._emitter.emit(events.auth.authenticated)
 		self._session_key = bytes_to_int(self._srp.session_key)
-		logger.info(f'Logged in!')
+		logger.info(f'Authenticated!')
 
 	async def realms(self):
 		await self.protocol.send_realmlist_request()

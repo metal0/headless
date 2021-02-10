@@ -5,7 +5,7 @@ from pont.client.auth.realm import RealmType, RealmStatus, RealmFlags
 def  test_realmlist_response_decode_encode():
 	packet = bytes.fromhex('108700000000000300010000426c61636b726f636b205b507650206f6e6c795d0035342e33362e3130352e3134373a38303836000000000008080a01000049636563726f776e0035342e33362e3130352e3134383a3830383500000040400a08070100004c6f72646165726f6e0035342e33362e3130352e3134363a393432370000000040030806')
 	realmlist_response = packets.RealmlistResponse.parse(packet)
-	print(f'{realmlist_response.packet_size=}')
+	print(f'{realmlist_response.size=}')
 	assert len(realmlist_response.realms) == 3
 
 	calculated_size = 8
@@ -15,7 +15,7 @@ def  test_realmlist_response_decode_encode():
 		if (realm.flags & RealmFlags.specify_build) == RealmFlags.specify_build.value:
 			calculated_size += 5
 
-	assert realmlist_response.packet_size == calculated_size
+	assert realmlist_response.size == calculated_size
 	assert realmlist_response.realms[0].name == 'Blackrock [PvP only]'
 	assert realmlist_response.realms[0].type == RealmType.pvp
 	assert realmlist_response.realms[0].status == RealmStatus.online

@@ -54,7 +54,7 @@ def test_challenge_request_named_args():
 	assert challenge_request.timezone_bias == int(-time.timezone / 60)
 	assert challenge_request.build == 12340
 	assert challenge_request.ip == '127.0.0.1'
-	assert challenge_request.packet_size == 30 + len(challenge_request.account_name)
+	assert challenge_request.size == 30 + len(challenge_request.account_name)
 	assert packets.ChallengeRequest.build(challenge_request) == packet
 
 def test_challenge_response_packet1():

@@ -1,11 +1,9 @@
 from enum import Enum
 from typing import Optional
 
-import construct
-
 from pont.client.world.errors import ProtocolError
+from pont.client.world.net.opcode import Opcode
 from pont.client.world.state import WorldState
-
 
 class GuildMemberDataType(Enum):
 	zone_id = 1
@@ -77,6 +75,9 @@ class GuildRankRights(Enum):
 	create_guild_event = 0x00100000
 	all = 0x001DF1FF
 
+# TODO: Guild will be a generic interface that has all the privileged and non-privileged functions of a guild.
+#   Each privilege is checked before executing the corresponding feature and any access violations are thrown as
+#   exceptions.
 class Guild:
 	max_ranks = 10
 	min_ranks = 5
@@ -85,6 +86,7 @@ class Guild:
 		self._info = None
 		self._world = world
 		self._name = name
+		self._access_token = None
 
 		if world.state < WorldState.in_game:
 			raise ProtocolError(f'Must be in-game to send a chat message; world state is {self._world.state} instead')
@@ -98,5 +100,14 @@ class Guild:
 	def ranks(self):
 		if self._info is not None:
 			return self._info.ranks
+
+	# async def ginvite(self, name: str):
+	# 	# if not self._access_token.has_authority_to(Actions.guild_invite):
+	# 	# 	raise PermissionError(f'{self._access_token} is not authorized to invite guild members')
+	# 	self._world.
+
+	async def roster(self):
+		await self._world.protocol.send_CMSG_GUILD_ROSTER()
+		return await self._world.wait_for_packet(Opcode.SMSG_GUILD_ROSTER)
 
 	# async def _send_query
