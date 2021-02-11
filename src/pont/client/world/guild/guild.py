@@ -79,17 +79,34 @@ class GuildRankRights(Enum):
 #   Each privilege is checked before executing the corresponding feature and any access violations are thrown as
 #   exceptions.
 class Guild:
-	max_ranks = 10
 	min_ranks = 5
+	max_ranks = 10
 
-	def __init__(self, world, name: Optional[str]=None):
+	# @staticmethod
+	# async def query(world, data):
+	# 	if type(data) is str:
+	# 		guid = 0
+	# 		return Guild(world, guid=guid, name=data)
+	# 	elif type(data) is Guid:
+	# 		name = ''
+	# 		return Guild(world, guid=data, name=name)
+	# 	elif type(data) is int:
+	# 		return await Guild.query(world, Guid(value=data))
+	# 	raise TypeError(f'Invalid type for data used: {type(data)}')
+
+	def __init__(self, world, guid, name=None):
 		self._info = None
 		self._world = world
+		self._guid = guid
 		self._name = name
 		self._access_token = None
 
 		if world.state < WorldState.in_game:
 			raise ProtocolError(f'Must be in-game to send a chat message; world state is {self._world.state} instead')
+
+	@property
+	def guid(self):
+		return self._guid
 
 	@property
 	def name(self):

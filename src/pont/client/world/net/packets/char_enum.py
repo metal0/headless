@@ -9,6 +9,6 @@ CMSG_CHAR_ENUM = construct.Struct(
 )
 
 SMSG_CHAR_ENUM = construct.Struct(
-	'header' / ServerHeader(Opcode.SMSG_CHAR_ENUM, 4 + construct.len_(construct.this.characters)),
+	'header' / ServerHeader(Opcode.SMSG_CHAR_ENUM, 4 + construct.len_(construct.this.cache)),
 	'characters' / construct.PrefixedArray(construct.Byte, CharacterInfo),
 )

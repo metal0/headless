@@ -1,6 +1,7 @@
 import trio
 
 from pont.client import events
+from pont.client.world import Guid
 from pont.client.world.net import Opcode
 from pont.client.log import logger
 
@@ -37,7 +38,7 @@ class Cache:
 
 		return await self.update(key)
 
-class NameCache(Cache):
+class CharacterCache(Cache):
 	def __init__(self, world):
 		super().__init__()
 		self._world = world
@@ -50,6 +51,9 @@ class NameCache(Cache):
 		self._storage[packet.guid] = packet.info
 
 	async def fetch(self, guid):
+		if guid == Guid(0):
+			return None
+
 		await self._world.protocol.send_CMSG_NAME_QUERY(guid=guid)
 
 		with trio.fail_after(10):

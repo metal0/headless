@@ -59,7 +59,7 @@ class Chatbot:
 				self.attach(client)
 
 				# Login to auth server
-				with trio.fail_after(5):
+				with trio.fail_after(10):
 					await client.login(username, password)
 
 				# Find desired realm
@@ -68,7 +68,7 @@ class Chatbot:
 						break
 
 				# Connect to the world server
-				with trio.fail_after(5):
+				with trio.fail_after(10):
 					await client.select_realm(realm)
 
 				# Find desired character

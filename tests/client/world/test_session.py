@@ -16,7 +16,7 @@ from pont.client.world.net.packets.auth_packets import AuthResponse
 from pont.client.world.state import WorldState
 from tests.client.cryptography import load_test_servers
 
-logins_filename = 'C:\\Users\\Owner\\Documents\\WoW\\servers_config.json'
+logins_filename = '/home/fure/work/pont/servers_config.json'
 test_servers = load_test_servers(logins_filename)
 ac_login = test_servers['acore']['account']
 client_world: Optional[WorldSession] = None

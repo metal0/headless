@@ -14,7 +14,7 @@ from .duel_packets import SMSG_DUEL_REQUESTED
 from .faction_packets import SMSG_INITIALIZE_FACTIONS
 from .group_packets import SMSG_GROUP_INVITE
 from .guild_packets import SMSG_GUILD_QUERY_RESPONSE, SMSG_GUILD_ROSTER, SMSG_GUILD_INVITE, SMSG_GUILD_EVENT
-from .headers import ServerHeader, ClientHeader, parse_server_header, parse_client_header
+from .headers import ServerHeader, ClientHeader
 from .login_packets import SMSG_LOGOUT_RESPONSE, SMSG_LOGOUT_CANCEL_ACK, SMSG_LOGOUT_COMPLETE, SMSG_LOGIN_VERIFY_WORLD
 from .misc_packets import SMSG_INIT_WORLD_STATES
 from .motd import SMSG_MOTD
@@ -80,27 +80,13 @@ class WorldServerPacketParser(WorldPacketParser):
 		self.set_parser(Opcode.SMSG_UPDATE_OBJECT, SMSG_UPDATE_OBJECT)
 		self.set_parser(Opcode.SMSG_COMPRESSED_UPDATE_OBJECT, SMSG_COMPRESSED_UPDATE_OBJECT)
 
-	def parse_header(self, data: bytes) -> ServerHeader:
-		try:
-			return parse_server_header(data)
-		except ConstructError:
-			return None
-
-	def parse(self, data: bytes, header, large=False):
-		header = parse_server_header(data)
-		body_start = 5 if large else 4
-		return self._parsers[header.opcode].parse(ServerHeader().build(header) + data[body_start:])
+	def parse(self, data: bytes, header):
+		return self._parsers[header.opcode].parse(data)
 
 class WorldClientPacketParser(WorldPacketParser):
 	def __init__(self):
 		super().__init__()
 		self.set_parser(Opcode.CMSG_PING, CMSG_PING)
-
-	def parse_header(self, data: bytes) -> ServerHeader:
-		try:
-			return parse_client_header(data)
-		except ConstructError:
-			return None
 
 	def parse(self, data: bytes, header, large=False):
 		return self._parsers[header.opcode].parse(data)

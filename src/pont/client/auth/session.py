@@ -74,10 +74,7 @@ class AuthSession:
 		self._emitter.emit(events.auth.authenticating)
 
 		await self.protocol.send_challenge_request(username=username, country=country, arch=arch, os=os, build=build)
-		logger.debug('sent challenge request')
-
 		challenge_response = await self.protocol.receive_challenge_response()
-		logger.debug('received challenge response')
 
 		client_private = debug['client_private'] if debug is not None else None
 		self._srp = cryptography.WoWSrpClient(username=username, password=password,
@@ -88,16 +85,9 @@ class AuthSession:
 
 		client_public, session_proof = self._srp.process(challenge_response.server_public, challenge_response.salt)
 		self._session_key = int.from_bytes(self._srp.session_key, byteorder='little')
-		logger.debug(f'{self._session_key=}')
-
 		await self.protocol.send_proof_request(client_public=client_public, session_proof=session_proof)
-		logger.debug('sent proof request')
 
 		proof_response = await self.protocol.receive_proof_response()
-		logger.debug('received proof response')
-
-		logger.debug(f'{proof_response.session_proof_hash=} vs {self._srp.session_proof_hash:=}')
-
 		if proof_response.session_proof_hash != self._srp.session_proof_hash:
 			self._state = AuthState.disconnected
 			self._emitter.emit(events.auth.invalid_login)

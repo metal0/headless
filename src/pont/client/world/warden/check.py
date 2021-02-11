@@ -13,5 +13,5 @@ class CheatCheckType(Enum):
 
 CheatChecksRequest = construct.Struct(
 	'name' / construct.PascalString(construct.Byte, 'ascii'),
-	'oof' / construct.GreedyBytes,
+	'oof' / construct.GreedyBytes, # TODO: Do not use greedy bytes in world server loop
 )

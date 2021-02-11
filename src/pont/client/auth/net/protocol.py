@@ -1,7 +1,8 @@
 import trio
 from loguru import logger
 
-from . import packets
+from . import packets, Opcode
+from .packets import parse
 from .response import Response
 from ..realm import RealmFlags
 
@@ -20,8 +21,7 @@ class AuthProtocol:
 		async with self._read_lock:
 			return await self.stream.receive_some(max_bytes)
 
-	async def send_challenge_request(self, username: str, build=12340, country='enUS', game='WoW', arch='x86', os='Win', ip='127.0.0.1'):
-		logger.debug('Sending challenge request...')
+	async def send_challenge_request(self, username: str, build=12340, country='enUS', game='WoW', arch='x86', os='OSX', ip='127.0.0.1'):
 		await self._send_all(packets.ChallengeRequest.build({
 			'country': country,
 			'build': build,
@@ -35,7 +35,6 @@ class AuthProtocol:
 
 	async def send_challenge_response(self, prime: int, server_public: int, salt: int, response: Response=Response.success,
 			generator_length=1, generator=7, prime_length=32, checksum_salt=0, security_flag=0):
-		logger.debug('Sending challenge response...')
 		await self._send_all(packets.ChallengeResponse.build({
 			'server_public': server_public,
 			'response': response,
@@ -57,13 +56,13 @@ class AuthProtocol:
 		return packets.parser.parse(data)
 
 	async def send_proof_response(self, response: Response, session_proof_hash: int=0, account_flags=32768, survey_id=0, login_flags=0):
-		await self._send_all(packets.ProofResponse.build({
-			'response': response,
-			'session_proof_hash': session_proof_hash,
-			'account_flags': account_flags,
-			'survey_id': survey_id,
-			'login_flags': login_flags
-		}))
+		await self._send_all(packets.ProofResponse.build(dict(
+			header=dict(response=response),
+			session_proof_hash=session_proof_hash,
+			account_flags=account_flags,
+			survey_id=survey_id,
+			login_flags=login_flags
+		)))
 
 	async def send_proof_request(self, client_public: int, session_proof: int, checksum: int=0, num_keys: int=0, security_flags: int=0):
 		await self._send_all(packets.ProofRequest.build({
@@ -78,6 +77,14 @@ class AuthProtocol:
 		data = await self._receive_some()
 		return packets.ProofRequest.parse(data)
 
+	async def receive(self, expected_size: int):
+		data = bytearray()
+		while expected_size > 0:
+			data += await self._receive_some(expected_size)
+			expected_size -= len(data)
+
+		return bytes(data)
+
 	async def receive_proof_response(self) -> packets.ProofResponse:
 		data = await self._receive_some()
 		return packets.parser.parse(data)
@@ -87,7 +94,7 @@ class AuthProtocol:
 		await self._send_all(packet)
 
 	async def receive_realmlist_request(self) -> packets.RealmlistRequest:
-		data = await self.stream.receive_some()
+		data = await self._receive_some()
 		return packets.RealmlistRequest.parse(data)
 
 	async def send_realmlist_response(self, realms):

@@ -10,6 +10,8 @@ from .realmlist_response import RealmlistResponse
 from ..opcode import Opcode
 from ..response import Response
 
+def parse_size(data: bytes):
+	return construct.Int16ul.parse(data[1:3])
 
 class AuthPacketParser:
 	def __init__(self):
@@ -22,7 +24,7 @@ class AuthPacketParser:
 		self._parsers[opcode] = parser
 
 	def parse(self, packet: bytes):
-		header = ResponseHeader.parse(packet)
+		header = ResponseHeader().parse(packet)
 		opcode: Opcode = header.opcode
 		response: Optional[Response] = header.response
 

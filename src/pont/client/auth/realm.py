@@ -55,11 +55,9 @@ Realm = construct.Struct(
 	'num_characters' / construct.Byte,
 	'timezone' / construct.Default(construct.Byte, 8),
 	'id' / construct.Default(construct.Byte, 1),
-	'build_info' / construct.Switch(
-		(construct.this.flags & RealmFlags.specify_build) == RealmFlags.specify_build.value,
-		{
-			True: BuildInfo,
-			False: construct.Pass
-		}
+	'build_info' / construct.IfThenElse(
+		(construct.this.flags & RealmFlags.specify_build) == RealmFlags.specify_build,
+		BuildInfo,
+		construct.Pass
 	)
 )

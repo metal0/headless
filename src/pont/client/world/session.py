@@ -9,7 +9,7 @@ from trio_socks import socks5
 
 from pont.client.auth import Realm
 from pont.client import events
-from .cache import NameCache
+from .cache import CharacterCache
 from .character import CharacterInfo
 from .chat import Chat
 from .errors import ProtocolError
@@ -53,7 +53,7 @@ class WorldSession:
 		self._crypto: Optional[WorldCrypto] = None
 		self._realm = None
 		self._username = None
-		self.names = NameCache(self)
+		self.cache = CharacterCache(self)
 
 	@property
 	def state(self):
@@ -226,7 +226,7 @@ class WorldSession:
 			self.nursery = n
 			try:
 				self._state = WorldState.in_game
-				self.local_player = LocalPlayer(self)
+				self.local_player = LocalPlayer(self, name=character.name, guid=character.guid)
 				self.emitter.emit(events.world.entered_world)
 				yield self.nursery
 

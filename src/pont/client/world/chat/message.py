@@ -8,7 +8,6 @@ from pont.client.log import logger
 from pont.utility.construct import GuidConstruct
 from ..guid import Guid, GuidType
 
-
 class MessageType(Enum):
 	system = 0x00
 	say = 0x01
@@ -122,14 +121,23 @@ def DefaultMessage(gm_chat=False):
 			'receiver_guid' / GuidConstruct(Guid),
 		)
 
+_whisper_types = [
+	MessageType.whisper, MessageType.whisper_foreign, MessageType.whisper_inform,
+	MessageType.monster_whisper, MessageType.raid_boss_whisper
+]
+
 class ChatMessage:
 	@staticmethod
+	def is_whisper(packet):
+		return packet.message_type in _whisper_types
+
+	@staticmethod
 	async def load_message(world, packet):
-		sender = await world.names.lookup(packet.sender_guid)
-		receiver = await world.names.lookup(packet.info.receiver_guid)
+		sender = await world.cache.lookup(packet.sender_guid)
+		receiver = await world.cache.lookup(world.local_player.guid) if ChatMessage.is_whisper(packet) else None
 		return ChatMessage(world, packet, sender, receiver)
 
-	def __init__(self, world, packet, sender: str, receiver: Optional[str]):
+	def __init__(self, world, packet, sender, receiver):
 		self._world = world
 		self._packet = packet
 		self._sender = sender
@@ -145,12 +153,18 @@ class ChatMessage:
 	def type(self):
 		return self._packet.message_type
 
-	def __str__(self):
-		receiver_message = f''
-		if self.receiver() is not None:
-			receiver_message = f' -> {self.receiver().name}'
+	@property
+	def message_type(self):
+		return self.type
 
-		return f'[{self.sender().name}{receiver_message}] [{self.type}]: {self.text}'
+	def __str__(self):
+		if self.sender() is None:
+			return f'[{self.type}]: {self.text}'
+
+		if self.receiver() is None:
+			return f'[{self.sender().name}] [{self.type}]: {self.text}'
+
+		return f'[{self.sender().name} -> {self.receiver().name}] [{self.type}]: {self.text}'
 
 	def sender(self):
 		return self._sender

@@ -1,12 +1,10 @@
 import construct
 
-from pont.utility.construct import PackEnum
+from .header import ResponseHeader
 from ..opcode import Opcode
-from ..response import Response
 
 ChallengeResponse = construct.Struct(
-	'opcode' / construct.Default(construct.Const(Opcode.login_challenge, PackEnum(Opcode)), Opcode.login_challenge),
-	'response' / construct.Default(PackEnum(Response), Response.success),
+	'header' / ResponseHeader(Opcode.login_challenge),
 	construct.Padding(1),
 
 	'server_public' / construct.BytesInteger(32, swapped=True),

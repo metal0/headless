@@ -29,16 +29,19 @@ def sha_interleave(value: int) -> bytes:
 	for i in range(0, 20):
 		result[i * 2] = sha[i]
 
-	# TODO: "IndexError: index out of range" bug happens when t has odd length
 	try:
 		for i in range(0, 16):
-			t1[i] = t[i * 2 + 1]
+			if (i * 2 + 1) >= len(t):
+				t1[i] = 0
+			else:
+				t1[i] = t[i * 2 + 1]
 
 		sha = sha1(t1)
 		# fill uneven result entries [1], [3] etc.
 		for i in range(0, 20):
 			result[i * 2 + 1] = sha[i]
 	except Exception as e:
+		logger.debug(f'{len(t1)=} {i=} {t=}')
 		logger.exception('Weird srp error')
 		raise SrpError(e)
 
@@ -113,7 +116,6 @@ class WoWSrpClient(WoWSrp):
 		super().__init__(username, password, prime, generator)
 		self.client_private = random.getrandbits(1024) if client_private is None else client_private
 
-		logger.debug(f'{self.client_private=}')
 		self.client_public = pow(self.generator, self.client_private, self.prime)
 		if self.client_public == 0:
 			raise InvalidLogin('client_public must not be zero')

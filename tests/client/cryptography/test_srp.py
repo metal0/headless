@@ -21,7 +21,7 @@ def run_login_test(login: dict, expected_proof_hash: int, server_public: int,
 	if srp.session_proof_hash != expected_proof_hash:
 		pytest.fail(f'Expected proof hash does not match wow.auth.srp\'s proof hash\nExpected: {expected_proof_hash}, Actual: {srp.session_proof_hash}')
 
-logins_filename = 'C:\\Users\\Owner\\Documents\\WoW\\servers_config.json'
+logins_filename = '/home/fure/work/pont/servers_config.json'
 test_servers = load_test_servers(logins_filename)
 
 def test_srp_sha1_1():
@@ -69,7 +69,7 @@ def test_dalaran_wow_login():
 		client_private=142306331881552112473697781880088266309781841091867079488688284134573933401176170405324918748000252391877452973782630010428158542302900679526253535605570205519419962222145854004673146475255740977146404636890618168605878600203130553118116832240357927436726039366956193392471085102011382587027215537967955584578,
 		expected_proof_hash=1029697174638230702641107647608160888414666047618
 	)
-#
+
 def test_warmane_login():
 	run_login_test(
 		login=test_servers['warmane']['account'],

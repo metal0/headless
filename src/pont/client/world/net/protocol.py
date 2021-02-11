@@ -110,9 +110,11 @@ class WorldProtocol:
 
 	async def decrypted_packets(self):
 		while True:
-			packet = await self.next_decrypted_packet()
-			if packet is not None:
+			try:
+				packet = await self.next_decrypted_packet()
 				yield packet
+			except KeyError as e:
+				logger.log('PACKETS', f'Dropped {e}')
 
 	async def _receive_encrypted_packet(self, packet):
 		data = self.decrypt_packet(await self.receive_some())
@@ -124,15 +126,13 @@ class WorldProtocol:
 		# logger.log('PACKETS', f'{data=}')
 		return packet
 
-	async def _receive_unencrypted_packet(self, packet):
+	async def _receive_unencrypted_packet(self, packet_type):
 		data = await self.receive_some()
-		packet = packet.parse(data)
+		packet_type = packet_type.parse(data)
 		self._num_packets_received += 1
 
-		logger.log('PACKETS', f'{type(packet)=}')
-		# logger.log('PACKETS', f'{packet_name}: {packet}')
-		# logger.log('PACKETS', f'{data=}')
-		return packet
+		logger.log('PACKETS', f'{packet_type=}')
+		return packet_type
 
 	async def _send_unencrypted_packet(self, packet_type, **params):
 		data = packet_type.build(params)
@@ -149,7 +149,7 @@ class WorldProtocol:
 		await self.send_all(encrypted)
 		self._num_packets_sent += 1
 
-		logger.log('PACKETS', f'{type(packet)=}')
+		logger.log('PACKETS', f'{len(data)=}')
 		# logger.log('PACKETS', f'{packet_name}: {packet}')
 		logger.log('PACKETS', f'{data[:min(len(data), 50)]=} {encrypted[:min(len(data), 50)]=}')
 
@@ -191,35 +191,36 @@ class WorldClientProtocol(WorldProtocol):
 			is_large = headers.is_large_server_packet(header_data)
 
 			if is_large:
-				logger.warning('large packet detected')
 				header_data += self.decrypt(await self.receive_some(max_bytes=1))
 
 			logger.log('PACKETS', f'{header_data=}')
 			header = ServerHeader().parse(header_data)
 			logger.log('PACKETS', f'{header=}')
-
 			data = header_data
-			bytes_left = header.size - 2 if is_large else header.size - 1
-			if bytes_left > 0:
+
+			# TODO: Fix this header size bug for certain packets??
+			bytes_left = header.size - 2
+			while bytes_left > 0:
 				logger.log('PACKETS', f'Listening for {bytes_left} byte body...')
 				leftover_bytes = await self.receive_some(max_bytes=bytes_left)
-				data += leftover_bytes
+				logger.log('PACKETS', f'{len(leftover_bytes)=}')
+				# if len(leftover_bytes) != bytes_left:
+				# 	logger.warning(f'Body data incomplete: {len(leftover_bytes)=} {bytes_left=}')
+					# raise ProtocolError('Header size does not match body length')
 
-				if data is None or len(data) == 0:
+				data += leftover_bytes
+				bytes_left -= len(leftover_bytes)
+
+				if leftover_bytes is None or len(leftover_bytes) == 0:
 					raise ProtocolError('received EOF from server')
 
 			try:
-				# logger.debug(f'{data=}')
-				packet = self.parser.parse(data, header, is_large)
-				# logger.debug(f'{packet=}')
+				packet = self.parser.parse(data, header)
 				self._num_packets_received += 1
 				return packet
-
-			except (KeyError, ConstructError) as e:
-				if type(e) is KeyError:
-					logger.log('PACKETS', f'Dropped packet: {header=}')
-
-				traceback.print_exc()
+			except KeyError:
+				self._num_packets_received += 1
+				raise KeyError(header)
 
 		except ValueError as e:
 			if 'is not a valid Opcode' in str(e):
@@ -518,9 +519,12 @@ class WorldServerProtocol(WorldProtocol):
 		self.parser = WorldClientPacketParser()
 
 	def encrypt_packet(self, data: bytes, header):
-		# logger.debug(f'(Server) {header=}')
+		packed_header = ServerHeader().build(dict(
+			opcode=header.opcode,
+			size=header.size
+		))
+
 		body_start = 5 if headers.is_large_server_packet(header) else 4
-		packed_header = headers.pack_server_header(header.opcode, header.size)
 		logger.debug(f'{data[:body_start]=} {packed_header=}')
 		return self.encrypt(packed_header) +  data[body_start:]
 
@@ -543,7 +547,7 @@ class WorldServerProtocol(WorldProtocol):
 
 		try:
 			header_data = self.decrypt(original_data[:6])
-			header = self.parser.parse_header(header_data)
+			header = ClientHeader().parse(header_data)
 			bytes_left = header.size - 4
 			logger.log('PACKETS', f'{header=}')
 
@@ -574,7 +578,8 @@ class WorldServerProtocol(WorldProtocol):
 				raise ProtocolError('Invalid opcode, stream might be out of sync')
 
 	async def send_SMSG_AUTH_RESPONSE(self,
-		response: AuthResponse, expansion: Expansion=Expansion.wotlk, queue_position: Optional[int]=None,
+		response: AuthResponse, expansion=Expansion.wotlk,
+		queue_position: Optional[int] = None,
 		billing=None
 	):
 		"""
@@ -587,8 +592,13 @@ class WorldServerProtocol(WorldProtocol):
 				plan=0,
 			))
 
+		size = 1 + (4 + 1 + 4) + 1
+		if queue_position is not None:
+			size += 4
+
 		await self._send_encrypted_packet(
 			packets.SMSG_AUTH_RESPONSE,
+			header=dict(size=size + 2),
 			response=response, expansion=expansion,
 			queue_position=queue_position,
 			billing=billing,
@@ -621,7 +631,7 @@ class WorldServerProtocol(WorldProtocol):
 
 		await self._send_encrypted_packet(
 			packets.SMSG_NAME_QUERY_RESPONSE,
-			header={'size': 2 + guid_size + 1 + info_size},
+			header={'size': 2 + guid_size + 2 + info_size},
 			guid=Guid(guid), found=found, info=info
 		)
 

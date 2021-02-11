@@ -2,6 +2,7 @@ import datetime
 import ipaddress
 import construct
 from typing import Tuple, Union, NamedTuple
+from pont.client.log import logger
 
 class TypedConstruct(construct.Struct):
 	def _find_subcon(self, name: str):
@@ -73,6 +74,7 @@ class PaddedStringByteSwappedAdapter(construct.StringEncoded):
 
 PaddedStringByteSwapped = PaddedStringByteSwappedAdapter
 
+# TODO: Bugged (?) data=b'\x04Frosthold Proxy'
 class AddressPort(construct.Adapter):
 	def __init__(self, encoding='ascii', separator=':'):
 		super().__init__(construct.CString(encoding))

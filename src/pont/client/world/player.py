@@ -1,16 +1,21 @@
 from typing import Optional
 
-from pont.client.world.guild.guild import Guild
 from pont.client.world.language import Language
-from pont.client.world.chat import MessageType, Chat
+from pont.client.world.chat import Chat
 
 
 class LocalPlayer:
-	def __init__(self, world):
+	def __init__(self, world, guid, name, guild=None):
 		self._world = world
-		self._guild: Optional[Guild] = None
+		self._guild = guild
 		self._chat = Chat(world)
+		self._guid = guid
+		self._name = name
 		# languages known? default language?
+
+	@property
+	def guid(self):
+		return self._guid
 
 	@property
 	def chat(self):

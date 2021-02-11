@@ -116,7 +116,11 @@ class Client(AsyncScopedEmitter):
 		if self.auth.state < AuthState.connected:
 			await self.auth.connect(self._auth_server_address, proxy=self._proxy)
 
-		await self.auth.authenticate(username=username, password=password)
+		await self.auth.authenticate(
+			username=username, password=password,
+			country=country, arch=arch, os=os,
+			build=build
+		)
 
 	async def realms(self):
 		if self.auth.state < AuthState.logged_in:
