@@ -1,22 +1,22 @@
 import traceback
-
 import trio
+import pont
 
-from pont import client as pont
-from pont.client import auth, cryptography
+from pont import cryptography
 from pont.client.auth import AuthState, RealmType, RealmStatus
+from pont.client.auth.net import Response
 from pont.utility.string import bytes_to_int
 from tests.client.cryptography import load_test_servers
 
-logins_filename = 'C:/Users/dinne/Documents/Projects/pont/servers_config.json'
+logins_filename = 'C:\\Users\\Owner\\Documents\\WoW\\servers_config.json'
 test_servers = load_test_servers(logins_filename)
 tc_login = test_servers['trinity-core-3.3.5']['account']
 
 async def auth_server(stream):
-	protocol = auth.net.AuthProtocol(stream)
+	protocol = pont.client.auth.net.AuthProtocol(stream)
 	challenge_request = await protocol.receive_challenge_request()
 
-	assert challenge_request.packet_size == 30 + len(challenge_request.account_name)
+	assert challenge_request.size == 30 + len(challenge_request.account_name)
 	assert challenge_request.game == 'WoW'
 	assert challenge_request.version == '3.3.5'
 	assert challenge_request.build == 12340
@@ -34,8 +34,7 @@ async def auth_server(stream):
 
 	proof_request = await protocol.receive_proof_request()
 	client_private = 143386892073113346271045296825355365119602324795205856098132479049957622403427006810653616896639308669514885320513042624825577275523311345156882292579472806120577841118102290052948040847318515534261288049316514160095147951671405527775489066400222418481863631312167863930538967927022064010646095222765545969242
-
-	srp = cryptography.WowSrpClient(
+	srp = cryptography.WoWSrpClient(
 		username=tc_login['username'], password=tc_login['password'],
 		prime=prime,
 		generator=generator,
@@ -49,45 +48,37 @@ async def auth_server(stream):
 	actual_session_proof_hash = 1022273791007009790071844123884488983605182042497
 	assert bytes_to_int(srp.session_proof_hash) == actual_session_proof_hash
 
-	await protocol.send_proof_response(session_proof_hash=actual_session_proof_hash)
+	await protocol.send_proof_response(session_proof_hash=actual_session_proof_hash, response=Response.success)
 	await protocol.receive_realmlist_request()
-
-	realms = [{
-		'type': RealmType.pvp,
-		'status': RealmStatus.online,
-		'name': 'PontCore',
-		'address': ('127.0.0.1', 8085),
-		'population': 0,
-		'num_characters': 2
-	}]
+	realms = [dict(
+		type=RealmType.pvp, status=RealmStatus.online,
+		name='PontCore', address=('127.0.0.1', 8085),
+		population=0, num_characters=2
+	)]
 
 	await protocol.send_realmlist_response(realms=realms)
 
 async def client_login(auth_address, stream):
-	try:
-		auth_debug = {'client_private': 143386892073113346271045296825355365119602324795205856098132479049957622403427006810653616896639308669514885320513042624825577275523311345156882292579472806120577841118102290052948040847318515534261288049316514160095147951671405527775489066400222418481863631312167863930538967927022064010646095222765545969242}
+	auth_debug = {'client_private': 143386892073113346271045296825355365119602324795205856098132479049957622403427006810653616896639308669514885320513042624825577275523311345156882292579472806120577841118102290052948040847318515534261288049316514160095147951671405527775489066400222418481863631312167863930538967927022064010646095222765545969242}
 
-		async with pont.open_client() as client:
-			assert client.auth.state == AuthState.not_connected
-			await client.auth.connect(auth_address, stream=stream)
-			await client.auth.authenticate(tc_login['username'], tc_login['password'], debug=auth_debug)
-			assert client.auth.state >= AuthState.logged_in
+	async with pont.open_client() as client:
+		assert client.auth.state == AuthState.not_connected
+		await client.auth.connect(auth_address, stream=stream)
+		await client.auth.authenticate(tc_login['username'], tc_login['password'], debug=auth_debug)
+		assert client.auth.state >= AuthState.logged_in
 
-			realmlist = await client.auth.realms()
-			assert client.auth.state == AuthState.realmlist_ready
-
-			assert realmlist[0].type == RealmType.pvp
-			assert realmlist[0].status == RealmStatus.online
-			assert realmlist[0].name == 'PontCore'
-			assert realmlist[0].address == ('127.0.0.1', 8085)
-			# assert realmlist[0].populaton == 0
-			assert realmlist[0].num_characters == 2
-	except:
-		traceback.print_exc()
+		realmlist = await client.auth.realms()
+		assert client.auth.state == AuthState.realmlist_ready
+		assert realmlist[0].type == RealmType.pvp
+		assert realmlist[0].status == RealmStatus.online
+		assert realmlist[0].name == 'PontCore'
+		assert realmlist[0].address == ('127.0.0.1', 8085)
+		# assert realmlist[0].populaton == 0
+		assert realmlist[0].num_characters == 2
 
 async def test_auth_protocol():
 	(client_stream, server_stream) = trio.testing.memory_stream_pair()
-	with trio.fail_after(1):
+	with trio.fail_after(2):
 		async with trio.open_nursery() as nursery:
 			nursery.start_soon(client_login, None, client_stream)
 			nursery.start_soon(auth_server, server_stream)

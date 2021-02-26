@@ -1,39 +1,66 @@
 import inspect
 import time
 
-from pont.client.world.net.packets import SMSG_AUTH_RESPONSE, SMSG_PONG, SMSG_WARDEN_DATA
-from pont.client.world.net.packets.constants import Opcode
-from . import packets
-from .packets.auth_packets import AuthResponse
-from ..errors import ProtocolError
-from ... import events, log
+from loguru import logger
 
-log = log.mgr.get_logger(__name__)
+from pont.client import events
+from . import packets
+from .opcode import Opcode
+from .packets.auth_packets import AuthResponse
+from ..chat.message import ChatMessage
+from ..errors import ProtocolError
 
 class WorldHandler:
 	def __init__(self, emitter, world):
 		self._emitter = emitter
+		self._world = world
 		self._packet_map = {
-			Opcode.SMSG_AUTH_RESPONSE: self.handle_auth_response,
-			Opcode.SMSG_WARDEN_DATA: self.handle_warden_data,
-			Opcode.SMSG_PONG: self.handle_pong,
-			Opcode.SMSG_CHAR_ENUM: self.handle_char_enum,
-			Opcode.SMSG_LOGIN_VERIFY_WORLD: self.handle_login_verify_world,
-			Opcode.SMSG_TUTORIAL_FLAGS: self.handle_tutorial_flags,
 			Opcode.SMSG_TIME_SYNC_REQ: self.handle_time_sync_request,
+			Opcode.SMSG_MESSAGECHAT: self.handle_received_chat_message,
+			Opcode.SMSG_GM_MESSAGECHAT: self.handle_received_chat_message,
+		}
+
+		self._opcode_event_map = {
+			Opcode.SMSG_AUTH_RESPONSE: events.world.received_auth_response,
+			Opcode.SMSG_TUTORIAL_FLAGS: events.world.received_tutorial_flags,
+			Opcode.SMSG_LOGOUT_CANCEL_ACK: events.world.logout_cancelled,
+			Opcode.SMSG_LOGOUT_RESPONSE: events.world.received_logout_response,
+			Opcode.SMSG_LOGOUT_COMPLETE: events.world.logged_out,
+			Opcode.SMSG_NAME_QUERY_RESPONSE: events.world.received_name_query_response,
+			Opcode.SMSG_BIND_POINT_UPDATE: events.world.received_bind_point,
+			Opcode.SMSG_GROUP_INVITE: events.world.received_group_invite,
+			Opcode.SMSG_GUILD_INVITE: events.world.received_guild_invite,
+			Opcode.SMSG_GUILD_EVENT: events.world.received_guild_event,
+			Opcode.SMSG_GUILD_ROSTER: events.world.received_guild_roster,
+			Opcode.SMSG_GUILD_QUERY_RESPONSE: events.world.received_guild_query_response,
+			Opcode.SMSG_DUEL_REQUESTED: events.world.received_duel_request,
+			Opcode.SMSG_PONG: events.world.received_pong,
+			Opcode.SMSG_WARDEN_DATA: events.world.received_warden_data,
+			Opcode.SMSG_LOGIN_VERIFY_WORLD: events.world.entered_world,
+			Opcode.SMSG_CHAR_ENUM: events.world.received_char_enum,
+			Opcode.SMSG_MOTD: events.world.received_motd,
+			Opcode.SMSG_NOTIFICATION: events.world.received_notification,
+			Opcode.SMSG_SERVER_MESSAGE: events.world.received_server_message,
 		}
 
 		self._world = world
 		self._time_sync_count = 0
 		self._handler_start_time = time.time()
 
+	def set_handler(self, event, handler):
+		self._packet_map[event] = handler
+
+	def default_handle_event_packet(self, packet, event):
+		self._emitter.emit(event, packet=packet)
+		logger.log('PACKETS', f'packet={packet}')
+
 	async def handle(self, packet):
 		try:
-			# log.debug(f'handle {packet}')
+			self._emitter.emit(events.world.received_packet, packet=packet)
 			fn = self._packet_map[packet.header.opcode]
 
 			if fn is None:
-				log.debug(f'Dropped packet: {packet.header}')
+				logger.log('PACKETS', f'Dropped packet: {packet.header}')
 				return
 
 			if inspect.iscoroutinefunction(fn):
@@ -44,52 +71,33 @@ class WorldHandler:
 				return fn(packet)
 
 		except KeyError:
-			log.debug(f'Dropped packet: {packet.header}')
-			return
+			# If there is no specific handler then try the default event packet handler
+			try:
+				event = self._opcode_event_map[packet.header.opcode]
+				self.default_handle_event_packet(packet, event)
+
+			except KeyError:
+				logger.log('PACKETS', f'Dropped packet: {packet.header}')
 
 	async def handle_time_sync_request(self, packet: packets.SMSG_TIME_SYNC_REQ):
-		self._emitter.emit(events.world.received_SMSG_TIME_SYNC_REQ, id=packet.id)
-		log.debug(f'[handle_time_sync_request] packet={packet}')
+		self.default_handle_event_packet(packet, events.world.received_time_sync_request)
+		ticks = int(1000 * time.time())
 
 		# TODO: Defer this to something like n.start_soon(client.anti_afk) instead of (await client.anti_afk() or
 		#  await client.start_anti_afk()) where inside we will write
 		#  packet = await self.world.protocol.wait_for_packet(Opcode.SMSG_TIME_SYNC_REQ)
 		await self._world.protocol.send_CMSG_TIME_SYNC_RES(
-			id=self._time_sync_count,
-			client_ticks=int(1000 * (time.time() - self._handler_start_time))
+			id=packet.id,
+			client_ticks=ticks
 		)
 
+		self._emitter.emit(events.world.sent_time_sync, id=packet.id, ticks=ticks)
 		self._time_sync_count += 1
 
-	def handle_tutorial_flags(self, packet: packets.SMSG_TUTORIAL_FLAGS):
-		self._emitter.emit(events.world.received_SMSG_TUTORIAL_FLAGS, packet=packet)
-		log.debug(f'[handle_tutorial_flags] packet={packet}')
+	async def _handle_chat_message(self, packet):
+		message = await ChatMessage.load_message(self._world, packet)
+		self._emitter.emit(events.world.received_chat_message, message=message)
+		logger.log('PACKETS', f'packet={packet}')
 
-	def handle_auth_response(self, packet: SMSG_AUTH_RESPONSE):
-		self._emitter.emit(events.world.received_SMSG_AUTH_RESPONSE, packet=packet)
-		log.debug(f'[handle_auth_response] packet={packet}')
-		if packet.response == AuthResponse.ok:
-			self._emitter.emit(events.world.logged_in)
-
-		elif packet.response == AuthResponse.wait_queue:
-			self._emitter.emit(events.world.in_queue, packet.queue_position)
-
-		else:
-			raise ProtocolError(str(packet.response))
-
-	def handle_char_enum(self, packet: packets.SMSG_CHAR_ENUM):
-		self._emitter.emit(events.world.received_SMSG_CHAR_ENUM, characters=packet.characters)
-		log.debug(f'[handle_char_enum] packet={packet}')
-
-	def handle_login_verify_world(self, packet: packets.SMSG_LOGIN_VERIFY_WORLD):
-		self._emitter.emit(events.world.received_SMSG_LOGIN_VERIFY_WORLD, packet=packet)
-		self._emitter.emit(events.world.ingame)
-		log.debug(f'[handle_login_verify_world] packet={packet}')
-
-	def handle_warden_data(self, packet: SMSG_WARDEN_DATA):
-		self._emitter.emit(events.world.received_SMSG_WARDEN_DATA, packet=packet)
-		log.debug(f'[handle_warden_data] packet={packet}')
-
-	def handle_pong(self, packet: SMSG_PONG):
-		self._emitter.emit(events.world.received_SMSG_PONG, packet=packet)
-		log.debug(f'[handle_pong] packet={packet}')
+	async def handle_received_chat_message(self, packet: packets.SMSG_MESSAGECHAT):
+		self._world.nursery.start_soon(self._handle_chat_message, packet)

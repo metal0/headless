@@ -6,7 +6,7 @@ import construct
 class ServerCommand(Enum):
 	module_use = 0
 	module_cache = 1
-	cheat_checks_request = 2
+	cheat_checks_request = 26
 	module_initialize = 3
 	memory_check_request = 4
 	hash_request = 5
@@ -26,12 +26,12 @@ ServerModuleInfoRequest = construct.Struct(
 )
 
 ServerModuleTransferRequest = construct.Struct(
-	'data' / construct.FixedSized(500, construct.PrefixedArray(construct.ByteSwapped(construct.Short), construct.Byte))
+	'data' / construct.FixedSized(500, construct.PrefixedArray(construct.Int16ul, construct.Byte))
 )
 
 InitModuleRequest = construct.Struct(
 	'command1' / construct.Byte,
-	'size1' / construct.ByteSwapped(construct.Short),
+	'size1' / construct.Int16ul,
 	'checksum1' / construct.Int32ul,
 	'unk1' / construct.Bytes(2),
 	'type' / construct.Byte,
@@ -39,7 +39,7 @@ InitModuleRequest = construct.Struct(
 	'function1' / construct.Array(4, construct.Int32ul),
 
 	'command2' / construct.Byte,
-	'size2' / construct.ByteSwapped(construct.Short),
+	'size2' / construct.Int16ul,
 	'checksum2' / construct.Int32ul,
 	'unk2' / construct.Bytes(2),
 	'string_library2' / construct.Byte,
@@ -47,7 +47,7 @@ InitModuleRequest = construct.Struct(
 	'function2_set' / construct.Byte,
 
 	'command3' / construct.Byte,
-	'size3' / construct.ByteSwapped(construct.Short),
+	'size3' / construct.Int16ul,
 	'checksum3' / construct.Int32ul,
 	'unk3' / construct.Bytes(2),
 	'string_library3' / construct.Byte,

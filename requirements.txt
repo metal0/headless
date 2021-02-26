@@ -1,6 +1,9 @@
-construct~=2.10.56
-trio~=0.16.0
-pyee~=7.0.2
-ipaddress~=1.0.23
-srptools~=1.0.0
-pytest~=5.4.3
+construct~=2.10.56 # MIT (I think)
+trio~=0.16.0 # MIT
+pyee~=7.0.2 # MIT
+pytest~=6.0.1 # MIT
+pytest-trio~=0.6.0 # MIT
+setuptools~=49.6.0 # MIT
+cryptography~=2.9.2 # Apache (ok)
+loguru~=0.5.1 # MIT
+# blessed~= # MIT

@@ -1,6 +1,5 @@
 from pont.utility.enum import ComparableEnum
 
-
 class WorldState(ComparableEnum):
 	disconnected = -1
 	not_connected = 0

@@ -2,7 +2,7 @@ from enum import Enum
 
 import construct
 
-from ...utility.construct import PackEnum, AddressPort
+from pont.utility.construct import PackEnum, AddressPort
 
 
 class RealmType(Enum):
@@ -42,7 +42,7 @@ BuildInfo = construct.Struct(
 	'major' / construct.Default(construct.Byte, 3),
 	'minor' / construct.Default(construct.Byte, 3),
 	'bugfix' / construct.Default(construct.Byte, 5),
-	'build' / construct.Default(construct.ByteSwapped(construct.Short), 12340),
+	'build' / construct.Default(construct.Int16ul, 12340),
 )
 
 Realm = construct.Struct(
@@ -50,16 +50,14 @@ Realm = construct.Struct(
 	'status' / construct.Default(PackEnum(RealmStatus), RealmStatus.online),
 	'flags' / construct.Default(PackEnum(RealmFlags), RealmFlags.none),
 	'name' / construct.CString('ascii'),
-	'address' / AddressPort('ascii'),
+	'address' / construct.Default(AddressPort('ascii'), ('127.0.0.1', 3724)),
 	'population' / construct.Float32l, # TODO: Figure out realm population encoding/decoding
-	'num_characters' / construct.Byte,
+	'num_characters' / construct.Default(construct.Byte, 1),
 	'timezone' / construct.Default(construct.Byte, 8),
 	'id' / construct.Default(construct.Byte, 1),
-	'build_info' / construct.Switch(
-		(construct.this.flags & RealmFlags.specify_build) == RealmFlags.specify_build.value,
-		{
-			True: BuildInfo,
-			False: construct.Pass
-		}
+	'build_info' / construct.IfThenElse(
+		(construct.this.flags & RealmFlags.specify_build) == RealmFlags.specify_build,
+		BuildInfo,
+		construct.Pass
 	)
 )

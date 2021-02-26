@@ -1,20 +1,18 @@
 import json
-
 import pytest
 
-from pont.client import log
+from pont.cryptography.srp import sha_interleave
 
-log = log.mgr.get_logger(__name__)
 
 def load_test_servers(filename: str):
 	with open(filename) as f:
 		return json.load(f)
 
 def run_login_test(login: dict, expected_proof_hash: int, server_public: int,
-                   prime: int, salt: int, client_private: int, generator: int = 7):
+				   prime: int, salt: int, client_private: int, generator: int = 7):
 
-	from pont.client.cryptography import srp
-	srp = srp.WowSrpClient(
+	from pont.cryptography import srp
+	srp = srp.WoWSrpClient(
 		username=login['username'], password=login['password'],
 		prime=prime, generator=generator, client_private=client_private
 	)
@@ -23,12 +21,11 @@ def run_login_test(login: dict, expected_proof_hash: int, server_public: int,
 	if srp.session_proof_hash != expected_proof_hash:
 		pytest.fail(f'Expected proof hash does not match wow.auth.srp\'s proof hash\nExpected: {expected_proof_hash}, Actual: {srp.session_proof_hash}')
 
-
-logins_filename = 'C:/Users/dinne/Documents/Projects/pont/servers_config.json'
+logins_filename = 'C:\\Users\\Owner\\Documents\\WoW\\servers_config.json'
 test_servers = load_test_servers(logins_filename)
 
 def test_srp_sha1_1():
-	from pont.client.cryptography import sha1
+	from pont.cryptography import sha1
 	assert sha1(['admin', ':', 'password'])\
 		   == sha1('admin', ':', 'password')\
 		   == sha1('admin:', 'password')\
@@ -36,8 +33,12 @@ def test_srp_sha1_1():
 		   == sha1('admin:password')
 
 def test_srp_sha1_2():
-	from pont.client.cryptography import sha1
+	from pont.cryptography import sha1
 	assert sha1('hello there', out=hex) == '6e71b3cac15d32fe2d36c270887df9479c25c640'
+
+def test_sha_interleave_bug():
+	# This particular client premaster secret causes an IndexError to be thrown
+	sha_interleave(407391322519203461383069596634004513669516857100933963214653502998367330243)
 
 def test_trinity_core_login():
 	run_login_test(
@@ -68,10 +69,10 @@ def test_dalaran_wow_login():
 		client_private=142306331881552112473697781880088266309781841091867079488688284134573933401176170405324918748000252391877452973782630010428158542302900679526253535605570205519419962222145854004673146475255740977146404636890618168605878600203130553118116832240357927436726039366956193392471085102011382587027215537967955584578,
 		expected_proof_hash=1029697174638230702641107647608160888414666047618
 	)
-#
+
 def test_warmane_login():
 	run_login_test(
-		login=test_servers['warmane']['account'],
+		login=test_servers['warmane-test']['account'],
 		server_public=55690488231000858780701857649579951031964349611442983193164950257944277228053,
 		prime=62100066509156017342069496140902949863249758336000796928566441170293728648119,
 		salt=68778748443859143698106413526933865317366200068841288095563677217409699100349,

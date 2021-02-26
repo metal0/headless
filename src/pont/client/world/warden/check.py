@@ -1,7 +1,5 @@
-from enum import Enum
-
 import construct
-
+from enum import Enum
 
 class CheatCheckType(Enum):
 	memory_check = 0xF3        # 243: byte moduleNameIndex + uint Offset + byte Len (check to ensure memory isn't modified)
@@ -15,5 +13,5 @@ class CheatCheckType(Enum):
 
 CheatChecksRequest = construct.Struct(
 	'name' / construct.PascalString(construct.Byte, 'ascii'),
-	'oof' / construct.GreedyBytes,
+	'oof' / construct.GreedyBytes, # TODO: Do not use greedy bytes in world server loop
 )

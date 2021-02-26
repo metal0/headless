@@ -1,11 +1,6 @@
 import datetime
+
 from enum import Enum
-
-import construct
-
-from pont.client.world.language import Language
-from pont.utility.construct import PackEnum, GuidConstruct
-
 
 class MessageType(Enum):
 	system = 0x00
@@ -70,15 +65,69 @@ class ChatLinkColor(Enum):
 	achievement = 0xffffff00  # achievement yellow
 	glyph       = 0xff66bbff  # teal blue
 
-MessageData = construct.Struct(
-	'type' / PackEnum(MessageType),
-	'language' / PackEnum(Language, construct.Int32ul),
-	'sender_guid' / GuidConstruct,
-	'flags' / construct.Default(construct.Int32ul, 0),
-
+class ChatMessage:
+	@staticmethod
+	def is_whisper(packet):
+		return packet.message_type in (
+	MessageType.whisper, MessageType.whisper_foreign, MessageType.whisper_inform,
+	MessageType.monster_whisper, MessageType.raid_boss_whisper
 )
 
-class Message:
-	def __init__(self, text: str):
-		self.text = text
+	@staticmethod
+	def is_monster_message(packet):
+		return packet.message_type in (
+			MessageType.monster_say, MessageType.monster_emote,
+			MessageType.monster_party, MessageType.monster_yell,
+			MessageType.monster_whisper, MessageType.raid_boss_emote,
+			MessageType.raid_boss_whisper
+		)
+
+	@staticmethod
+	async def load_message(world, packet):
+		receiver = None
+		if ChatMessage.is_monster_message(packet) or packet.message_type == MessageType.whisper_foreign:
+			sender = packet.info.sender
+		else:
+			sender = (await world.names.lookup(packet.sender_guid))
+			if sender is not None:
+				sender = sender.name
+
+		if ChatMessage.is_whisper(packet):
+			receiver = (await world.names.lookup(world.local_player.guid)).name
+			if receiver is not None:
+				receiver = receiver.name
+
+		return ChatMessage(world, packet, sender, receiver)
+
+	def __init__(self, world, packet, sender, receiver):
+		self._world = world
+		self._packet = packet
+		self._sender = sender
+		self._receiver = receiver
+
 		self.time = datetime.time()
+
+	@property
+	def text(self):
+		return self._packet.text
+
+	@property
+	def type(self):
+		return self._packet.message_type
+
+	@property
+	def sender(self):
+		return self._sender
+
+	@property
+	def receiver(self):
+		return self._receiver
+
+	def __str__(self):
+		if self.sender is None:
+			return f'[{self.type}]: {self.text}'
+
+		if self.receiver is None:
+			return f'[{self.sender}] [{self.type}]: {self.text}'
+
+		return f'[{self.sender} -> {self.receiver}] [{self.type}]: {self.text}'

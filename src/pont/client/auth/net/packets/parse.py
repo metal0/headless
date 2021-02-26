@@ -4,13 +4,14 @@ import construct
 
 from pont.client.auth.errors import InvalidLogin
 from .challenge_response import ChallengeResponse
-from .constants import Response, Opcode
 from .header import ResponseHeader
 from .proof_response import ProofResponse
 from .realmlist_response import RealmlistResponse
-from ....log import mgr
+from ..opcode import Opcode
+from ..response import Response
 
-log = mgr.get_logger(__name__)
+def parse_size(data: bytes):
+	return construct.Int16ul.parse(data[1:3])
 
 class AuthPacketParser:
 	def __init__(self):
@@ -23,7 +24,7 @@ class AuthPacketParser:
 		self._parsers[opcode] = parser
 
 	def parse(self, packet: bytes):
-		header = ResponseHeader.parse(packet)
+		header = ResponseHeader().parse(packet)
 		opcode: Opcode = header.opcode
 		response: Optional[Response] = header.response
 

@@ -1,4 +1,6 @@
 import binascii
+import shlex
+
 
 def int_to_bytes(value) -> bytes:
 	if type(value) == bytes:
@@ -76,7 +78,6 @@ def string_encode(s: str, encoding = None) -> bytes:
 	return s.encode()
 
 def latin_decode(s: bytes) -> str:
-	print(f'latin_decode: {s}')
 	return s.decode('latin1')
 
 def reverse_encode(s: str) -> bytes:

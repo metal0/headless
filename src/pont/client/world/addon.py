@@ -1,9 +1,5 @@
 import construct
 
-from .. import log
-
-log = log.mgr.get_logger(__name__)
-
 AddonData = construct.Struct(
 	'name' / construct.CString('ascii'),
 	'enabled' / construct.Flag,

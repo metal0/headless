@@ -11,9 +11,9 @@ class AuthEvent(Enum):
 	realmlist_ready = uuid.uuid4()
 
 	#
-	logging_in = uuid.uuid4()
+	authenticating = uuid.uuid4()
 	invalid_login = uuid.uuid4()
-	login_success = uuid.uuid4()
+	authenticated = uuid.uuid4()
 
 auth = AuthEvent
 
@@ -24,27 +24,50 @@ class WorldEvent(Enum):
 	logged_in = uuid.uuid4()
 	logging_in = uuid.uuid4()
 	loading_world = uuid.uuid4()
-	ingame = uuid.uuid4()
+	entered_world = uuid.uuid4()
+	logged_out = uuid.uuid4()
 
 	# Net events
 	disconnected = uuid.uuid4()
 
-	received_packet = uuid.uuid4()
-	received_SMSG_AUTH_CHALLENGE = uuid.uuid4()
-	received_SMSG_AUTH_RESPONSE = uuid.uuid4()
-	received_SMSG_NAME_QUERY_RESPONSE = uuid.uuid4()
-	received_SMSG_CHAR_ENUM = uuid.uuid4()
-	received_SMSG_PONG = uuid.uuid4()
-	received_SMSG_LOGIN_VERIFY_WORLD = uuid.uuid4()
-	received_SMSG_WARDEN_DATA = uuid.uuid4()
-	received_SMSG_TUTORIAL_FLAGS = uuid.uuid4()
-	received_SMSG_TIME_SYNC_REQ = uuid.uuid4()
+	received_group_invite = uuid.uuid4()
 
-	sent_CMSG_PING = uuid.uuid4()
-	sent_CMSG_KEEP_ALIVE = uuid.uuid4()
-	sent_CMSG_WARDEN_DATA = uuid.uuid4()
-	sent_CMSG_CHAR_ENUM = uuid.uuid4()
-	sent_CMSG_TIME_SYNC_RES = uuid.uuid4()
+	received_guild_invite = uuid.uuid4()
+	received_guild_event = uuid.uuid4()
+	received_guild_roster = uuid.uuid4()
+	received_guild_query_response = uuid.uuid4()
+
+	received_chat_message = uuid.uuid4()
+	# received_gm_chat_message = uuid.uuid4()
+	received_duel_request = uuid.uuid4()
+	received_name_query_response = uuid.uuid4()
+	received_bind_point = uuid.uuid4()
+
+	received_packet = uuid.uuid4()
+	received_auth_challenge = uuid.uuid4()
+	received_auth_response = uuid.uuid4()
+	received_char_enum = uuid.uuid4()
+	received_server_message = uuid.uuid4()
+	received_notification = uuid.uuid4()
+	received_motd = uuid.uuid4()
+	received_pong = uuid.uuid4()
+	received_login_world = uuid.uuid4()
+	received_warden_data = uuid.uuid4()
+	received_tutorial_flags = uuid.uuid4()
+	received_time_sync_request = uuid.uuid4()
+	received_logout_response = uuid.uuid4()
+	logout_cancelled = uuid.uuid4()
+
+	sent_ping = uuid.uuid4()
+	sent_keep_alive = uuid.uuid4()
+	sent_warden_data = uuid.uuid4()
+	sent_char_enum = uuid.uuid4()
+	sent_time_sync = uuid.uuid4()
+	sent_player_login = uuid.uuid4()
+	sent_logout_request = uuid.uuid4()
+	sent_logout_cancel = uuid.uuid4()
+	sent_auth_session = uuid.uuid4()
+	sent_chat_message = uuid.uuid4()
 
 world = WorldEvent
 

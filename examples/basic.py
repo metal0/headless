@@ -1,11 +1,13 @@
 import json
 import random
-import traceback
-
+import loguru
 import trio
-
 import pont
+
 from pont.client import auth, world
+from pont.client.world.chat.message import MessageType
+from pont.client.world.language import Language
+from pont.client.world.net import Opcode
 
 
 def load_login(server: str, filename: str):
@@ -16,6 +18,7 @@ def load_login(server: str, filename: str):
 async def run(server, proxy=None):
 	account = server['account']
 	try:
+
 		client: pont.Client
 		async with pont.open_client(auth_server=server['realmlist'], proxy=proxy) as client:
 			# Login to auth server
@@ -36,21 +39,32 @@ async def run(server, proxy=None):
 				if character.name == account['character']:
 					break
 
-			# Enter world with character
-			with trio.fail_after(5):
-				await client.enter_world(character)
+			while True:
+				# Enter world with character
+				async with client.enter_world(character):
+					me = client.world.local_player
+					await me.chat.guild('hello!')
 
-			# client.nursery.start_soon(client.anti_afk)
-			await trio.sleep_forever()
+					await client.world.protocol.send_CMSG_GUILD_ROSTER()
+					roster = await client.world.wait_for_packet(Opcode.SMSG_GUILD_ROSTER)
+					print(roster)
 
-	except (trio.TooSlowError, auth.AuthError, world.WorldError):
-		traceback.print_exc()
+					# await me.chat.whisper('Hey!', 'Meow')
+
+					# if me.guild is not None:
+
+					await trio.sleep_forever()
+					# await trio.sleep(2)
+				await trio.sleep(2)
+
+	except (Exception, trio.TooSlowError, auth.AuthError, world.WorldError):
+		loguru.logger.exception('Error')
 
 async def main():
-	login_filename = 'C:/Users/dinne/Documents/Projects/pont/servers_config.json'
+	login_filename = 'C:\\Users\\Owner\\Documents\\WoW\\servers_config.json'
 	acore = load_login('acore', login_filename)
-	# proxy = ('10.179.205.114', 1664)
-	proxy = None
+	proxy = ('server', 1069)
+	# proxy = None
 
 	while True:
 		await run(acore, proxy=proxy)

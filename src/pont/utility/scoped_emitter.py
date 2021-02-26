@@ -1,10 +1,8 @@
 import inspect
 
+import pyee
 import trio
-
-from ..client.log import mgr
-
-log = mgr.get_logger(__name__)
+from loguru import logger
 
 class BaseEmitter:
 	def __init__(self, emitter, scope=None):
@@ -25,7 +23,7 @@ class BaseEmitter:
 		self._emitter.remove_all_listeners(event)
 
 	def emit(self, event, *args, **kwargs):
-		log.debug(f'[{type(self).__name__}.emit]: emitted {event=}, {kwargs}')
+		logger.log('EVENTS', f'{event=}, {kwargs}')
 		self._emitter.emit(event, *args, **kwargs)
 
 	def once(self, event, fn = None):
@@ -35,7 +33,7 @@ class BaseEmitter:
 				await trio.lowlevel.checkpoint()
 				return fn(*args, **kwargs)
 
-			log.debug(f'[{type(self).__name__}.once]: installed {event=} {fn=}')
+			logger.log('EVENTS', f'installed listener: {event=} is handled once by {fn=}')
 			if not inspect.iscoroutinefunction(fn):
 				target_fn = fn_async
 
@@ -53,7 +51,7 @@ class BaseEmitter:
 				await trio.lowlevel.checkpoint()
 				return fn(*args, **kwargs)
 
-			log.debug(f'[{type(self).__name__}.on]: installed {event=} {fn=}')
+			logger.log('EVENTS', f'installed listener: {event=} is handled by {fn=}')
 			if not inspect.iscoroutinefunction(fn):
 				target_fn = fn_async
 
@@ -67,9 +65,7 @@ class BaseEmitter:
 
 class AsyncScopedEmitter(BaseEmitter):
 	async def aclose(self):
-		log.debug(f'{type(self).__name__} aclose')
 		for event, fn_list in self._events.items():
-			await trio.lowlevel.checkpoint()
 			for fn in fn_list:
 				if fn in self._emitter.listeners(event):
 					self._emitter.remove_listener(event, fn)
@@ -82,7 +78,6 @@ class AsyncScopedEmitter(BaseEmitter):
 
 class ScopedEmitter(BaseEmitter):
 	def close(self):
-		log.debug(f'{type(self).__name__} close')
 		for event, fn_list in self._events.items():
 			for fn in fn_list:
 				if fn in self._emitter.listeners(event):

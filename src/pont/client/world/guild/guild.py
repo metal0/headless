@@ -1,7 +1,7 @@
 from enum import Enum
-
-import construct
-
+from pont.client.world.errors import ProtocolError
+from pont.client.world.net.opcode import Opcode
+from pont.client.world.state import WorldState
 
 class GuildMemberDataType(Enum):
 	zone_id = 1
@@ -25,6 +25,32 @@ class GuildCommandType(Enum):
 	move_item = 22
 	repair = 25
 
+class GuildCommandError(Enum):
+	success = 0
+	internal_error = 1
+	already_in_guild = 2
+	already_in_guild_s = 3
+	already_invited_to_guild = 4
+	already_invited_to_guild_s = 5
+	guild_name_invalid = 6
+	guild_name_exists = 7
+	error_leader_leave = 8
+	error_guild_permissions = 8
+	player_not_in_guild = 9
+	player_not_in_guild_s = 10
+	player_not_found_s = 11
+	not_allied = 12
+	rank_too_high_s = 13
+	rank_too_low_s = 14
+	ranks_locked = 17
+	rank_in_use = 18
+	ignoring_you_s = 19
+	unknown1 = 20 # Forces roster update
+	withdraw_limit = 25
+	not_enough_money = 26
+	bank_full = 28
+	item_not_found = 29
+
 # noinspection PyTypeChecker
 class GuildRankRights(Enum):
 	empty = 0x00000040
@@ -47,18 +73,64 @@ class GuildRankRights(Enum):
 	create_guild_event = 0x00100000
 	all = 0x001DF1FF
 
+# TODO: Guild will be a generic interface that has all the privileged and non-privileged functions of a guild.
+#   Each privilege is checked before executing the corresponding feature and any access violations are thrown as
+#   exceptions.
 class Guild:
-	max_ranks = 10
 	min_ranks = 5
+	max_ranks = 10
 
-GuildInfo = construct.Struct(
-	'guild_id' / construct.Int32ul,
-	'name' / construct.CString('ascii'),
-	'ranks' / construct.Array(Guild.max_ranks, construct.CString('ascii')),
-	'emblem_style' / construct.Int32ul,
-	'emblem_color' / construct.Int32ul,
-	'border_style' / construct.Int32ul,
-	'border_color' / construct.Int32ul,
-	'background_color' / construct.Int32ul,
-	'num_ranks' / construct.Int32ul,
-)
+	@staticmethod
+	async def query(world, data):
+		if type(data) is str:
+			guid = 0
+			return Guild(world, guid=guid, name=data)
+		elif type(data) is Guid:
+			name = ''
+			return Guild(world, guid=data, name=name)
+		elif type(data) is int:
+			return await Guild.query(world, Guid(value=data))
+		raise TypeError(f'Invalid type for data used: {type(data)}')
+
+	@staticmethod
+	async def load_from_packet(world, packet):
+		pass
+
+	def __init__(self, world, guid, name):
+		self._info = None
+		self._world = world
+		self._guid = guid
+		self._name = name
+		self._access_token = None
+
+		if world.state < WorldState.in_game:
+			raise ProtocolError(f'Must be in-game to send a chat message; world state is {self._world.state} instead')
+
+	@property
+	def guid(self):
+		return self._guid
+
+	@property
+	def name(self):
+		if self._info is not None:
+			return self._info.name
+
+	@property
+	def ranks(self):
+		if self._info is not None:
+			return self._info.ranks
+
+class LocalGuild(Guild):
+	@staticmethod
+	async def load_from_packet(world, packet):
+		pass
+
+
+	async def roster(self):
+		await self._world.protocol.send_CMSG_GUILD_ROSTER()
+		return await self._world.wait_for_packet(Opcode.SMSG_GUILD_ROSTER)
+
+	# async def ginvite(self, name: str):
+		# if not self._access_token.has_authority_to(Actions.guild_invite):
+		# 	raise PermissionError(f'{self._access_token} is not authorized to invite guild members')
+		# self._world.pro

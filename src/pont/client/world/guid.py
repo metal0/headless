@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Optional
+from typing import Optional, Union, Any
 
 class GuidType(Enum):
 	player = 0x0000
@@ -31,7 +31,12 @@ class Guid:
 		elif type is not None and value is None:
 			self.type = type
 
+	def __hash__(self):
+		return self.value
+
 	def __eq__(self, other):
+		# if type(other) is not type(self):
+		# 	return self.value == other
 		return self.value == other.value
 
 	def _set(self, low: int, high: int, entry=None):
@@ -84,8 +89,7 @@ class Guid:
 
 	@type.setter
 	def type(self, ty: GuidType):
-		old_type = self.type
-		self.high = ty.value | self.high & ~old_type.value
+		self.high = ty.value | self.high & ~self.type.value
 
 	@staticmethod
 	def max_count() -> int:
@@ -93,6 +97,9 @@ class Guid:
 
 	def __int__(self):
 		return self.value
+
+	def __repr__(self):
+		return str(self.value)
 
 	def __str__(self):
 		ty = self.type
