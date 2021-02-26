@@ -5,7 +5,7 @@ __all__ = ['RC4']
 # noinspection PyPackageRequirements
 def import_arc4_backend():
 	import arc4
-	logger.info('arc4 library backend selected')
+	# logger.debug('arc4 library backend selected')
 	return lambda key: lambda data: arc4.ARC4(key).encrypt(data)
 
 def import_cryptography_backend():
@@ -17,7 +17,7 @@ def import_cryptography_backend():
 			return encryptor.update(data)
 
 		return encrypt
-	logger.info('cryptography.io library backend selected')
+	# logger.debug('cryptography.io library backend selected')
 	return create_encryptor
 
 backends = [import_arc4_backend, import_cryptography_backend]

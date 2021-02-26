@@ -61,7 +61,7 @@ async def run(server, proxy=None):
 		loguru.logger.exception('Error')
 
 async def main():
-	login_filename = '/home/fure/work/pont/servers_config.json'
+	login_filename = 'C:\\Users\\Owner\\Documents\\WoW\\servers_config.json'
 	acore = load_login('acore', login_filename)
 	proxy = ('server', 1069)
 	# proxy = None

@@ -67,15 +67,40 @@ class AuthSession:
 		self._emitter.emit(events.auth.connected)
 		logger.info('Connected!')
 
-	async def authenticate(self, username, password, debug=None, country='enUS', arch='x86', os='OSX', build=12340):
+	async def _get_public_ip(self):
+		return '127.0.0.1'
+		# async def parse_public_ip(stream):
+		# 	await stream.send_all('GET / HTTP/1.1\r\nHost: api.ipify.org\r\n\r\n'.encode())
+		# 	text = (await stream.receive_some()).decode()
+		# 	i = text.rfind('\r\n\r\n')
+		# 	my_ip = text[i + 4:]
+		# 	return my_ip
+		#
+		# if self.proxy is not None:
+		# 	async with socks5.Socks5Stream(destination=('api.ipify.org', 80), proxy=self.proxy) as stream:
+		# 		return await parse_public_ip(stream)
+		# else:
+		# 	async with await trio.open_tcp_stream('api.ipify.org', 80) as stream:
+		# 		return await parse_public_ip(stream)
+
+	async def authenticate(self, username, password, debug=None, country='enUS', arch='x86', os='OSX', build=12340, version='3.3.5'):
 		logger.info(f'Authenticating with username {username}...')
 		self._state = AuthState.logging_in
 		self._username = username
 		self._emitter.emit(events.auth.authenticating)
 
-		await self.protocol.send_challenge_request(username=username, country=country, arch=arch, os=os, build=build)
-		challenge_response = await self.protocol.receive_challenge_response()
+		public_ip = await self._get_public_ip()
+		logger.debug(f'{public_ip=}')
 
+		await self.protocol.send_challenge_request(
+			username=username, country=country,
+			arch=arch, os=os,
+			build=build,
+			ip=public_ip,
+			version=version,
+		)
+
+		challenge_response = await self.protocol.receive_challenge_response()
 		client_private = debug['client_private'] if debug is not None else None
 		self._srp = cryptography.WoWSrpClient(username=username, password=password,
 			prime=challenge_response.prime,
@@ -85,7 +110,10 @@ class AuthSession:
 
 		client_public, session_proof = self._srp.process(challenge_response.server_public, challenge_response.salt)
 		self._session_key = int.from_bytes(self._srp.session_key, byteorder='little')
-		await self.protocol.send_proof_request(client_public=client_public, session_proof=session_proof)
+		await self.protocol.send_proof_request(
+			client_public=client_public, session_proof=session_proof,
+			checksum=4601254584545541958749308449812234986282924510
+		)
 
 		proof_response = await self.protocol.receive_proof_response()
 		if proof_response.session_proof_hash != self._srp.session_proof_hash:

@@ -1,9 +1,13 @@
+import datetime
 import trio
 import pont
 from examples.chatbot.plugin import Plugin, PluginManager
 from pont.client.log import logger
 from pont.client import world, auth
 from typing import Tuple, Optional, List
+
+from pont.client.world import Guid
+
 
 class Chatbot:
 	def __init__(self, character: str, realm: str, realmlist: Tuple[str, int], plugins: List[Plugin]):
@@ -57,6 +61,7 @@ class Chatbot:
 			client: pont.Client
 			async with pont.open_client(auth_server=self._realmlist, proxy=proxy) as client:
 				self.attach(client)
+				start_time = datetime.datetime.now()
 
 				# Login to auth server
 				with trio.fail_after(10):
@@ -76,9 +81,22 @@ class Chatbot:
 					if character.name == self._character_name:
 						break
 
+				async def announce_uptime():
+					while True:
+						await trio.sleep(10)
+						logger.info(f'Uptime: {datetime.datetime.now() - start_time}')
+
 				while True:
 					# Enter world with character
 					async with client.enter_world(character):
+						client.world.nursery.start_soon(announce_uptime)
+						await trio.sleep(1)
+						# await client.world.protocol.send_CMSG_AUCTION_LIST_ITEMS(
+						# 	auctioneer=Guid(0xF1300021DE01375A),
+						# 	search_term='Bread',
+						# )
+
+						await client.world.protocol.send_CMSG_WHO(name='Pont')
 						await trio.sleep_forever()
 
 					await trio.sleep(2)

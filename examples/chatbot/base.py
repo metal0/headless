@@ -7,9 +7,6 @@ from examples.chatbot.plugins.armory import ArmoryPlugin
 from examples.chatbot.plugins.shell import ShellPlugin
 
 from pont.client import auth, world
-from pont.client.world.chat.message import MessageType
-from pont.client.world.language import Language
-from pont.client.world.net import Opcode
 
 def load_login(server: str, filename: str):
 	with open(filename, 'r') as f:
@@ -27,14 +24,14 @@ async def run(server, proxy=None):
 		loguru.logger.exception('Error')
 
 async def main():
-	login_filename = '/home/fure/work/pont/servers_config.json'
-	acore = load_login('warmane', login_filename)
+	login_filename = 'C:\\Users\\Owner\\Documents\\WoW\\servers_config.json'
+	acore = load_login('acore', login_filename)
 	proxy = ('server', 9050)
 	# proxy = None
 
-	# while True:
-	await run(acore, proxy=proxy)
-	await trio.sleep(5 + random.random() * 20)
+	while True:
+		await run(acore, proxy=proxy)
+		await trio.sleep(5 + random.random() * 20)
 
 if __name__ == '__main__':
 	trio.run(main)

@@ -21,7 +21,7 @@ class Chat:
 		return self._messages
 
 	def _message_handler(self, message):
-		logger.log('MESSAGES', f'{str(message)=}')
+		logger.log('MESSAGES', f'{message}')
 		self._messages.append(message)
 
 	async def send_message(self, text: str, message_type: MessageType, language: Language, recipient: Optional[str]=None):

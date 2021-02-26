@@ -1,8 +1,4 @@
-from typing import Optional
-
-from pont.client.world.language import Language
 from pont.client.world.chat import Chat
-
 
 class LocalPlayer:
 	def __init__(self, world, guid, name, guild=None):

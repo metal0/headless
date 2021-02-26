@@ -9,7 +9,7 @@ from ..opcode import Opcode
 from ..response import Response
 
 ChallengeRequest = construct.Struct(
-	'header' / ResponseHeader(Opcode.login_challenge),
+	'header' / ResponseHeader(Opcode.login_challenge, Response.db_busy),
 	'size' / construct.ByteSwapped(construct.Default(construct.Short, 30 + construct.len_(construct.this.account_name))),
 	'game' / construct.Default(construct.PaddedString(4, 'ascii'), 'WoW'),
 	'version' / construct.Default(VersionString(num_bytes=3), '3.3.5'),

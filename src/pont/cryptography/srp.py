@@ -65,6 +65,7 @@ class WoWSrp:
 
 		self._username = username.upper()
 		self._password = password.upper()
+		password = None
 
 	def compute_proof(self, session_key: int, salt: int, server_public: int, client_public: int) -> Tuple[int, int]:
 		N_sha = sha1(self.prime, out=int)
@@ -114,6 +115,7 @@ class WoWSrpServer(WoWSrp):
 class WoWSrpClient(WoWSrp):
 	def __init__(self, username: str, password: str, prime: int, generator: int, client_private=None):
 		super().__init__(username, password, prime, generator)
+		password = None
 		self.client_private = random.getrandbits(1024) if client_private is None else client_private
 
 		self.client_public = pow(self.generator, self.client_private, self.prime)

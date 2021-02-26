@@ -18,5 +18,5 @@ class FactionFlags(Enum):
 
 FactionState = construct.Struct(
 	'flags' / PackEnum(FactionFlags, construct.Byte),
-	'standing' / construct.Int32ul
+	'standing' / construct.Int32ul # the player's standing with a faction (how well a faction likes you)
 )

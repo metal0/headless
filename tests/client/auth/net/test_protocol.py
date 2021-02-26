@@ -8,7 +8,7 @@ from pont.client.auth.net import Response
 from pont.utility.string import bytes_to_int
 from tests.client.cryptography import load_test_servers
 
-logins_filename = '/home/fure/work/pont/servers_config.json'
+logins_filename = 'C:\\Users\\Owner\\Documents\\WoW\\servers_config.json'
 test_servers = load_test_servers(logins_filename)
 tc_login = test_servers['trinity-core-3.3.5']['account']
 
@@ -34,7 +34,6 @@ async def auth_server(stream):
 
 	proof_request = await protocol.receive_proof_request()
 	client_private = 143386892073113346271045296825355365119602324795205856098132479049957622403427006810653616896639308669514885320513042624825577275523311345156882292579472806120577841118102290052948040847318515534261288049316514160095147951671405527775489066400222418481863631312167863930538967927022064010646095222765545969242
-
 	srp = cryptography.WoWSrpClient(
 		username=tc_login['username'], password=tc_login['password'],
 		prime=prime,
@@ -51,15 +50,11 @@ async def auth_server(stream):
 
 	await protocol.send_proof_response(session_proof_hash=actual_session_proof_hash, response=Response.success)
 	await protocol.receive_realmlist_request()
-
-	realms = [{
-		'type': RealmType.pvp,
-		'status': RealmStatus.online,
-		'name': 'PontCore',
-		'address': ('127.0.0.1', 8085),
-		'population': 0,
-		'num_characters': 2
-	}]
+	realms = [dict(
+		type=RealmType.pvp, status=RealmStatus.online,
+		name='PontCore', address=('127.0.0.1', 8085),
+		population=0, num_characters=2
+	)]
 
 	await protocol.send_realmlist_response(realms=realms)
 
@@ -74,7 +69,6 @@ async def client_login(auth_address, stream):
 
 		realmlist = await client.auth.realms()
 		assert client.auth.state == AuthState.realmlist_ready
-
 		assert realmlist[0].type == RealmType.pvp
 		assert realmlist[0].status == RealmStatus.online
 		assert realmlist[0].name == 'PontCore'
@@ -84,7 +78,7 @@ async def client_login(auth_address, stream):
 
 async def test_auth_protocol():
 	(client_stream, server_stream) = trio.testing.memory_stream_pair()
-	with trio.fail_after(1):
+	with trio.fail_after(2):
 		async with trio.open_nursery() as nursery:
 			nursery.start_soon(client_login, None, client_stream)
 			nursery.start_soon(auth_server, server_stream)

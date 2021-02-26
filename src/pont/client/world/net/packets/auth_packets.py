@@ -69,8 +69,8 @@ BillingInfo = construct.Struct(
 SMSG_AUTH_RESPONSE = construct.Struct(
 	'header' / ServerHeader(Opcode.SMSG_AUTH_RESPONSE, 15),
 	'response' / PackEnum(AuthResponse),
-	'billing' / BillingInfo,
-	'expansion' / construct.Default(PackEnum(Expansion), Expansion.wotlk),
+	'billing' / BillingInfo, #
+	'expansion' / construct.Default(PackEnum(Expansion), Expansion.wotlk), # which WoW expansion
 	'queue_position' / construct.Default(construct.Switch(
 		construct.this.response == AuthResponse.wait_queue, {
 			True: construct.Int32ul,

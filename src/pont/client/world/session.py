@@ -1,19 +1,20 @@
 import random
 from contextlib import asynccontextmanager
-from typing import Optional, Tuple, Any
+from typing import Optional, Tuple, Any, List
 
 # import esper as esper
 import trio
+import pyee
 from loguru import logger
 from trio_socks import socks5
 
 from pont.client.auth import Realm
 from pont.client import events
-from .cache import CharacterCache
-from .character import CharacterInfo
+from .names import NameCache
 from .chat import Chat
 from .errors import ProtocolError
 from .net import WorldHandler, Opcode
+from .net.packets import CharacterInfo
 from .net.packets.auth_packets import AuthResponse
 from .net.protocol import WorldClientProtocol
 from .player import LocalPlayer
@@ -38,8 +39,11 @@ class WorldCrypto:
 		)
 
 class WorldSession:
-	def __init__(self, nursery: trio.Nursery, emitter, proxy: Optional[Tuple[str, int]] = None):
+	def __init__(self, nursery: trio.Nursery, emitter=None, proxy: Optional[Tuple[str, int]] = None):
 		self.proxy = proxy
+		if emitter is None:
+			emitter = pyee.TrioEventEmitter(nursery=nursery)
+
 		self.handler: WorldHandler = WorldHandler(emitter=emitter, world=self)
 		self.emitter = emitter
 
@@ -53,7 +57,8 @@ class WorldSession:
 		self._crypto: Optional[WorldCrypto] = None
 		self._realm = None
 		self._username = None
-		self.cache = CharacterCache(self)
+		self._handling_packets = False
+		self.names = NameCache(self)
 
 	@property
 	def state(self):
@@ -64,9 +69,51 @@ class WorldSession:
 
 	async def aclose(self):
 		if self._stream is not None:
+			await self._stream.send_eof()
 			await self._stream.aclose()
 
+		self._handling_packets = False
 		self._state = WorldState.not_connected
+
+	# Wait for the given event under an optional condition to occur (once) and return a transform of the event keyword
+	# arguments.
+	async def wait_for_event(self, event, condition=None, result_transform=None) -> Any:
+		receive_event = trio.Event()
+		result = None
+		if condition is None:
+			condition = lambda **kwargs: True
+
+		if result_transform is None:
+			result_transform = lambda kwargs: kwargs
+
+		async def on_event(**kwargs):
+			if condition(**kwargs):
+				nonlocal result
+				result = result_transform(**kwargs)
+				receive_event.set()
+
+		listener = self.emitter.on(event, on_event)
+		await receive_event.wait()
+
+		self.emitter.remove_listener(event, listener)
+		return result
+
+	# Wait for a packet to be received under a certain condition and return it.
+	async def wait_packet_condition(self, condition):
+		if not self._handling_packets:
+			raise ProtocolError('Packet handler not yet started')
+
+		def condition_mod(packet, **kwargs):
+			return condition(packet)
+
+		def transform(packet, **kwargs):
+			return packet
+
+		return await self.wait_for_event(
+			events.world.received_packet,
+			condition=condition_mod,
+			result_transform=transform
+		)
 
 	# TODO: Maybe make this some sort of asynccontextmanager so that waiting for a packet is more
 	#   time independent. A (rare, maybe impossible?) scenario in which a packet could arrive without this
@@ -76,40 +123,17 @@ class WorldSession:
 	#   I/O was polled. The context manager idea might still be valid for those cases where we have to await some
 	#   async function in between sending and receiving the packet.
 	#   ?????
+	# Wait for a packet to be received and return it.
 	async def wait_for_packet(self, opcode: Opcode) -> Any:
-		receive_event = trio.Event()
-		result = None
+		return await self.wait_packet_condition(lambda packet: packet.header.opcode == opcode)
 
-		async def on_receive_packet(packet):
-			if packet.header.opcode == opcode:
-				nonlocal result
-				result = packet
-				receive_event.set()
+	# Wait for a packet to be received and return it.
+	async def wait_for_one_of(self, *opcodes: List[Opcode]) -> Any:
+		return await self.wait_packet_condition(lambda packet: packet.header.opcode in opcodes)
 
-		listener = self.emitter.on(events.world.received_packet, on_receive_packet)
-		await receive_event.wait()
-
-		self.emitter.remove_listener(events.world.received_packet, listener)
-		return result
-
-	async def wait_for_event(self, event) -> Any:
-		receive_event = trio.Event()
-		result = None
-
-		async def on_event(**kwargs):
-			nonlocal result
-			result = kwargs
-			receive_event.set()
-
-		listener = self.emitter.on(event, on_event)
-		await receive_event.wait()
-
-		self.emitter.remove_listener(events.world.received_packet, listener)
-		if result is not None:
-			result: Optional[dict]
-			return result.values()
-
-		return result
+	@staticmethod
+	def _default_condition(**kwargs):
+		return True
 
 	async def _keepalive(self):
 		logger.debug('started')
@@ -120,9 +144,11 @@ class WorldSession:
 			random_factor = r * 20 - 10
 			await trio.sleep(30 + random_factor)
 
-	async def _packet_handler(self):
+	async def _packet_handler(self, *, task_status=trio.TASK_STATUS_IGNORED):
+		task_status.started()
 		logger.log('PACKETS', 'started')
 		try:
+			self._handling_packets = True
 			async for packet in self.protocol.decrypted_packets():
 				await self.handler.handle(packet)
 
@@ -131,6 +157,7 @@ class WorldSession:
 			self._state = WorldState.disconnected
 			self.emitter.emit(events.world.disconnected, reason=str(e))
 			await trio.lowlevel.checkpoint()
+			self._handling_packets = False
 			raise e
 
 	async def connect(self, realm=None, proxy=None, stream=None):
@@ -191,7 +218,7 @@ class WorldSession:
 			realm_id=self._realm.id
 		)
 
-		self._parent_nursery.start_soon(self._packet_handler)
+		await self._parent_nursery.start(self._packet_handler)
 		auth_response = await self.wait_for_packet(Opcode.SMSG_AUTH_RESPONSE)
 
 		if auth_response.response == AuthResponse.ok:
@@ -231,15 +258,13 @@ class WorldSession:
 				yield self.nursery
 
 			except Exception as e:
-				logger.critical(e)
+				logger.exception(e)
 
 			finally:
-				if self.state >= WorldState.in_game:
-					await self.logout()
-
+				# if self.state >= WorldState.in_game:
+				# 	await self.logout()
 				self.nursery.cancel_scope.cancel()
 
-	# TODO: Figure out how to logout properly since we still seem to receive ingame packets after logging out
 	async def logout(self):
 		logger.info('Logging out...')
 		self.emitter.emit(events.world.sent_logout_request)
@@ -250,6 +275,7 @@ class WorldSession:
 
 		self.local_player = None
 		self._state = WorldState.logged_in
+		self._handling_packets = False
 		logger.info('Logged out')
 
 __all__ = ['WorldSession', 'WorldState', 'WorldCrypto']

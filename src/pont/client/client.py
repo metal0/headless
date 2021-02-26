@@ -7,13 +7,12 @@ import trio
 from pont.client.auth import AuthSession, Realm
 from pont.client.auth.session import AuthState
 from pont.client.world import WorldSession
-from pont.client.world.character import CharacterInfo
 from pont.client.world.state import WorldState
 from .config import Config
 from .log import logger
 from . import auth, world
+from .world.net.packets import CharacterInfo
 from ..utility import AsyncScopedEmitter, enum
-
 
 @asynccontextmanager
 async def open_client(auth_server=None, proxy=None):
@@ -101,11 +100,12 @@ class Client(AsyncScopedEmitter):
 		self._reset()
 		await super().aclose()
 
-	async def login(self, username: str, password: str, country: str='enUS', arch: str='x86', os: str='OSX', build: int=12340):
+	async def login(self, username: str, password: str, country: str='enUS', arch: str='x86', os: str='OSX', build: int=12340, version='3.3.5'):
 		'''
 		Connect to the auth server and then authenticate using the given username and password.
 		:param os: The operating system string to send to the auth server
 		:param build: The game build to send
+		:param version: The game version to send
 		:param arch: The architecture of the game (x86 or x64)
 		:param country: The localization (e.g. enUS)
 		:param username: username to use.
@@ -119,7 +119,7 @@ class Client(AsyncScopedEmitter):
 		await self.auth.authenticate(
 			username=username, password=password,
 			country=country, arch=arch, os=os,
-			build=build
+			build=build, version=version
 		)
 
 	async def realms(self):

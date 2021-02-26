@@ -18,8 +18,8 @@ class TypedConstruct(construct.Struct):
 		super().__getattribute__(item)
 
 class GuidConstruct(construct.Adapter):
-	def __init__(self, guid_type):
-		super().__init__(construct.Int64ul)
+	def __init__(self, guid_type, integer_type=construct.Int64ul):
+		super().__init__(integer_type)
 		self.guid_type = guid_type
 
 	def _decode(self, obj: int, context, path):

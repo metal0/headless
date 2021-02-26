@@ -3,9 +3,8 @@ import construct
 from pont.utility.construct import PackEnum, GuidConstruct
 from .headers import ClientHeader, ServerHeader
 from ..opcode import Opcode
-from ...chat.message import MessageType, MonsterMessage, WhisperForeign, BGMessage, AchievementMessage, DefaultMessage, \
-	ChannelMessage
-from ...guid import Guid
+from ...chat.message import MessageType
+from ...guid import Guid, GuidType
 from ...language import Language
 
 CMSG_MESSAGECHAT = construct.Struct(
@@ -22,6 +21,57 @@ CMSG_MESSAGECHAT = construct.Struct(
 	),
 	'text' / construct.CString('utf-8')
 )
+
+MonsterMessage = construct.Struct(
+	'sender' / construct.Prefixed(construct.Int32ul, construct.CString('ascii')),
+	'receiver_guid' / GuidConstruct(Guid),
+	'receiver' / construct.If(
+		construct.this.receiver_guid != Guid() and construct.this.receiver_guid.type not in (GuidType.player, GuidType.pet),
+		construct.Prefixed(construct.Int32ul, construct.CString('ascii'))
+	),
+)
+
+WhisperForeign = construct.Struct(
+	'sender' / construct.Prefixed(construct.Int32ul, construct.CString('ascii')),
+	'receiver_guid' / GuidConstruct(Guid),
+)
+
+BGMessage = construct.Struct(
+	'receiver_guid' / GuidConstruct(Guid),
+	'receiver' / construct.If(
+		construct.this.receiver_guid != Guid() and construct.this.receiver_guid.type != GuidType.player,
+		construct.Prefixed(construct.Int32ul, construct.CString('ascii'))
+	),
+)
+
+AchievementMessage = construct.Struct(
+	'receiver_guid' / GuidConstruct(Guid),
+)
+
+
+def ChannelMessage(gm_chat=False):
+	if gm_chat:
+		return construct.Struct(
+			'sender' / construct.Prefixed(construct.Int32ul, construct.CString('ascii')),
+			'channel' / construct.CString('ascii'),
+			'receiver_guid' / GuidConstruct(Guid),
+		)
+	else:
+		return construct.Struct(
+			'channel' / construct.CString('ascii'),
+			'receiver_guid' / GuidConstruct(Guid),
+		)
+
+def DefaultMessage(gm_chat=False):
+	if gm_chat:
+		return construct.Struct(
+			'sender' / construct.Prefixed(construct.Int32ul, construct.CString('ascii')),
+			'receiver_guid' / GuidConstruct(Guid),
+		)
+	else:
+		return construct.Struct(
+			'receiver_guid' / GuidConstruct(Guid),
+		)
 
 def make_messagechat_packet(gm_chat=False):
 	return construct.Struct(

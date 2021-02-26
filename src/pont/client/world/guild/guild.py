@@ -1,6 +1,4 @@
 from enum import Enum
-from typing import Optional
-
 from pont.client.world.errors import ProtocolError
 from pont.client.world.net.opcode import Opcode
 from pont.client.world.state import WorldState
@@ -82,19 +80,23 @@ class Guild:
 	min_ranks = 5
 	max_ranks = 10
 
-	# @staticmethod
-	# async def query(world, data):
-	# 	if type(data) is str:
-	# 		guid = 0
-	# 		return Guild(world, guid=guid, name=data)
-	# 	elif type(data) is Guid:
-	# 		name = ''
-	# 		return Guild(world, guid=data, name=name)
-	# 	elif type(data) is int:
-	# 		return await Guild.query(world, Guid(value=data))
-	# 	raise TypeError(f'Invalid type for data used: {type(data)}')
+	@staticmethod
+	async def query(world, data):
+		if type(data) is str:
+			guid = 0
+			return Guild(world, guid=guid, name=data)
+		elif type(data) is Guid:
+			name = ''
+			return Guild(world, guid=data, name=name)
+		elif type(data) is int:
+			return await Guild.query(world, Guid(value=data))
+		raise TypeError(f'Invalid type for data used: {type(data)}')
 
-	def __init__(self, world, guid, name=None):
+	@staticmethod
+	async def load_from_packet(world, packet):
+		pass
+
+	def __init__(self, world, guid, name):
 		self._info = None
 		self._world = world
 		self._guid = guid
@@ -118,13 +120,17 @@ class Guild:
 		if self._info is not None:
 			return self._info.ranks
 
-	# async def ginvite(self, name: str):
-	# 	# if not self._access_token.has_authority_to(Actions.guild_invite):
-	# 	# 	raise PermissionError(f'{self._access_token} is not authorized to invite guild members')
-	# 	self._world.
+class LocalGuild(Guild):
+	@staticmethod
+	async def load_from_packet(world, packet):
+		pass
+
 
 	async def roster(self):
 		await self._world.protocol.send_CMSG_GUILD_ROSTER()
 		return await self._world.wait_for_packet(Opcode.SMSG_GUILD_ROSTER)
 
-	# async def _send_query
+	# async def ginvite(self, name: str):
+		# if not self._access_token.has_authority_to(Actions.guild_invite):
+		# 	raise PermissionError(f'{self._access_token} is not authorized to invite guild members')
+		# self._world.pro

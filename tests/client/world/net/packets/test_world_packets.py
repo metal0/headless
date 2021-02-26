@@ -34,13 +34,6 @@ def test_SMSG_CLIENTCACHE_VERSION():
 	assert packet.version == 3
 	print(packet)
 
-def test_SMSG_WARDEN_DATA():
-	data = b'\x00"\xe6\x02l\xa2\x13Fn\xb2\x8b\x19\x9c\x9c\xbb\xa1v\xd8\x1d\xb8\x95X\xd8\xab\xdf\xbce\xd7\x1a\xbf\xf9q\x83\x876\x01'
-	packet = pont.client.world.net.packets.SMSG_WARDEN_DATA.parse(data)
-	print(packet)
-
-	assert False
-
 def test_SMSG_TUTORIAL_FLAGS():
 	data = bytes.fromhex('0022FD00F7BFEFFCE3A3F503000000000000000000000000000000000000000000000000')
 	packet = pont.client.world.net.packets.SMSG_TUTORIAL_FLAGS.parse(data)

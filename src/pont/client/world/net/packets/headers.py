@@ -14,12 +14,12 @@ def is_large_server_packet(data) -> bool:
 
 def ClientHeader(opcode = None, size = 0):
 	if opcode is None:
-		opcode_con = construct.ByteSwapped(PackEnum(Opcode, construct.Int))
+		opcode_con = PackEnum(Opcode, construct.Int32ul)
 	else:
-		opcode_con = construct.ByteSwapped(construct.Default(construct.Const(opcode, PackEnum(Opcode, construct.Int)), opcode))
+		opcode_con = construct.Default(construct.Const(opcode, PackEnum(Opcode, construct.Int32ul)), opcode)
 
 	return construct.Struct(
-		'size' / construct.Default(construct.Short, size + 4),
+		'size' / construct.Default(construct.Int16ub, size + 4),
 		'opcode' / opcode_con
 	)
 

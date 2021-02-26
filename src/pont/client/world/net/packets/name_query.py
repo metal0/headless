@@ -13,7 +13,7 @@ CMSG_NAME_QUERY = construct.Struct(
 
 NameInfo = construct.Struct(
 	'name' / construct.CString('utf-8'),
-	'realm_name' / construct.Default(construct.CString('utf-8'), ''),
+	'realm_name' / construct.CString('utf-8'),
 	'race' / PackEnum(Race),
 	'gender' / PackEnum(Gender),
 	'combat_class' / PackEnum(CombatClass),

@@ -44,7 +44,7 @@ def test_SMSG_GUILD_ROSTER():
 	assert packet.header.size == 958
 	assert packet.total_members == 20
 	assert packet.motd == 'hello brate'
-	assert packet.guild_info == ''
+	assert packet.info == ''
 
 	adidi = packet.members[0]
 	assert adidi.guid == Guid(counter=5)
@@ -77,7 +77,7 @@ def test_SMSG_GUILD_ROSTER():
 	assert act.rank_id == 0
 	assert act.level == 80
 	assert act.combat_class == CombatClass.warlock
-	# assert act.gender == Gender.female
+	assert act.gender == Gender.male
 	assert act.area_id == 618
 	assert act.note == ''
 	assert act.officer_note == ''

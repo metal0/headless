@@ -35,6 +35,8 @@ class Guid:
 		return self.value
 
 	def __eq__(self, other):
+		# if type(other) is not type(self):
+		# 	return self.value == other
 		return self.value == other.value
 
 	def _set(self, low: int, high: int, entry=None):

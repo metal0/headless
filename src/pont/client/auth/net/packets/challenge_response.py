@@ -14,6 +14,6 @@ ChallengeResponse = construct.Struct(
 	'prime_length' / construct.Default(construct.Byte, 32),
 	'prime' / construct.BytesInteger(construct.this.prime_length, swapped=True),
 	'salt' / construct.BytesInteger(32, swapped=True),
-	'checksum_salt' / construct.BytesInteger(16, swapped=True),
+	'checksum' / construct.BytesInteger(16, swapped=True),
 	'security_flag' / construct.Default(construct.Byte, 0),
 )

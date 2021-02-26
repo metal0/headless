@@ -18,7 +18,8 @@ SMSG_GROUP_INVITE = construct.Struct(
 	'header' / ServerHeader(Opcode.SMSG_GROUP_INVITE, 10),
 	'in_group' / construct.Flag,
 	'inviter' / construct.CString('ascii'),
-	'unknown1' / construct.Default(construct.Int32ul, 0),
-	'count' / construct.Default(construct.Byte, 0),
-	'unknown2' / construct.Default(construct.Int32ul, 0)
+	construct.Padding(4 + 1 + 4)
+	# 'unknown1' / construct.Default(construct.Int32ul, 0),
+	# 'count' / construct.Default(construct.Byte, 0),
+	# 'unknown2' / construct.Default(construct.Int32ul, 0)
 )

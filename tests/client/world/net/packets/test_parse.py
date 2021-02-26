@@ -1,9 +1,7 @@
 from pont.client.world.expansions import Expansion
 from pont.client.world.net import Opcode, packets
-from pont.client.world.net.packets import parse
 from pont.client.world.net.packets.auth_packets import AuthResponse
 from pont.client.world.net.packets.headers import ServerHeader, ServerSize
-
 
 def test_server_header_parsing():
 	size = ServerSize().build(3)
@@ -16,7 +14,7 @@ def test_server_header_parsing():
 		data=addon_data
 	))
 
-	header = ServerHeader().parse(addon_info_data[:5])
+	ServerHeader().parse(addon_info_data[:5])
 	auth_response_packet = packets.SMSG_AUTH_RESPONSE.build(dict(
 		response=AuthResponse.ok,
 		billing=dict(time_left=30),

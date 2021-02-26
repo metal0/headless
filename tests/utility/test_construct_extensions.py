@@ -6,7 +6,6 @@ from pont.utility.construct import AddressPort, GuidUnpacker, PackedCoordinates,
 from pont.client.world import Position
 from pont.client.world.guid import Guid, GuidType
 
-
 def test_address_port():
 	# Test big endian encoding and decoding
 	con = AddressPort()
@@ -50,24 +49,10 @@ def test_packed_guid():
 # TODO: fix
 def test_packed_time():
 	time = datetime.datetime(2021, 1, 3, 5, 39)
-
-	print(f'{time=}')
 	packed_time = PackedDateTime().build(time)
 
-	print(f'{packed_time=}')
 	parsed_time = PackedDateTime().parse(packed_time)
-	print(f'{parsed_time=}')
-
 	assert time == parsed_time
-	# guid = Guid(value=0x7000000003372cc)
-	#
-	# print(guid)
-	# print(Guid(value=unpack_guid(*pack_guid(guid.value))))
-	# assert unpack_guid(*pack_guid(guid.value)) == guid.value
-	#
-	# packed_guid = GuidUnpacker(Guid).build(guid)
-	# parsed_guid = GuidUnpacker(Guid).parse(packed_guid)
-	# assert parsed_guid == guid
 
 def test_packed_coordinates():
 	pos = Position(2.1, -33, 99.8)

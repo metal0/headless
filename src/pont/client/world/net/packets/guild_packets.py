@@ -4,9 +4,33 @@ from pont.utility.construct import GuidConstruct, PackEnum
 from pont.client.world.guid import Guid
 from .headers import ServerHeader, ClientHeader
 from ..opcode import Opcode
+from ...entities.player import CombatClass, Gender
+from ...guild.bank import GuildBank
 from ...guild.events import GuildEventType
 from ...guild.guild import GuildCommandType, GuildCommandError, Guild
-from ...guild.roster import GuildRankData, RosterMemberData
+from ...guild.member import MemberStatus
+
+GuildRankData = construct.ByteSwapped(construct.Struct(
+	'flags' / construct.Int,
+	'withdraw_gold_limit' / construct.Int,
+	'tab_flags' / construct.Array(GuildBank.max_tabs,
+		construct.Sequence(construct.Int, construct.Int)
+	),
+))
+
+RosterMemberData = construct.Struct(
+	'guid' / GuidConstruct(Guid),
+	'status' / PackEnum(MemberStatus),
+	'name' / construct.CString('ascii'),
+	'rank_id' / construct.Int32ul,
+	'level' / construct.Byte,
+	'combat_class' / PackEnum(CombatClass),
+	'gender' / PackEnum(Gender),
+	'area_id' / construct.Int32ul,
+	'last_save' / construct.IfThenElse(construct.this.status == MemberStatus.offline, construct.Float32l, construct.Pass),
+	'note' / construct.CString('ascii'),
+	'officer_note' / construct.CString('ascii'),
+)
 
 CMSG_GUILD_QUERY = construct.Struct(
 	'header' / ClientHeader(Opcode.CMSG_GUILD_QUERY, 4),
@@ -21,7 +45,7 @@ SMSG_GUILD_ROSTER = construct.Struct(
 	'header' / ServerHeader(Opcode.SMSG_GUILD_ROSTER, 0),
 	'total_members' / construct.Int32ul,
 	'motd' / construct.CString('ascii'),
-	'guild_info' / construct.CString('ascii'),
+	'info' / construct.CString('ascii'),
 	'ranks' / construct.PrefixedArray(construct.Int32ul, GuildRankData),
 	'members' / construct.Array(construct.this.total_members, RosterMemberData)
 )
@@ -37,12 +61,6 @@ CMSG_GUILD_ACCEPT = construct.Struct(
 
 CMSG_GUILD_DECLINE = construct.Struct(
 	'header' / ClientHeader(Opcode.CMSG_GUILD_DECLINE, 0)
-)
-
-CMSG_GUILD_SET_PUBLIC_NOTE = construct.Struct(
-	'header' / ClientHeader(Opcode.CMSG_GUILD_SET_PUBLIC_NOTE, 10),
-	'player' / construct.CString('ascii'),
-	'note' / construct.CString('ascii')
 )
 
 SMSG_GUILD_COMMAND_RESULT = construct.Struct(
@@ -79,7 +97,7 @@ SMSG_GUILD_EVENT = construct.Struct(
 )
 
 SMSG_GUILD_QUERY_RESPONSE = construct.Struct(
-	'header' / ServerHeader(Opcode.SMSG_GUILD_QUERY_RESPONSE, 4 + 0 + Guild.max_ranks * 0 + 4 * 6),
+	'header' / ServerHeader(Opcode.SMSG_GUILD_QUERY_RESPONSE, 8 * 32 + 200),
 	'guild_id' / construct.Int32ul,
 	'name' / construct.CString('ascii'),
 	'ranks' / construct.Array(Guild.max_ranks, construct.CString('ascii')),
@@ -91,10 +109,44 @@ SMSG_GUILD_QUERY_RESPONSE = construct.Struct(
 	'num_ranks' / construct.Int32ul,
 )
 
+CMSG_GUILD_SET_OFFICER_NOTE = construct.Struct(
+	'header' / ClientHeader(Opcode.CMSG_GUILD_SET_OFFICER_NOTE),
+	'player' / construct.CString('utf8'),
+	'note' / construct.CString('utf8')
+)
+
+CMSG_GUILD_SET_PUBLIC_NOTE = construct.Struct(
+	'header' / ClientHeader(Opcode.CMSG_GUILD_SET_PUBLIC_NOTE, ),
+	'player' / construct.CString('utf8'),
+	'note' / construct.CString('utf8')
+)
+
+CMSG_GUILD_MOTD = construct.Struct(
+	'header' / ClientHeader(Opcode.CMSG_GUILD_INFO, 0),
+	'motd' / construct.CString('utf8') # max length is 128 (TODO: check for overflow)
+)
+
+CMSG_GUILD_INFO = construct.Struct(
+	'header' / ClientHeader(Opcode.CMSG_GUILD_INFO, 0),
+)
+
 SMSG_GUILD_INFO = construct.Struct(
-	'header' / ClientHeader(Opcode.SMSG_GUILD_INFO, 0 + 1 + 4 + 4),
-	'guild' / construct.CString('ascii'),
-	'created' / construct.Byte,
+	'header' / ServerHeader(Opcode.SMSG_GUILD_INFO, construct.len_(construct.this.name) + 4 + 4 + 4),
+	'name' / construct.CString('ascii'),
+	'created' / construct.Int32ul,
 	'num_members' / construct.Int32ul,
 	'num_accounts' / construct.Int32ul
+)
+
+CMSG_GUILD_INFO_TEXT = construct.Struct(
+	'header' / ClientHeader(Opcode.CMSG_GUILD_INFO_TEXT),
+	'info' / construct.CString('utf8'), # max length is 500 (TODO: check for overflow)
+)
+
+CMSG_GUILD_EVENT_LOG_QUERY = construct.Struct(
+	'header' / ClientHeader(Opcode.MSG_GUILD_EVENT_LOG_QUERY),
+)
+
+SMSG_GUILD_EVENT_LOG_QUERY = construct.Struct(
+	'header' / ServerHeader(Opcode.MSG_GUILD_EVENT_LOG_QUERY),
 )

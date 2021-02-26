@@ -1,56 +1,20 @@
-import construct
+from enum import Enum
 
-from pont.utility.construct import Coordinates, PackEnum, GuidConstruct
-from pont.client.world.entities.player import Race, CombatClass, Gender
-from pont.client.world.guid import Guid
-
-DisplayInfo = construct.Struct(
-	'skin' / construct.Byte,
-	'face' / construct.Byte,
-	'hair_style' / construct.Byte,
-	'hair_color' / construct.Byte,
-	'facial_hair' / construct.Byte,
-)
-
-PetInfo = construct.Struct(
-	'display_id' / construct.Int32ul,
-	'level' / construct.Int32ul,
-	'family' / construct.Int32ul,
-)
-
-ItemInfo = construct.Struct(
-	'display_id' / construct.Int32ul,
-	'inventory_type' / construct.Byte,
-	'enchant_aura_id' / construct.Int32ul,
-)
-
-BagInfo = construct.Struct(
-	'display_id' / construct.Int32ul,
-	'inventory_type' / construct.Byte,
-	'enchant_id' / construct.Int32ul,
-)
-
-CharacterInfo = construct.Struct(
-	'guid' / GuidConstruct(Guid),
-	'name' / construct.CString('ascii'),
-	'race' / PackEnum(Race),
-	'combat_class' / PackEnum(CombatClass),
-	'gender' / PackEnum(Gender),
-	'skin' / construct.Byte,
-	'face' / construct.Byte,
-	'hair_style' / construct.Byte,
-	'hair_color' / construct.Byte,
-	'facial_hair' / construct.Byte,
-	'level' / construct.Byte,
-	'zone' / construct.Int32ul,
-	'map' / construct.Int32ul,
-	'position' / construct.ByteSwapped(Coordinates()),
-	'guild_guid' / construct.Int32ul,
-	'flags' / construct.Int32ul,
-	'customization_flags' / construct.Int32ul,
-	# 'slot' / construct.Byte,
-	'is_first_login' / construct.Flag,
-	'pet' / PetInfo,
-	'items' / construct.Array(19, ItemInfo),
-	'bags' / construct.Array(4, BagInfo)
-)
+class CharacterNameResponse(Enum):
+	success = 0x57
+	failure = 0x58
+	no_name = 0x59
+	too_share = 0x5A
+	too_long = 0x5B
+	invalid_character = 0x5C
+	mixed_languages = 0x5D
+	profane = 0x5E
+	reserved = 0x5F
+	invalid_apostrophes = 0x60
+	multiple_apostrophes = 0x61
+	three_consecutive = 0x62
+	invalid_space = 0x63
+	consecutive_spaces = 0x64
+	russian_consecutive_silent_characters = 0x65
+	russian_silent_character_at_beginning_or_end = 0x66
+	declension_doesnt_match_base_name = 0x67

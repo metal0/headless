@@ -15,6 +15,7 @@ from .packets import parse
 from .packets.name_query import NameInfo
 from .packets.parse import WorldPacketParser, WorldServerPacketParser, WorldClientPacketParser
 from ..chat.message import MessageType
+from ..entities.player import Race
 from ..errors import ProtocolError, Disconnected
 from ..expansions import Expansion
 from ..guid import Guid
@@ -149,9 +150,8 @@ class WorldProtocol:
 		await self.send_all(encrypted)
 		self._num_packets_sent += 1
 
-		logger.log('PACKETS', f'{len(data)=}')
-		# logger.log('PACKETS', f'{packet_name}: {packet}')
-		logger.log('PACKETS', f'{data[:min(len(data), 50)]=} {encrypted[:min(len(data), 50)]=}')
+		logger.log('PACKETS', f'{packet.header.opcode=} {packet=}')
+		logger.log('PACKETS', f'{data=}')
 
 class WorldClientProtocol(WorldProtocol):
 	def __init__(self, stream: trio.abc.HalfCloseableStream, session_key: int):
@@ -179,12 +179,10 @@ class WorldClientProtocol(WorldProtocol):
 	async def next_decrypted_packet(self):
 		# Receive header first
 		original_data = await self.receive_some(max_bytes=4)
-
 		if original_data is None or len(original_data) == 0:
 			raise Disconnected('received EOF from server')
 
 		logger.log('PACKETS', f'(Client) Incoming packet...')
-		logger.log('PACKETS', f'{original_data=}')
 
 		try:
 			header_data = self.decrypt(original_data[0:4])
@@ -198,7 +196,6 @@ class WorldClientProtocol(WorldProtocol):
 			logger.log('PACKETS', f'{header=}')
 			data = header_data
 
-			# TODO: Fix this header size bug for certain packets??
 			bytes_left = header.size - 2
 			while bytes_left > 0:
 				logger.log('PACKETS', f'Listening for {bytes_left} byte body...')
@@ -215,6 +212,7 @@ class WorldClientProtocol(WorldProtocol):
 					raise ProtocolError('received EOF from server')
 
 			try:
+				logger.log('PACKETS', f'{data=}')
 				packet = self.parser.parse(data, header)
 				self._num_packets_received += 1
 				return packet
@@ -286,6 +284,66 @@ class WorldClientProtocol(WorldProtocol):
 			packets.CMSG_KEEP_ALIVE,
 		)
 
+	async def send_CMSG_GET_MAIL_LIST(self, mailbox: Guid):
+		"""
+		Sends a CMSG_GET_MAIL_LIST packet with optional encryption.
+		:return: None.
+		"""
+		await self._send_encrypted_packet(
+			packets.CMSG_GET_MAIL_LIST,
+			mailbox=mailbox
+		)
+
+	async def send_CMSG_WHO(self, name: str, guild_name: str='', race=None, combat_class=None, 
+		min_level=1, max_level=80, zones=(), search_terms=()):
+		"""
+		Sends a CMSG_WHO packet with optional encryption.
+		:return: None.
+		"""
+		size = len(name) + 1
+		size += len(guild_name) + 1
+		size += 4 * 4 # min/max level, race, combat_class
+		size += 4 + len(zones) * 4
+		size += 4
+		for search in search_terms:
+			size += len(search) + 1
+
+		await self._send_encrypted_packet(
+			packets.CMSG_WHO,
+			header=dict(size=4 + size ),
+			name=name, race=race, combat_class=combat_class,
+			min_level=min_level, max_level=max_level,
+			guild_name=guild_name, zones=zones, search_terms=search_terms,
+		)
+
+	async def send_CMSG_WHOIS(self, name: str):
+		"""
+		Sends a CMSG_WHOIS packet with optional encryption.
+		:return: None.
+		"""
+		await self._send_encrypted_packet(
+			packets.CMSG_WHOIS,
+			header={'size': 4 + len(name) + 1},
+			name=name
+		)
+
+	async def send_CMSG_AUCTION_LIST_ITEMS(self, auctioneer: Guid, search_term: str, list_start: int = 0, min_level=0, max_level=80,
+		slot_id=0, category=0, subcategory=0, rarity=0, usable=False, is_full=True
+	):
+		"""
+		Sends a CMSG_AUCTION_LIST_ITEMS packet with optional encryption.
+		:return: None.
+		"""
+		await self._send_encrypted_packet(packets.CMSG_AUCTION_LIST_ITEMS,
+			header={'size': 4 + 8 + 4 + (1 + len(search_term)) + 1 + 1 + 4 + 4 + 4 + 4 + 1 + 1 + 1},
+			auctioneer=auctioneer,
+			list_start=list_start, search_term=search_term,
+			min_level=min_level, max_level=max_level,
+			slot_id=slot_id, category=category, subcategory=subcategory,
+			rarity=rarity, usable=usable,
+			is_full=is_full
+		)
+
 	async def send_CMSG_PLAYER_LOGIN(self, player_guid: Guid):
 		"""
 		Sends an encrypted CMSG_PLAYER_LOGIN packet.
@@ -303,6 +361,15 @@ class WorldClientProtocol(WorldProtocol):
 		"""
 		await self._send_encrypted_packet(
 			packets.CMSG_LOGOUT_REQUEST
+		)
+
+	async def send_CMSG_CHAR_RENAME(self):
+		"""
+		Sends an encrypted CMSG_CHAR_RENAME packet.
+		:return: None.
+		"""
+		await self._send_encrypted_packet(
+			packets.CMSG_CHAR_RENAME
 		)
 
 	async def send_CMSG_DUEL_ACCEPTED(self):
@@ -369,7 +436,7 @@ class WorldClientProtocol(WorldProtocol):
 		"""
 		await self._send_encrypted_packet(
 			packets.CMSG_GUILD_CREATE,
-			header={'size': len(guild_name) + 4},
+			header={'size': len(guild_name) + 1 + 4},
 			guild_name=guild_name
 		)
 
@@ -635,6 +702,17 @@ class WorldServerProtocol(WorldProtocol):
 			guid=Guid(guid), found=found, info=info
 		)
 
+	async def send_SMSG_WHOIS(self, message: str):
+		"""
+		Sends an unencrypted SMSG_WHOIS packet.
+		:return: None.
+		"""
+		await self._send_encrypted_packet(
+			packets.SMSG_WHOIS,
+			header={'size': 2 + len(message) + 1},
+			message=message
+		)
+
 	async def send_SMSG_WARDEN_DATA(self, command=51, module_id=0, module_key=0, size=100):
 		"""
 		Sends an encrypted SMSG_WARDEN_DATA packet.
@@ -767,6 +845,15 @@ class WorldServerProtocol(WorldProtocol):
 		"""
 		return await self._receive_encrypted_packet(
 			packets.CMSG_PING,
+		)
+
+	async def receive_CMSG_GET_MAIL_LIST(self):
+		"""
+		Receives a CMSG_GET_MAIL_LIST packet with optional encryption.
+		:return: a parsed CMSG_GET_MAIL_LIST packet.
+		"""
+		return await self._receive_encrypted_packet(
+			packets.CMSG_GET_MAIL_LIST,
 		)
 
 	async def receive_CMSG_KEEP_ALIVE(self):

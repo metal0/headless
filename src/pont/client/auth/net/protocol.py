@@ -21,20 +21,21 @@ class AuthProtocol:
 		async with self._read_lock:
 			return await self.stream.receive_some(max_bytes)
 
-	async def send_challenge_request(self, username: str, build=12340, country='enUS', game='WoW', arch='x86', os='OSX', ip='127.0.0.1'):
-		await self._send_all(packets.ChallengeRequest.build({
-			'country': country,
-			'build': build,
-			'game': game,
-			'architecture': arch,
-			'account_name': username,
-			'ip': ip,
-			'os': os,
-			'size': 30 + len(username),
-		}))
+	async def send_challenge_request(self, username: str, build=12340, version='3.3.5', country='enUS', game='WoW', arch='x86', os='OSX', ip='127.0.0.1'):
+		await self._send_all(packets.ChallengeRequest.build(dict(
+			country=country,
+			build=build,
+			version=version,
+			game=game,
+			architecture=arch,
+			account_name=username,
+			ip=ip,
+			os=os,
+			size=30 + len(username),
+		)))
 
 	async def send_challenge_response(self, prime: int, server_public: int, salt: int, response: Response=Response.success,
-			generator_length=1, generator=7, prime_length=32, checksum_salt=0, security_flag=0):
+			generator_length=1, generator=7, prime_length=32, checksum=0, security_flag=0):
 		await self._send_all(packets.ChallengeResponse.build({
 			'server_public': server_public,
 			'response': response,
@@ -43,7 +44,7 @@ class AuthProtocol:
 			'prime_length': prime_length,
 			'prime': prime,
 			'salt': salt,
-			'checksum_salt': checksum_salt,
+			'checksum': checksum,
 			'security_flag': security_flag
 		}))
 
@@ -64,7 +65,7 @@ class AuthProtocol:
 			login_flags=login_flags
 		)))
 
-	async def send_proof_request(self, client_public: int, session_proof: int, checksum: int=0, num_keys: int=0, security_flags: int=0):
+	async def send_proof_request(self, client_public: int, session_proof: int, checksum: int=4601254584545541958749308449812234986282924510, num_keys: int=0, security_flags: int=0):
 		await self._send_all(packets.ProofRequest.build({
 			'client_public': client_public,
 			'session_proof': session_proof,
