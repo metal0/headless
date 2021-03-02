@@ -1,6 +1,6 @@
 import collections
 
-MockCharacter = collections.namedtuple('TestCharacter', ['name'])
-MockWorld = collections.namedtuple('TestWorld', ['protocol', 'wait_for_packet'])
+MockCharacter = collections.namedtuple('MockCharacter', ['name', 'guid'])
+MockWorld = collections.namedtuple('MockWorld', ['protocol', 'wait_for_packet', 'emitter'])
 MockQueryResponse = collections.namedtuple('MockQueryResponse', ['found', 'info'])
 MockNameInfo = collections.namedtuple('MockNameInfo', ['name'])

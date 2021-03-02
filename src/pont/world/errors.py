@@ -1,0 +1,2 @@
+class WorldError(Exception):
+	pass

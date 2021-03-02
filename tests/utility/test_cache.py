@@ -1,9 +1,10 @@
-import trio
 import datetime
-from pont.client.world import Guid
-from pont.client.world.names import NameCache
-from pont.client.world.net import WorldClientProtocol
+import trio
+from wlink import Guid
+from wlink.world import WorldClientProtocol
+
 from pont.utility.cache import Cache, TimedCache
+from pont.world.names import NameCache
 from tests.mock.world import MockQueryResponse, MockNameInfo, MockWorld
 
 count = 0
@@ -74,7 +75,7 @@ async def mock_wait_for_packet(opcode):
 async def test_name_cache():
 	(client, server) = trio.testing.memory_stream_pair()
 	protocol = WorldClientProtocol(client, session_key=7)
-	world = MockWorld(protocol=protocol, wait_for_packet=mock_wait_for_packet)
+	world = MockWorld(protocol=protocol, wait_for_packet=mock_wait_for_packet, emitter=None)
 	cache = NameCache(world)
 	assert (await cache.lookup(Guid(0x1))).name == 'Pont'
 	assert Guid(0x1) in cache

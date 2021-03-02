@@ -1,13 +1,12 @@
 import json
 import random
+
 import loguru
 import trio
-import pont
 
-from pont.client import auth, world
-from pont.client.world.chat.message import MessageType
-from pont.client.world.language import Language
-from pont.client.world.net import Opcode
+import pont
+from pont import auth, world
+from pont.world import Opcode
 
 
 def load_login(server: str, filename: str):
