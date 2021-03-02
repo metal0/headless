@@ -1,5 +1,6 @@
 from abc import ABC
-from pont.client.log import logger
+
+from wlink.log import logger
 
 class Plugin(ABC):
 	requirements = []

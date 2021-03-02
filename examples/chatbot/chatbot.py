@@ -1,13 +1,13 @@
 import datetime
 import trio
+from wlink.world import Opcode
+from wlink.log import logger
+
 import pont
-from examples.chatbot.plugin import Plugin, PluginManager
-from pont.client.log import logger
-from pont.client import world, auth
 from typing import Tuple, Optional, List
 
-from pont.client.world import Guid
-
+from examples.chatbot.plugin import Plugin, PluginManager
+from pont import auth, world
 
 class Chatbot:
 	def __init__(self, character: str, realm: str, realmlist: Tuple[str, int], plugins: List[Plugin]):
@@ -91,12 +91,16 @@ class Chatbot:
 					async with client.enter_world(character):
 						client.world.nursery.start_soon(announce_uptime)
 						await trio.sleep(1)
-						# await client.world.protocol.send_CMSG_AUCTION_LIST_ITEMS(
-						# 	auctioneer=Guid(0xF1300021DE01375A),
-						# 	search_term='Bread',
-						# )
+						await client.world.protocol.send_CMSG_GET_MAIL_LIST(mailbox=0xF11002FC1301873C)
+						mail = await client.world.wait_for_packet(Opcode.SMSG_MAIL_LIST_RESULT)
+						print(mail)
 
-						await client.world.protocol.send_CMSG_WHO(name='Pont')
+						await client.world.protocol.send_CMSG_GUILD_INFO_TEXT(info='test from the horser')
+						await client.world.protocol.send_CMSG_AUCTION_LIST_ITEMS(
+							auctioneer=0xF1300021DE01375A,
+							search_term='Bread',
+						)
+
 						await trio.sleep_forever()
 
 					await trio.sleep(2)

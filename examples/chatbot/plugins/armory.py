@@ -1,14 +1,11 @@
 import argparse
 from typing import Optional, IO
 
-import trio
-
-import pont
 from examples.chatbot.chatbot import Chatbot
-from examples.chatbot.plugins.shell import ShellPlugin
-from pont.client.log import logger
 from examples.chatbot.plugin import Plugin
-from pont.client.world.player import LocalPlayer
+from examples.chatbot.plugins.shell import ShellPlugin
+from wlink.log import logger
+
 
 class PontParser(argparse.ArgumentParser):
 	def print_help(self, file: Optional[IO[str]] = ...) -> None:

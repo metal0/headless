@@ -1,15 +1,16 @@
 import inspect
 import shlex
 import uuid
+import trio
+from wlink.log import logger
+
 from enum import Enum
 from typing import Optional
 
-import trio
+from wlink.world.packets import MessageType
 
 from examples.chatbot.plugin import Plugin
-from pont.client import events
-from pont.client.log import logger
-from pont.client.world.chat import ChatMessage, MessageType
+from pont import events
 
 
 class ShellEvents(Enum):

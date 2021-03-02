@@ -1,2 +1,2 @@
-from . import client
-from .client import Client, open_client, auth, world
+from . import client, auth, world
+from .client import Client, open_client

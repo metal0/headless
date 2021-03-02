@@ -2,11 +2,11 @@ import json
 import random
 import loguru
 import trio
+
 from examples.chatbot.chatbot import Chatbot
 from examples.chatbot.plugins.armory import ArmoryPlugin
 from examples.chatbot.plugins.shell import ShellPlugin
-
-from pont.client import auth, world
+from pont import auth, world
 
 def load_login(server: str, filename: str):
 	with open(filename, 'r') as f:
@@ -25,7 +25,7 @@ async def run(server, proxy=None):
 
 async def main():
 	login_filename = 'C:\\Users\\Owner\\Documents\\WoW\\servers_config.json'
-	acore = load_login('acore', login_filename)
+	acore = load_login('whitemane', login_filename)
 	proxy = ('server', 9050)
 	# proxy = None
 
