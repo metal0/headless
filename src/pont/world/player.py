@@ -21,3 +21,7 @@ class LocalPlayer:
 	def guild(self):
 		return self._guild
 
+	@property
+	def name(self):
+		return self._name
+

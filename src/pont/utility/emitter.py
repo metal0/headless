@@ -1,7 +1,7 @@
 import inspect
 import trio
 import pyee
-from loguru import logger
+from wlink.log import logger
 
 class BaseEmitter:
 	def __init__(self, emitter=None, nursery=None, scope=None):
@@ -36,7 +36,7 @@ class BaseEmitter:
 				await trio.lowlevel.checkpoint()
 				return fn(*args, **kwargs)
 
-			logger.log('EVENTS', f'installed listener: {event=} is handled once by {fn=}')
+			logger.debug('EVENTS', f'installed listener: {event=} is handled once by {fn=}')
 			if not inspect.iscoroutinefunction(fn):
 				target_fn = fn_async
 
@@ -105,16 +105,20 @@ async def wait_for_event(emitter, event, condition=None, result_transform=None):
 		condition = lambda *args, **kwargs: True
 
 	if result_transform is None:
-		result_transform = lambda *args, **kwargs: kwargs
+		result_transform = lambda *args, **kwargs: tuple(kwargs.values())
 
 	async def on_event(*args, **kwargs):
 		if condition(**kwargs):
+			logger.debug(f' {args=} {kwargs=}')
 			nonlocal result
 			result = result_transform(**kwargs)
+			logger.debug(f' {result=}')
 			receive_event.set()
 
 	listener = emitter.on(event, on_event)
+	logger.debug(f'waiting for {event}...')
 	await receive_event.wait()
 
+	logger.debug(f'done {result=}')
 	emitter.remove_listener(event, listener)
 	return result

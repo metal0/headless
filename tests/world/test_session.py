@@ -16,6 +16,7 @@ from pont.world.state import WorldState
 from tests.mock.emitter import MemoryEmitter
 from tests.mock.realm import MockRealm
 from tests.mock.world import MockCharacter
+import tp
 
 logins_filename = 'C:\\Users\\Owner\\Documents\\WoW\\servers_config.json'
 with open(logins_filename, 'r') as f:

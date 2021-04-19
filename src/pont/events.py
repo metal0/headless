@@ -46,6 +46,7 @@ class WorldEvent(Enum):
 	received_packet = uuid.uuid4()
 	received_auth_challenge = uuid.uuid4()
 	received_auth_response = uuid.uuid4()
+	received_mail_list = uuid.uuid4()
 	received_char_enum = uuid.uuid4()
 	received_server_message = uuid.uuid4()
 	received_notification = uuid.uuid4()
@@ -56,6 +57,8 @@ class WorldEvent(Enum):
 	received_tutorial_flags = uuid.uuid4()
 	received_time_sync_request = uuid.uuid4()
 	received_logout_response = uuid.uuid4()
+	received_character_rename = uuid.uuid4()
+	received_character_create = uuid.uuid4()
 	logout_cancelled = uuid.uuid4()
 
 	sent_ping = uuid.uuid4()
@@ -68,6 +71,8 @@ class WorldEvent(Enum):
 	sent_logout_cancel = uuid.uuid4()
 	sent_auth_session = uuid.uuid4()
 	sent_chat_message = uuid.uuid4()
+	sent_character_rename = uuid.uuid4()
+	sent_character_create = uuid.uuid4()
 
 world = WorldEvent
 

@@ -1,5 +1,5 @@
 from contextlib import asynccontextmanager
-from typing import Tuple
+from typing import Tuple, List
 
 import pyee
 import trio
@@ -9,6 +9,7 @@ from wlink.world.packets import CharacterInfo
 from pont.auth import AuthSession
 from pont.auth import AuthState
 from pont.world import WorldSession
+from pont.world.character import Character
 from pont.world.state import WorldState
 from pont import auth, world
 from pont.config import Config
@@ -139,11 +140,14 @@ class Client(AsyncScopedEmitter):
 		await self.world.connect(realm, proxy=self._proxy)
 		await self.world.transfer(self._username, self.auth.session_key)
 
-	async def characters(self):
+	async def characters(self) -> List[Character]:
 		if self.world.state < WorldState.logged_in:
 			raise world.ProtocolError('Not logged in')
 
 		return await self.world.characters()
+
+	async def create_character(self, new_name: str):
+		pass
 
 	@asynccontextmanager
 	def enter_world(self, character: CharacterInfo):
@@ -154,6 +158,7 @@ class Client(AsyncScopedEmitter):
 	async def logout(self):
 		await self.world.logout()
 
+	# TODO: Fix, unit test
 	@property
 	def state(self) -> ClientState:
 		return self._state

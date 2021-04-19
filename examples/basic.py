@@ -3,10 +3,10 @@ import random
 
 import loguru
 import trio
+from wlink.world import Opcode
 
 import pont
 from pont import auth, world
-from pont.world import Opcode
 
 
 def load_login(server: str, filename: str):
@@ -42,18 +42,16 @@ async def run(server, proxy=None):
 				# Enter world with character
 				async with client.enter_world(character):
 					me = client.world.local_player
+					# await client.world.protocol.send_CMSG_GUILD_ROSTER()
+					await me.chat.say('Horse')
 					await me.chat.guild('hello!')
 
-					await client.world.protocol.send_CMSG_GUILD_ROSTER()
-					roster = await client.world.wait_for_packet(Opcode.SMSG_GUILD_ROSTER)
-					print(roster)
+					while True:
+						roster = await client.world.wait_for_packet(Opcode.SMSG_DUEL_REQUESTED)
+						await client.world.protocol.send_CMSG_DUEL_ACCEPTED()
 
-					# await me.chat.whisper('Hey!', 'Meow')
-
-					# if me.guild is not None:
 
 					await trio.sleep_forever()
-					# await trio.sleep(2)
 				await trio.sleep(2)
 
 	except (Exception, trio.TooSlowError, auth.AuthError, world.WorldError):

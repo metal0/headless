@@ -1,6 +1,8 @@
 import datetime
 
 from enum import Enum
+from typing import Optional
+
 
 class MessageType(Enum):
 	system = 0x00
@@ -116,11 +118,11 @@ class ChatMessage:
 		return self._packet.message_type
 
 	@property
-	def sender(self):
+	def sender(self) -> Optional[str]:
 		return self._sender
 
 	@property
-	def receiver(self):
+	def receiver(self) -> Optional[str]:
 		return self._receiver
 
 	@property

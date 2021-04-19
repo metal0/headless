@@ -19,6 +19,7 @@ class WorldHandler:
 		}
 
 		self._opcode_event_map = {
+			Opcode.SMSG_MAIL_LIST_RESULT: events.world.received_mail_list,
 			Opcode.SMSG_AUTH_RESPONSE: events.world.received_auth_response,
 			Opcode.SMSG_TUTORIAL_FLAGS: events.world.received_tutorial_flags,
 			Opcode.SMSG_LOGOUT_CANCEL_ACK: events.world.logout_cancelled,
@@ -36,6 +37,7 @@ class WorldHandler:
 			Opcode.SMSG_WARDEN_DATA: events.world.received_warden_data,
 			Opcode.SMSG_LOGIN_VERIFY_WORLD: events.world.entered_world,
 			Opcode.SMSG_CHAR_ENUM: events.world.received_char_enum,
+			Opcode.SMSG_CHAR_CREATE: events.world.received_character_create,
 			Opcode.SMSG_MOTD: events.world.received_motd,
 			Opcode.SMSG_NOTIFICATION: events.world.received_notification,
 			Opcode.SMSG_SERVER_MESSAGE: events.world.received_server_message,
@@ -55,6 +57,7 @@ class WorldHandler:
 
 	async def handle(self, packet):
 		try:
+			logger.log('PACKETS', f'{packet=}')
 			self._emitter.emit(events.world.received_packet, packet=packet)
 			fn = self._packet_map[packet.header.opcode]
 

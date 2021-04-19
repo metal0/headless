@@ -1,4 +1,6 @@
+import construct
 import trio
+import wlink
 from loguru import logger
 from trio_socks import socks5
 from wlink.auth import AuthProtocol
@@ -101,6 +103,8 @@ class AuthSession:
 		)
 
 		challenge_response = await self.protocol.receive_challenge_response()
+		logger.debug(f'{challenge_response=}')
+
 		client_private = debug['client_private'] if debug is not None else None
 		self._srp = cryptography.WoWSrpClient(username=username, password=password,
 			prime=challenge_response.prime,
@@ -108,14 +112,21 @@ class AuthSession:
 			client_private=client_private
 		)
 
+
 		client_public, session_proof = self._srp.process(challenge_response.server_public, challenge_response.salt)
+		mac_binary_crc = bytes([0xB7, 0x06, 0xD1, 0x3F, 0xF2, 0xF4, 0x01, 0x88, 0x39, 0x72, 0x94, 0x61, 0xE3, 0xF8, 0xA0, 0xE2, 0xB5, 0xFD, 0xC0, 0x34])
+		checksum = int.from_bytes(wlink.cryptography.sha.sha1(
+			construct.BytesInteger(32, swapped=True).build(client_public) + mac_binary_crc
+		), byteorder='little')
+
 		self._session_key = int.from_bytes(self._srp.session_key, byteorder='little')
 		await self.protocol.send_proof_request(
 			client_public=client_public, session_proof=session_proof,
-			checksum=4601254584545541958749308449812234986282924510
+			checksum=checksum
 		)
 
 		proof_response = await self.protocol.receive_proof_response()
+		logger.debug(f'{proof_response=}')
 		if proof_response.session_proof_hash != self._srp.session_proof_hash:
 			self._state = AuthState.disconnected
 			self._emitter.emit(events.auth.invalid_login)
@@ -131,6 +142,7 @@ class AuthSession:
 		await self.protocol.send_realmlist_request()
 		result = await self.protocol.receive_realmlist_response()
 		realmlist = list(result.realms)
+		logger.debug(f'{realmlist=}')
 
 		self._state = AuthState.realmlist_ready
 		self._emitter.emit(events.auth.realmlist_ready, realmlist=realmlist)

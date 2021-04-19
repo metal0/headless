@@ -12,6 +12,8 @@ from wlink.world import WorldClientProtocol, Opcode
 from wlink.world.errors import ProtocolError
 from wlink.world.packets import AuthResponse, CharacterInfo
 
+from .character import Character
+from .chat import ChatMessage
 from .. import world, events
 from .handler import WorldHandler
 from .names import NameCache
@@ -62,6 +64,7 @@ class WorldSession:
 	def state(self):
 		return self._state
 
+	@property
 	def realm(self) -> Realm:
 		return self._realm
 
@@ -77,6 +80,9 @@ class WorldSession:
 	# arguments.
 	async def wait_for_event(self, event, condition=None, result_transform=None) -> Any:
 		return await wait_for_event(self.emitter, event=event, condition=condition, result_transform=result_transform)
+
+	async def wait_for_message(self) -> ChatMessage:
+		return await wait_for_event(self.emitter, event=events.world.received_chat_message, condition=None, result_transform=lambda *args, **kwargs: kwargs['message'])
 
 	# Wait for a packet to be received under a certain condition and return it.
 	async def wait_packet_condition(self, condition):
@@ -209,12 +215,12 @@ class WorldSession:
 			logger.info('Transfer complete')
 			logger.info(f'In queue: {auth_response.queue_position}')
 
-	async def characters(self):
+	async def characters(self) -> List[Character]:
 		await self.protocol.send_CMSG_CHAR_ENUM()
 		self.emitter.emit(events.world.sent_char_enum)
 
 		char_enum = await self.wait_for_packet(Opcode.SMSG_CHAR_ENUM)
-		return char_enum.characters
+		return [Character(self, info) for info in char_enum.characters]
 
 	@asynccontextmanager
 	async def enter_world(self, character: CharacterInfo):
