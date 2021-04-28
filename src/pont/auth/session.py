@@ -1,10 +1,10 @@
 import construct
 import trio
 import wlink
-from loguru import logger
 from trio_socks import socks5
 from wlink.auth import AuthProtocol
 from wlink import cryptography
+from wlink.log import logger
 from typing import Optional, Tuple
 
 from wlink.auth.errors import InvalidLogin
@@ -15,7 +15,7 @@ from pont.utility.enum import ComparableEnum
 
 # TODO: transitions
 class AuthSession:
-	def __init__(self, nursery, emitter, proxy: Optional[Tuple[str, int]]=None):
+	def __init__(self, nursery, emitter, proxy: Optional[Tuple[str, int]] = None):
 		self.proxy = proxy
 		self.protocol: Optional[AuthProtocol] = None
 		self._nursery = nursery
@@ -70,29 +70,27 @@ class AuthSession:
 		logger.info('Connected!')
 
 	async def _get_public_ip(self):
-		return '127.0.0.1'
-		# async def parse_public_ip(stream):
-		# 	await stream.send_all('GET / HTTP/1.1\r\nHost: api.ipify.org\r\n\r\n'.encode())
-		# 	text = (await stream.receive_some()).decode()
-		# 	i = text.rfind('\r\n\r\n')
-		# 	my_ip = text[i + 4:]
-		# 	return my_ip
-		#
-		# if self.proxy is not None:
-		# 	async with socks5.Socks5Stream(destination=('api.ipify.org', 80), proxy=self.proxy) as stream:
-		# 		return await parse_public_ip(stream)
-		# else:
-		# 	async with await trio.open_tcp_stream('api.ipify.org', 80) as stream:
-		# 		return await parse_public_ip(stream)
+		# return '127.0.0.1'
+		async def parse_public_ip(stream):
+			await stream.send_all('GET / HTTP/1.1\r\nHost: api.ipify.org\r\n\r\n'.encode())
+			text = (await stream.receive_some()).decode()
+			i = text.rfind('\r\n\r\n')
+			my_ip = text[i + 4:]
+			return my_ip
+
+		if self.proxy is not None:
+			async with socks5.Socks5Stream(destination=('api.ipify.org', 80), proxy=self.proxy) as stream:
+				return await parse_public_ip(stream)
+		else:
+			async with await trio.open_tcp_stream('api.ipify.org', 80) as stream:
+				return await parse_public_ip(stream)
 
 	async def authenticate(self, username, password, debug=None, country='enUS', arch='x86', os='OSX', build=12340, version='3.3.5'):
-		logger.info(f'Authenticating with username {username}...')
+		public_ip = await self._get_public_ip()
+		logger.info(f'Authenticating with: {username=}, {public_ip=}, {country=}, {arch=}, {os=}, {build=}, {version=}...')
 		self._state = AuthState.logging_in
 		self._username = username
 		self._emitter.emit(events.auth.authenticating)
-
-		public_ip = await self._get_public_ip()
-		logger.debug(f'{public_ip=}')
 
 		await self.protocol.send_challenge_request(
 			username=username, country=country,
@@ -103,15 +101,13 @@ class AuthSession:
 		)
 
 		challenge_response = await self.protocol.receive_challenge_response()
-		logger.debug(f'{challenge_response=}')
-
 		client_private = debug['client_private'] if debug is not None else None
+
 		self._srp = cryptography.WoWSrpClient(username=username, password=password,
 			prime=challenge_response.prime,
 			generator=challenge_response.generator,
 			client_private=client_private
 		)
-
 
 		client_public, session_proof = self._srp.process(challenge_response.server_public, challenge_response.salt)
 		mac_binary_crc = bytes([0xB7, 0x06, 0xD1, 0x3F, 0xF2, 0xF4, 0x01, 0x88, 0x39, 0x72, 0x94, 0x61, 0xE3, 0xF8, 0xA0, 0xE2, 0xB5, 0xFD, 0xC0, 0x34])
@@ -126,7 +122,6 @@ class AuthSession:
 		)
 
 		proof_response = await self.protocol.receive_proof_response()
-		logger.debug(f'{proof_response=}')
 		if proof_response.session_proof_hash != self._srp.session_proof_hash:
 			self._state = AuthState.disconnected
 			self._emitter.emit(events.auth.invalid_login)
@@ -142,7 +137,7 @@ class AuthSession:
 		await self.protocol.send_realmlist_request()
 		result = await self.protocol.receive_realmlist_response()
 		realmlist = list(result.realms)
-		logger.debug(f'{realmlist=}')
+		logger.info(f'{realmlist=}')
 
 		self._state = AuthState.realmlist_ready
 		self._emitter.emit(events.auth.realmlist_ready, realmlist=realmlist)

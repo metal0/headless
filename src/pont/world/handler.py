@@ -1,7 +1,7 @@
 import inspect
 import time
 
-from loguru import logger
+from wlink.log import logger
 from wlink.world import Opcode
 from wlink.world.packets import SMSG_TIME_SYNC_REQ, SMSG_MESSAGECHAT
 
@@ -13,13 +13,15 @@ class WorldHandler:
 		self._emitter = emitter
 		self._world = world
 		self._packet_map = {
-			Opcode.SMSG_TIME_SYNC_REQ: self.handle_time_sync_request,
 			Opcode.SMSG_MESSAGECHAT: self.handle_received_chat_message,
 			Opcode.SMSG_GM_MESSAGECHAT: self.handle_received_chat_message,
 		}
 
+		self._dropcodes = [Opcode.SMSG_COMPRESSED_UPDATE_OBJECT, Opcode.SMSG_UPDATE_OBJECT]
 		self._opcode_event_map = {
+			Opcode.SMSG_QUERY_TIME_RESPONSE: events.world.received_time_query_response,
 			Opcode.SMSG_MAIL_LIST_RESULT: events.world.received_mail_list,
+			Opcode.SMSG_RECEIVED_MAIL: events.world.received_new_mail,
 			Opcode.SMSG_AUTH_RESPONSE: events.world.received_auth_response,
 			Opcode.SMSG_TUTORIAL_FLAGS: events.world.received_tutorial_flags,
 			Opcode.SMSG_LOGOUT_CANCEL_ACK: events.world.logout_cancelled,
@@ -28,8 +30,10 @@ class WorldHandler:
 			Opcode.SMSG_NAME_QUERY_RESPONSE: events.world.received_name_query_response,
 			Opcode.SMSG_BIND_POINT_UPDATE: events.world.received_bind_point,
 			Opcode.SMSG_GROUP_INVITE: events.world.received_group_invite,
+			Opcode.SMSG_GROUP_LIST: events.world.received_group_list,
 			Opcode.SMSG_GUILD_INVITE: events.world.received_guild_invite,
 			Opcode.SMSG_GUILD_EVENT: events.world.received_guild_event,
+			Opcode.SMSG_GUILD_INFO: events.world.received_guild_info,
 			Opcode.SMSG_GUILD_ROSTER: events.world.received_guild_roster,
 			Opcode.SMSG_GUILD_QUERY_RESPONSE: events.world.received_guild_query_response,
 			Opcode.SMSG_DUEL_REQUESTED: events.world.received_duel_request,
@@ -41,10 +45,12 @@ class WorldHandler:
 			Opcode.SMSG_MOTD: events.world.received_motd,
 			Opcode.SMSG_NOTIFICATION: events.world.received_notification,
 			Opcode.SMSG_SERVER_MESSAGE: events.world.received_server_message,
+			Opcode.SMSG_CONTACT_LIST: events.world.received_contact_list,
+			Opcode.SMSG_TIME_SYNC_REQ: events.world.received_time_sync_request,
+
 		}
 
 		self._world = world
-		self._time_sync_count = 0
 		self._handler_start_time = time.time()
 
 	def set_handler(self, event, handler):
@@ -53,7 +59,6 @@ class WorldHandler:
 	def default_handle_event_packet(self, packet, event):
 		self._emitter.emit(event, packet=packet)
 		logger.log('PACKETS', f'{packet=}')
-		# logger.log('PACKETS', f'{self._emitter.memory=}')
 
 	async def handle(self, packet):
 		try:
@@ -61,8 +66,8 @@ class WorldHandler:
 			self._emitter.emit(events.world.received_packet, packet=packet)
 			fn = self._packet_map[packet.header.opcode]
 
-			if fn is None:
-				logger.log('PACKETS', f'Dropped packet: {packet.header}')
+			if fn is None or packet.header.opcode in self._dropcodes:
+				logger.log('PACKETS', f'Dropped packet: {packet.header=}')
 				return
 
 			if inspect.iscoroutinefunction(fn):
@@ -79,22 +84,7 @@ class WorldHandler:
 				self.default_handle_event_packet(packet, event)
 
 			except KeyError:
-				logger.log('PACKETS', f'Dropped packet: {packet.header}')
-
-	async def handle_time_sync_request(self, packet: SMSG_TIME_SYNC_REQ):
-		self.default_handle_event_packet(packet, events.world.received_time_sync_request)
-		ticks = int(1000 * time.time())
-
-		# TODO: Defer this to something like n.start_soon(client.anti_afk) instead of (await client.anti_afk() or
-		#  await client.start_anti_afk()) where inside we will write
-		#  packet = await self.world.protocol.wait_for_packet(Opcode.SMSG_TIME_SYNC_REQ)
-		await self._world.protocol.send_CMSG_TIME_SYNC_RES(
-			id=packet.id,
-			client_ticks=ticks
-		)
-
-		self._emitter.emit(events.world.sent_time_sync, id=packet.id, ticks=ticks)
-		self._time_sync_count += 1
+				logger.log('PACKETS', f'Dropped packet: {packet.header=}')
 
 	async def _handle_chat_message(self, packet):
 		message = await ChatMessage.load_message(self._world, packet)

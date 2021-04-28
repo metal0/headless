@@ -1,3 +1,5 @@
+import time
+
 import pyee
 import trio
 import random
@@ -14,6 +16,7 @@ from wlink.world.packets import AuthResponse, CharacterInfo
 
 from .character import Character
 from .chat import ChatMessage
+from .guild.guild import Guild
 from .. import world, events
 from .handler import WorldHandler
 from .names import NameCache
@@ -58,6 +61,7 @@ class WorldSession:
 		self._realm = None
 		self._username = None
 		self._handling_packets = False
+		self._average_rtt = None
 		self.names = NameCache(self)
 
 	@property
@@ -121,15 +125,6 @@ class WorldSession:
 	def _default_condition(**kwargs):
 		return True
 
-	async def _keepalive(self):
-		logger.debug('started')
-		while True:
-			await self.protocol.send_CMSG_KEEP_ALIVE()
-			self.emitter.emit(events.world.sent_keep_alive)
-			r = random.betavariate(alpha=0.2, beta=0.7)
-			random_factor = r * 20 - 10
-			await trio.sleep(30 + random_factor)
-
 	async def _packet_handler(self, *, task_status=trio.TASK_STATUS_IGNORED):
 		task_status.started()
 		logger.log('PACKETS', 'started')
@@ -138,6 +133,9 @@ class WorldSession:
 			async for packet in self.protocol.decrypted_packets():
 				await self.handler.handle(packet)
 
+		except KeyboardInterrupt as e:
+			raise e
+
 		except world.ProtocolError as e:
 			logger.exception('exception')
 			self._state = WorldState.disconnected
@@ -145,6 +143,36 @@ class WorldSession:
 			await trio.lowlevel.checkpoint()
 			self._handling_packets = False
 			raise e
+
+	async def _measure_ping_latency(self):
+		start = time.time()
+		await self.protocol.send_CMSG_PING(id=int(random.random() * 1000))
+
+		pong = await self.wait_for_packet(Opcode.SMSG_PONG)
+		rtt = time.time() - start
+
+		if self._average_rtt is None:
+			self._average_rtt = rtt
+		else:
+			self._average_rtt += rtt
+			self._average_rtt /= 2
+
+		return int(self._average_rtt * 1000)
+
+	async def _handle_time_sync_requests(self):
+		while True:
+			request = await self.wait_for_packet(Opcode.SMSG_TIME_SYNC_REQ)
+
+			ticks = int(1000 * time.time())
+			await self.protocol.send_CMSG_TIME_SYNC_RES(id=request.id, client_ticks=ticks)
+			self.emitter.emit(events.world.sent_time_sync, id=request.id, ticks=ticks)
+
+	async def latency(self) -> int:
+		await self._measure_ping_latency()
+		return int(self._average_rtt * 1000)
+
+	async def display_statistics(self):
+		logger.info(f'Latency: {await self.latency()} ms, ')
 
 	async def connect(self, realm=None, proxy=None, stream=None):
 		if realm is not None:
@@ -235,10 +263,16 @@ class WorldSession:
 		async with trio.open_nursery() as n:
 			self.nursery = n
 			try:
+				# Guild(self, )
 				self._state = WorldState.in_game
-				self.local_player = LocalPlayer(self, name=character.name, guid=character.guid)
+				self.local_player = LocalPlayer(self, name=character.name, guid=character.guid, )
 				self.emitter.emit(events.world.entered_world)
+				n.start_soon(self._handle_time_sync_requests)
+				await self.display_statistics()
 				yield self.nursery
+
+			except KeyboardInterrupt as e:
+				raise e
 
 			except Exception as e:
 				logger.exception(e)
@@ -247,6 +281,9 @@ class WorldSession:
 				# if self.state >= WorldState.in_game:
 				# 	await self.logout()
 				self.nursery.cancel_scope.cancel()
+
+	async def accept_duel(self):
+		await self.protocol.send_CMSG_DUEL_ACCEPTED()
 
 	async def logout(self):
 		logger.info('Logging out...')

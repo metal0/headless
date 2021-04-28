@@ -29,7 +29,12 @@ async def open_client(auth_server=None, proxy=None):
 		try:
 			async with client:
 				yield client
+
 			nursery.cancel_scope.cancel()
+
+		except KeyboardInterrupt as e:
+			raise e
+
 		finally:
 			await client.aclose()
 
@@ -53,6 +58,7 @@ class Client(AsyncScopedEmitter):
 		self._proxy = proxy
 		self._username = None
 		self._reset()
+		self.logger = logger
 		self.config = Config(
 			emitter=self,
 			relogger=False,
@@ -68,6 +74,7 @@ class Client(AsyncScopedEmitter):
 			logger.exception(f'{exc_type=}, {exc_val=}, {exc_tb=}')
 
 		logger.debug(f'Shutting down...')
+		# await self.aclose()
 		self.nursery.cancel_scope.cancel()
 		await super().__aexit__(exc_type, exc_val, exc_tb)
 
@@ -84,6 +91,7 @@ class Client(AsyncScopedEmitter):
 
 	def _reset(self):
 		self._state = ClientState.not_connected
+		self._session_key = None
 		self._session_key = None
 		self._username = None
 		self.auth = None

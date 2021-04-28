@@ -1,4 +1,5 @@
 import json
+import os
 
 import trio
 from wlink import cryptography
@@ -9,7 +10,7 @@ from wlink.utility.string import bytes_to_int
 import pont
 from pont.auth import AuthState
 
-logins_filename = 'C:\\Users\\Owner\\Documents\\WoW\\servers_config.json'
+logins_filename = os.environ.get('PONT_CREDS')
 with open(logins_filename) as f:
 	test_servers= json.load(f)
 

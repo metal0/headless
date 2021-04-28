@@ -1,23 +1,20 @@
 import json
+import os
 import random
 
-import loguru
 import trio
-from wlink.world import Opcode
-
 import pont
 from pont import auth, world
-
+from wlink.log import logger
 
 def load_login(server: str, filename: str):
 	with open(filename, 'r') as f:
 		user_info = json.load(f)
 		return user_info[server]
 
-async def run(server, proxy=None):
+async def basic_example(server, proxy=None):
 	account = server['account']
 	try:
-
 		client: pont.Client
 		async with pont.open_client(auth_server=server['realmlist'], proxy=proxy) as client:
 			# Login to auth server
@@ -42,29 +39,27 @@ async def run(server, proxy=None):
 				# Enter world with character
 				async with client.enter_world(character):
 					me = client.world.local_player
-					# await client.world.protocol.send_CMSG_GUILD_ROSTER()
-					await me.chat.say('Horse')
-					await me.chat.guild('hello!')
-
-					while True:
-						roster = await client.world.wait_for_packet(Opcode.SMSG_DUEL_REQUESTED)
-						await client.world.protocol.send_CMSG_DUEL_ACCEPTED()
-
-
+					await me.chat.say('Welcome to garfields house of horror')
+					await me.chat.guild('I am garfield of 4')
 					await trio.sleep_forever()
+
 				await trio.sleep(2)
 
+	except KeyboardInterrupt:
+		logger.info('yes!')
+
 	except (Exception, trio.TooSlowError, auth.AuthError, world.WorldError):
-		loguru.logger.exception('Error')
+		logger.exception('Error')
 
 async def main():
-	login_filename = 'C:\\Users\\Owner\\Documents\\WoW\\servers_config.json'
-	acore = load_login('acore', login_filename)
-	proxy = ('server', 1069)
-	# proxy = None
+	login_filename = os.environ.get('PONT_CREDS')
+	server = load_login('acore', login_filename)
+	# proxy = ('server', 9050)
+	proxy = None
 
 	while True:
-		await run(acore, proxy=proxy)
+		await basic_example(server, proxy=proxy)
+		logger.info('hey')
 		await trio.sleep(5 + random.random() * 20)
 
 if __name__ == '__main__':

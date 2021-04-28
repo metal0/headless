@@ -1,7 +1,6 @@
 import inspect
 import trio
 import pyee
-from wlink.log import logger
 
 class BaseEmitter:
 	def __init__(self, emitter=None, nursery=None, scope=None):
@@ -36,7 +35,6 @@ class BaseEmitter:
 				await trio.lowlevel.checkpoint()
 				return fn(*args, **kwargs)
 
-			logger.debug('EVENTS', f'installed listener: {event=} is handled once by {fn=}')
 			if not inspect.iscoroutinefunction(fn):
 				target_fn = fn_async
 
@@ -54,7 +52,6 @@ class BaseEmitter:
 				await trio.lowlevel.checkpoint()
 				return fn(*args, **kwargs)
 
-			logger.log('EVENTS', f'installed listener: {event=} is handled by {fn=}')
 			if not inspect.iscoroutinefunction(fn):
 				target_fn = fn_async
 
@@ -65,10 +62,6 @@ class BaseEmitter:
 			return _on
 		else:
 			return _on(fn)
-
-class GCEmitter(BaseEmitter):
-	def __del__(self):
-		pass
 
 class AsyncScopedEmitter(BaseEmitter):
 	async def aclose(self):
@@ -96,6 +89,9 @@ class ScopedEmitter(BaseEmitter):
 	def __exit__(self, exc_type, exc_val, exc_tb):
 		self.close()
 
+# def default_transform():
+	
+
 # Wait for the given event under an optional condition to occur (once) and return a transform of the event keyword
 # arguments.
 async def wait_for_event(emitter, event, condition=None, result_transform=None):
@@ -109,16 +105,12 @@ async def wait_for_event(emitter, event, condition=None, result_transform=None):
 
 	async def on_event(*args, **kwargs):
 		if condition(**kwargs):
-			logger.debug(f' {args=} {kwargs=}')
 			nonlocal result
 			result = result_transform(**kwargs)
-			logger.debug(f' {result=}')
 			receive_event.set()
 
 	listener = emitter.on(event, on_event)
-	logger.debug(f'waiting for {event}...')
 	await receive_event.wait()
 
-	logger.debug(f'done {result=}')
 	emitter.remove_listener(event, listener)
 	return result

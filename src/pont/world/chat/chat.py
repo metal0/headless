@@ -16,24 +16,27 @@ class Chat:
 		if world.state < WorldState.in_game:
 			raise ProtocolError(f'Must be in-game to send a chat message; world state is {self._world.state} instead')
 
-		self._world.emitter.on(events.world.received_chat_message, self._message_handler)
+		self._world.emitter.on(events.world.received_chat_message, self.handle_message)
 
 	@property
 	def messages(self):
 		return self._messages
 
-	def _message_handler(self, message):
+	def handle_message(self, message):
 		if message.language not in [Language.addon]:
 			logger.log('MESSAGES', f'{message}')
 
 		self._messages.append(message)
 
-	async def send_message(self, text: str, message_type: MessageType, language: Language, recipient: Optional[str]=None):
+	async def send_message(self, text: str, message_type: MessageType, language: Language, recipient: Optional[str] = None):
 		if self._world.state < WorldState.in_game:
 			raise ProtocolError(f'Must be in-game to send a chat message; world state is {self._world.state} instead')
 
 		await self._world.protocol.send_CMSG_MESSAGECHAT(text, message_type, language, recipient=recipient)
 		self._world.emitter.emit(events.world.sent_chat_message, text=text, type=message_type, language=language, recipient=recipient)
+
+		recipient = f'' if recipient is None else f'[{recipient}'
+		logger.log('MESSAGES', f'[{message_type}] {recipient}({language}) {text}')
 
 	async def say(self, message, language: Language = Language.common):
 		await self.send_message(message, MessageType.say, language)

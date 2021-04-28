@@ -1,9 +1,10 @@
 from enum import Enum
 
-from pont.world import ProtocolError
-from pont.world import Opcode
-from pont.world.state import WorldState
+from wlink.world import Opcode
 
+from pont import events
+from pont.world import ProtocolError
+from pont.world.state import WorldState
 
 class GuildMemberDataType(Enum):
 	zone_id = 1
@@ -80,13 +81,7 @@ class Guild:
 	max_ranks = 10
 
 	@staticmethod
-	async def query(world, guild_id=None, name=None, guid=None):
-		if guild_id is not None:
-			await world.protocol.send_CMSG_GUILD_QUERY(guild_id=guild_id)
-			return await world.wait_for_packet(Opcode.SMSG_GUILD_QUERY_RESPONSE)
-
-	@staticmethod
-	async def load_from_packet(world, packet):
+	async def new(world, packet):
 		pass
 
 	def __init__(self, world, guid, name):
@@ -98,6 +93,12 @@ class Guild:
 
 		if world.state < WorldState.in_game:
 			raise ProtocolError(f'Must be in-game to send a chat message; world state is {self._world.state} instead')
+
+	async def query(self, guild_id=None, name=None, guid=None):
+		if guild_id is not None:
+			await self._world.protocol.send_CMSG_GUILD_QUERY(guild_id=guild_id)
+			self._world.emitter.emit(events.world.sent_guild_query)
+			return await self._world.wait_for_packet(Opcode.SMSG_GUILD_QUERY_RESPONSE)
 
 	@property
 	def guid(self):
@@ -115,14 +116,12 @@ class Guild:
 
 class HomeGuild(Guild):
 	@staticmethod
-	async def load_from_packet(world, packet):
+	async def new(world, packet):
 		pass
 
 	async def roster(self):
 		await self._world.protocol.send_CMSG_GUILD_ROSTER()
 		return await self._world.wait_for_packet(Opcode.SMSG_GUILD_ROSTER)
 
-	# async def ginvite(self, name: str):
-		# if not self._access_token.has_authority_to(Actions.guild_invite):
-		# 	raise PermissionError(f'{self._access_token} is not authorized to invite guild members')
-		# self._world.pro
+	async def ginvite(self, name: str):
+		await self._world.pro

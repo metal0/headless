@@ -12,6 +12,9 @@ class NameCache(Cache):
 
 	async def fetch(self, guid):
 		if guid.type == GuidType.player:
+			if guid.value == 0:
+				return None
+
 			await self._world.protocol.send_CMSG_NAME_QUERY(guid=guid)
 		elif guid.type == GuidType.guild:
 			pass
