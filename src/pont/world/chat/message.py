@@ -101,7 +101,7 @@ class ChatMessage:
 
 		return ChatMessage(world, packet, sender, receiver)
 
-	def __init__(self, world, packet, sender, receiver):
+	def __init__(self, world, packet, sender: Optional[str], receiver: Optional[str]):
 		self._world = world
 		self._packet = packet
 		self._sender = sender
@@ -130,10 +130,18 @@ class ChatMessage:
 		return self._packet.language
 
 	def __str__(self):
-		if self.sender is None:
-			return f'[{self.type}]: {self.text}'
+		return ChatMessage.format(self.text, self.type, self.sender, self.receiver)
 
-		if self.receiver is None:
-			return f'[{self.sender}] [{self.type}]: {self.text}'
+	@staticmethod
+	def format(text: str, message_type: MessageType, sender: Optional[str], receiver: Optional[str]):
+		if message_type == MessageType.system:
+			return f'[System]: {text}'
 
-		return f'[{self.sender} -> {self.receiver}] [{self.type}]: {self.text}'
+		type_string = str(message_type).replace("MessageType.", "").replace('system', 'System')
+		if sender is None:
+			return f'[{type_string}]: {text}'
+
+		if receiver is None:
+			return f'[{sender}] [{type_string}]: {text}'
+
+		return f'[{sender} -> {receiver}] [{type_string}]: {text}'

@@ -59,7 +59,6 @@ async def main():
 
 	while True:
 		await basic_example(server, proxy=proxy)
-		logger.info('hey')
 		await trio.sleep(5 + random.random() * 20)
 
 if __name__ == '__main__':
