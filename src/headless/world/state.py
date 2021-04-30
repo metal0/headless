@@ -1,4 +1,4 @@
-from pont.utility.enum import ComparableEnum
+from headless.utility.enum import ComparableEnum
 
 class WorldState(ComparableEnum):
 	disconnected = -1

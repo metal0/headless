@@ -5,8 +5,8 @@ from wlink.log import logger
 from wlink.world import Opcode
 from wlink.world.packets import SMSG_TIME_SYNC_REQ, SMSG_MESSAGECHAT
 
-from pont import events
-from pont.world.chat import ChatMessage
+from headless import events
+from headless.world.chat import ChatMessage
 
 class WorldHandler:
 	def __init__(self, emitter, world):

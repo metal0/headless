@@ -3,7 +3,7 @@ import json
 import trio
 from loguru import logger
 
-from pont import events
+from headless import events
 
 async def load_server_config(server: str, path: str):
 	async with await trio.open_file(path) as f:

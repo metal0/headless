@@ -2,9 +2,9 @@ from enum import Enum
 
 from wlink.world import Opcode
 
-from pont import events
-from pont.world import ProtocolError
-from pont.world.state import WorldState
+from headless import events
+from headless.world import ProtocolError
+from headless.world.state import WorldState
 
 class GuildMemberDataType(Enum):
 	zone_id = 1

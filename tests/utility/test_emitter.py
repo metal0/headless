@@ -1,6 +1,6 @@
 import trio
 
-from pont.utility.emitter import wait_for_event
+from headless.utility.emitter import wait_for_event
 from tests.mock.emitter import MemoryEmitter
 
 

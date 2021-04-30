@@ -2,7 +2,7 @@ import trio
 from wlink.guid import GuidType
 from wlink.world import Opcode
 
-from pont.utility.cache import Cache
+from headless.utility.cache import Cache
 
 class NameCache(Cache):
 	def __init__(self, world, fail_after=10):

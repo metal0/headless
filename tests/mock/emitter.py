@@ -1,7 +1,7 @@
 import collections
 from wlink.log import logger
 
-from pont.utility.emitter import BaseEmitter
+from headless.utility.emitter import BaseEmitter
 
 def GenericMemoryEmitter(emitter_type):
 	class MemoryEmitter(emitter_type):

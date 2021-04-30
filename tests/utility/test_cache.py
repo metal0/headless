@@ -3,8 +3,8 @@ import trio
 from wlink import Guid
 from wlink.world import WorldClientProtocol
 
-from pont.utility.cache import Cache, TimedCache
-from pont.world.names import NameCache
+from headless.utility.cache import Cache, TimedCache
+from headless.world.names import NameCache
 from tests.mock.world import MockQueryResponse, MockNameInfo, MockWorld
 
 count = 0

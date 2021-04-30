@@ -11,9 +11,9 @@ from wlink import Guid
 from wlink.world import WorldServerProtocol
 from wlink.world.packets import AuthResponse, Expansion
 
-from pont.events import WorldEvent
-from pont.world import WorldSession
-from pont.world.state import WorldState
+from headless.events import WorldEvent
+from headless.world import WorldSession
+from headless.world.state import WorldState
 from tests.mock.emitter import MemoryEmitter
 from tests.mock.realm import MockRealm
 from tests.mock.world import MockCharacter
@@ -49,7 +49,7 @@ async def client_login(stream, session_key, nursery):
 	assert world._crypto.encryption_seed2 == 71
 
 	# Ensure packet handler is running
-	assert 'pont.world.session.WorldSession._packet_handler' in str(world._parent_nursery.child_tasks)
+	assert 'headless.world.session.WorldSession._packet_handler' in str(world._parent_nursery.child_tasks)
 	assert world._handling_packets
 
 	# Test session state for logging in and entering the world

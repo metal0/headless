@@ -7,8 +7,8 @@ from wlink.auth import AuthProtocol, Response
 from wlink.auth.realm import RealmType, RealmStatus
 from wlink.utility.string import bytes_to_int
 
-import pont
-from pont.auth import AuthState
+import headless
+from headless.auth import AuthState
 
 logins_filename = os.environ.get('PONT_CREDS')
 with open(logins_filename) as f:
@@ -65,7 +65,7 @@ async def auth_server(stream):
 async def client_login(auth_address, stream):
 	auth_debug = {'client_private': 143386892073113346271045296825355365119602324795205856098132479049957622403427006810653616896639308669514885320513042624825577275523311345156882292579472806120577841118102290052948040847318515534261288049316514160095147951671405527775489066400222418481863631312167863930538967927022064010646095222765545969242}
 
-	async with pont.open_client() as client:
+	async with headless.open_client() as client:
 		assert client.auth.state == AuthState.not_connected
 		await client.auth.connect(auth_address, stream=stream)
 		await client.auth.authenticate(tc_login['username'], tc_login['password'], debug=auth_debug)

@@ -1,4 +1,4 @@
-from pont.world.chat import Chat
+from headless.world.chat import Chat
 
 class LocalPlayer:
 	def __init__(self, world, guid, name, guild=None):

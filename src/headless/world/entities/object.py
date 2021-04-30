@@ -1,4 +1,4 @@
-from pont.world import Guid
+from headless.world import Guid
 
 class Object:
 	def __init__(self, name: str, guid = Guid()):

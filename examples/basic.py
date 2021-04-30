@@ -3,8 +3,8 @@ import os
 import random
 
 import trio
-import pont
-from pont import auth, world
+import headless
+from headless import auth, world
 from wlink.log import logger
 
 def load_login(server: str, filename: str):
@@ -15,8 +15,8 @@ def load_login(server: str, filename: str):
 async def basic_example(server, proxy=None):
 	account = server['account']
 	try:
-		client: pont.Client
-		async with pont.open_client(auth_server=server['realmlist'], proxy=proxy) as client:
+		client: headless.Client
+		async with headless.open_client(auth_server=server['realmlist'], proxy=proxy) as client:
 			# Login to auth server
 			with trio.fail_after(5):
 				await client.login(account['username'], account['password'])

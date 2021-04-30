@@ -10,8 +10,8 @@ from typing import Optional, Tuple
 from wlink.auth.errors import InvalidLogin
 from wlink.utility.string import bytes_to_int
 
-from pont import events
-from pont.utility.enum import ComparableEnum
+from headless import events
+from headless.utility.enum import ComparableEnum
 
 # TODO: transitions
 class AuthSession:

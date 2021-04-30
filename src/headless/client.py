@@ -6,14 +6,14 @@ import trio
 from wlink.auth.realm import Realm
 from wlink.world.packets import CharacterInfo
 
-from pont.auth import AuthSession
-from pont.auth import AuthState
-from pont.world import WorldSession
-from pont.world.character import Character
-from pont.world.state import WorldState
-from pont import auth, world
-from pont.config import Config
-from pont.utility import AsyncScopedEmitter, enum
+from headless.auth import AuthSession
+from headless.auth import AuthState
+from headless.world import WorldSession
+from headless.world.character import Character
+from headless.world.state import WorldState
+from headless import auth, world
+from headless.config import Config
+from headless.utility import AsyncScopedEmitter, enum
 from wlink.log import logger
 
 @asynccontextmanager
@@ -62,7 +62,7 @@ class Client(AsyncScopedEmitter):
 		self.config = Config(
 			emitter=self,
 			relogger=False,
-			# log='./pont.log',
+			# log='./headless.log',
 		)
 
 		self.nursery = nursery
