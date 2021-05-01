@@ -25,18 +25,23 @@ class Chat:
 
 	@staticmethod
 	def format_chat_event(message):
-		if getattr(message, 'language', None):
-			if message.language not in [Language.addon]:
-				return f'{message}'
-
-		elif getattr(message, 'lines', None):
+		if getattr(message, 'lines', None):
 			text = ' '.join(message.lines)
 			return f'[System] [motd]: {text}'
+
+		elif getattr(message, 'text', None):
+			return str(message)
 
 		return str(message)
 
 	def handle_message(self, message):
-		self._messages.append(Chat.format_chat_event(message))
+		if getattr(message, 'language', None) is not None:
+			if message.language in (Language.addon, ):
+				return
+
+		message = Chat.format_chat_event(message)
+		self._messages.append(message)
+		self.display(message)
 
 	async def message(self, text: str, message_type: MessageType, language: Language, recipient: Optional[str] = None):
 		if self._world.state < WorldState.in_game:
@@ -44,9 +49,6 @@ class Chat:
 
 		await self._world.protocol.send_CMSG_MESSAGECHAT(text, message_type, language, recipient=recipient)
 		self._world.emitter.emit(events.world.sent_chat_message, text=text, type=message_type, language=language, recipient=recipient)
-
-		recipient = f'' if recipient is None else f'[{recipient}'
-		self.display(f'[{message_type}] {recipient}({language}) {text}')
 
 	async def say(self, message, language: Language = Language.common):
 		await self.message(message, MessageType.say, language)

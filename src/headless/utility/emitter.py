@@ -31,6 +31,7 @@ class BaseEmitter:
 	def once(self, event, fn = None):
 		def _on(fn):
 			target_fn = fn
+
 			async def fn_async(*args, **kwargs):
 				await trio.lowlevel.checkpoint()
 				return fn(*args, **kwargs)
@@ -45,9 +46,10 @@ class BaseEmitter:
 		else:
 			return _on(fn)
 
-	def on(self, event, fn = None):
+	def on(self, event, fn=None):
 		def _on(fn):
 			target_fn = fn
+
 			async def fn_async(*args, **kwargs):
 				await trio.lowlevel.checkpoint()
 				return fn(*args, **kwargs)

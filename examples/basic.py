@@ -19,7 +19,7 @@ async def basic_example(server, proxy=None):
 		async with headless.open_client(auth_server=server['realmlist'], proxy=proxy) as client:
 			# Login to auth server
 			with trio.fail_after(5):
-				await client.login(account['username'], account['password'])
+				await client.login(account['username'], account['password'], os='Win')
 
 			# Find desired realm
 			for realm in await client.realms():

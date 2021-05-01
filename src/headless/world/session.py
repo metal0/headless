@@ -15,8 +15,9 @@ from wlink.world.errors import ProtocolError
 from wlink.world.packets import AuthResponse, CharacterInfo
 
 from .character import Character
-from .chat import ChatMessage
+from .chat import ChatMessage, Chat
 from .guild.guild import Guild
+from .warden import Warden
 from .. import world, events
 from .handler import WorldHandler
 from .names import NameCache
@@ -47,11 +48,13 @@ class WorldSession:
 		if emitter is None:
 			emitter = BaseEmitter(emitter=emitter)
 
-		self.handler = WorldHandler(emitter=emitter, world=self)
 		self.emitter = emitter
+		self.handler = WorldHandler(world=self)
 
+		self.warden: Optional[Warden] = None
 		self.nursery: Optional[trio.Nursery] = None
 		self.local_player: Optional[LocalPlayer] = None
+		self.chat: Optional[Chat] = None
 		self.protocol: Optional[WorldClientProtocol] = None
 
 		self._state = WorldState.not_connected
@@ -71,6 +74,10 @@ class WorldSession:
 	@property
 	def realm(self) -> Realm:
 		return self._realm
+
+	@property
+	def session_key(self):
+		return self._crypto.session_key
 
 	async def aclose(self):
 		if self._stream is not None:
@@ -130,6 +137,7 @@ class WorldSession:
 		logger.log('PACKETS', 'started')
 		try:
 			self._handling_packets = True
+			# TODO: Some sort of packet queue to allow for late wait_for_packet usage
 			async for packet in self.protocol.decrypted_packets():
 				await self.handler.handle(packet)
 
@@ -229,6 +237,7 @@ class WorldSession:
 			realm_id=self._realm.id
 		)
 
+		self.warden = Warden(self)
 		await self._parent_nursery.start(self._packet_handler)
 		auth_response = await self.wait_for_packet(Opcode.SMSG_AUTH_RESPONSE)
 
@@ -265,7 +274,9 @@ class WorldSession:
 			try:
 				# Guild(self, )
 				self._state = WorldState.in_game
+				self.chat = Chat(self)
 				self.local_player = LocalPlayer(self, name=character.name, guid=character.guid, )
+
 				self.emitter.emit(events.world.entered_world)
 				n.start_soon(self._handle_time_sync_requests)
 				await self.display_statistics()
@@ -281,7 +292,9 @@ class WorldSession:
 				# if self.state >= WorldState.in_game:
 				# 	await self.logout()
 				self.nursery.cancel_scope.cancel()
+				self._enter_character_select()
 
+	# TODO: Temporary, move to local_player
 	async def accept_duel(self):
 		await self.protocol.send_CMSG_DUEL_ACCEPTED()
 
@@ -293,9 +306,13 @@ class WorldSession:
 		logout_response = await self.wait_for_packet(Opcode.SMSG_LOGOUT_RESPONSE)
 		await self.wait_for_packet(Opcode.SMSG_LOGOUT_COMPLETE)
 
+		self._enter_character_select()
+		logger.info('Logged out')
+
+	def _enter_character_select(self):
+		self.chat = None
 		self.local_player = None
 		self._state = WorldState.logged_in
 		self._handling_packets = False
-		logger.info('Logged out')
 
 __all__ = ['WorldSession', 'WorldState', 'WorldCrypto']

@@ -1,6 +1,5 @@
-from enum import Enum
-
 import construct
+from enum import Enum
 
 
 class CheatCheckType(Enum):
@@ -15,5 +14,5 @@ class CheatCheckType(Enum):
 
 CheatChecksRequest = construct.Struct(
 	'name' / construct.PascalString(construct.Byte, 'ascii'),
-	'oof' / construct.GreedyBytes, # TODO: Do not use greedy bytes in world server loop
+	'oof' / construct.GreedyBytes,
 )

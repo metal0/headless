@@ -3,18 +3,19 @@ import time
 
 from wlink.log import logger
 from wlink.world import Opcode
-from wlink.world.packets import SMSG_TIME_SYNC_REQ, SMSG_MESSAGECHAT
+from wlink.world.packets import SMSG_TIME_SYNC_REQ, SMSG_MESSAGECHAT, SMSG_WARDEN_DATA
 
 from headless import events
 from headless.world.chat import ChatMessage
 
 class WorldHandler:
-	def __init__(self, emitter, world):
-		self._emitter = emitter
+	def __init__(self, world):
+		self._emitter = world.emitter
 		self._world = world
 		self._packet_map = {
 			Opcode.SMSG_MESSAGECHAT: self.handle_received_chat_message,
 			Opcode.SMSG_GM_MESSAGECHAT: self.handle_received_chat_message,
+
 		}
 
 		self._dropcodes = [Opcode.SMSG_COMPRESSED_UPDATE_OBJECT, Opcode.SMSG_UPDATE_OBJECT]
@@ -38,7 +39,6 @@ class WorldHandler:
 			Opcode.SMSG_GUILD_QUERY_RESPONSE: events.world.received_guild_query_response,
 			Opcode.SMSG_DUEL_REQUESTED: events.world.received_duel_request,
 			Opcode.SMSG_PONG: events.world.received_pong,
-			Opcode.SMSG_WARDEN_DATA: events.world.received_warden_data,
 			Opcode.SMSG_LOGIN_VERIFY_WORLD: events.world.entered_world,
 			Opcode.SMSG_CHAR_ENUM: events.world.received_char_enum,
 			Opcode.SMSG_CHAR_CREATE: events.world.received_character_create,
@@ -47,7 +47,7 @@ class WorldHandler:
 			Opcode.SMSG_SERVER_MESSAGE: events.world.received_server_message,
 			Opcode.SMSG_CONTACT_LIST: events.world.received_contact_list,
 			Opcode.SMSG_TIME_SYNC_REQ: events.world.received_time_sync_request,
-
+			Opcode.SMSG_WARDEN_DATA: events.world.received_warden_data,
 		}
 
 		self._world = world

@@ -1,7 +1,15 @@
 from enum import Enum
+from typing import Optional
 
 import construct
+import trio
+from wlink.cryptography import RC4
+from wlink.utility.construct import PackEnum
 
+from headless import events
+from headless.log import logger
+from headless.world.warden import CheatChecksRequest
+from headless.world.warden.sha1_randx import SHA1Randx
 
 class ServerCommand(Enum):
 	module_use = 0
@@ -25,8 +33,8 @@ ServerModuleInfoRequest = construct.Struct(
 	'size' / construct.Int32ul
 )
 
-ServerModuleTransferRequest = construct.Struct(
-	'data' / construct.FixedSized(500, construct.PrefixedArray(construct.Int16ul, construct.Byte))
+ServerModuleTransfer = construct.Struct(
+	'chunk' / construct.Prefixed(construct.Int16ul, construct.Compressed(construct.GreedyBytes, 'zlib')),
 )
 
 InitModuleRequest = construct.Struct(
@@ -65,6 +73,84 @@ ClientModule = construct.Struct(
 	'data' / construct.PrefixedArray(construct.Int32ul, construct.Byte)
 )
 
-class Warden:
-	pass
+ServerWardenData = construct.Struct(
+	'command' / PackEnum(ServerCommand),
+	'data' / construct.Switch(
+		construct.this.command, {
+			ServerCommand.module_use: ServerModuleInfoRequest,
+			ServerCommand.module_cache: ServerModuleTransfer,
+			ServerCommand.cheat_checks_request: CheatChecksRequest,
+			ServerCommand.module_initialize: InitModuleRequest,
+			ServerCommand.hash_request: ServerHashRequest
+		}
+	)
+)
 
+ClientWardenData = construct.Struct(
+	'command' / PackEnum(ClientCommand),
+	'data' / construct.Switch(
+		construct.this.command, {
+			ClientCommand.module_ok: construct.Pass,
+			ClientCommand.module_missing: construct.Pass
+			# ServerCommand.module_cache: ServerModuleTransferRequest,
+			# ServerCommand.cheat_checks_request: CheatChecksRequest,
+			# ServerCommand.module_initialize: InitModuleRequest,
+			# ServerCommand.hash_request: ServerHashRequest
+		}
+	)
+)
+
+
+class Warden:
+	def __init__(self, world):
+		self.world = world
+		self._sha1 = SHA1Randx(data=world.session_key)
+		self._client_rc4 = RC4(key=self._sha1.generate(16))
+		self._server_rc4 = RC4(key=self._sha1.generate(16))
+		self._module_rc4: Optional[RC4] = None
+		self._module_length = 0
+		self._module = bytearray()
+
+		self._opcode_handlers = {
+			ServerCommand.module_use: self.handle_module_use,
+		}
+
+		self.world.emitter.on(events.world.received_warden_data, self.handle)
+
+	def is_enabled(self):
+		return self._module_rc4 is not None
+
+	async def send_module_command(self, command):
+		packet = ClientWardenData.build(dict(command=command))
+		encrypted = self._client_rc4.encrypt(packet)
+		await self.world.protocol.send_CMSG_WARDEN_DATA(encrypted=encrypted)
+
+	async def handle(self, packet):
+		logger.log('WARDEN', f'warden packet: {packet=}')
+		decrypted = self._server_rc4.decrypt(packet.encrypted)
+		command = ServerCommand(decrypted[0])
+		logger.log('WARDEN', f'{command=}')
+
+		data = ServerWardenData.parse(decrypted)
+		logger.log('WARDEN', f'{data=}')
+
+		if data.command == ServerCommand.module_use:
+			await self.handle_module_use(data.data)
+		elif data.command == ServerCommand.module_cache:
+			await self.handle_module_cache(data.data)
+
+	async def handle_module_use(self, data: ServerModuleInfoRequest):
+		key = int.to_bytes(data.key, 20, 'little')
+		if len(self._module) > 0:
+			self._module_rc4 = RC4(key=key)
+			self._module_length = data.size
+			command = ClientCommand.module_ok
+		else:
+			command = ClientCommand.module_missing
+
+		while True:
+			await self.send_module_command(command)
+			await trio.sleep(5)
+
+	async def handle_module_cache(self, data: ServerModuleTransfer):
+		self._module.extend(data.chunk)

@@ -4,7 +4,7 @@ class LocalPlayer:
 	def __init__(self, world, guid, name, guild=None):
 		self._world = world
 		self._guild = guild
-		self._chat = Chat(world)
+		self._chat = world.chat
 		self._guid = guid
 		self._name = name
 		# languages known? default language?
