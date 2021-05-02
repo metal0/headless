@@ -1,3 +1,4 @@
+import inspect
 from enum import Enum
 from typing import Optional
 
@@ -8,7 +9,9 @@ from wlink.utility.construct import PackEnum
 
 from headless import events
 from headless.log import logger
-from headless.world.warden import CheatChecksRequest
+from headless.world.warden import CheatChecksRequest, check
+# from headless.world.warden.check import calculate_hash_result
+from headless.world.warden.emulate import Emulator
 from headless.world.warden.sha1_randx import SHA1Randx
 
 class ServerCommand(Enum):
@@ -28,13 +31,19 @@ class ClientCommand(Enum):
 	module_failed = 5
 
 ServerModuleInfoRequest = construct.Struct(
-	'id' / construct.BytesInteger(length=16, swapped=True),
+	'id' / construct.BytesInteger(length=16, swapped=False),
 	'key' / construct.BytesInteger(length=16, swapped=True),
 	'size' / construct.Int32ul
 )
 
 ServerModuleTransfer = construct.Struct(
-	'chunk' / construct.Prefixed(construct.Int16ul, construct.Compressed(construct.GreedyBytes, 'zlib')),
+	'size' / construct.Int16ul,
+	'chunk' / construct.Bytes(construct.this.size)
+)
+
+ServerModule = construct.Struct(
+	'decompressed_length' / construct.Int32ul,
+	'module' / construct.Compressed(construct.GreedyBytes, 'zlib')
 )
 
 InitModuleRequest = construct.Struct(
@@ -73,33 +82,32 @@ ClientModule = construct.Struct(
 	'data' / construct.PrefixedArray(construct.Int32ul, construct.Byte)
 )
 
-ServerWardenData = construct.Struct(
-	'command' / PackEnum(ServerCommand),
-	'data' / construct.Switch(
-		construct.this.command, {
-			ServerCommand.module_use: ServerModuleInfoRequest,
-			ServerCommand.module_cache: ServerModuleTransfer,
-			ServerCommand.cheat_checks_request: CheatChecksRequest,
-			ServerCommand.module_initialize: InitModuleRequest,
-			ServerCommand.hash_request: ServerHashRequest
-		}
+ClientHashResult = construct.Bytes(20)
+
+def ServerWardenData():
+	return construct.Struct(
+		'command' / PackEnum(ServerCommand),
+		'data' / construct.Switch(
+			construct.this.command, {
+				ServerCommand.module_use: ServerModuleInfoRequest,
+				ServerCommand.module_cache: ServerModuleTransfer,
+				ServerCommand.cheat_checks_request: CheatChecksRequest,
+				ServerCommand.module_initialize: InitModuleRequest,
+				ServerCommand.hash_request: ServerHashRequest
+			}
+		)
 	)
-)
 
 ClientWardenData = construct.Struct(
 	'command' / PackEnum(ClientCommand),
 	'data' / construct.Switch(
 		construct.this.command, {
 			ClientCommand.module_ok: construct.Pass,
-			ClientCommand.module_missing: construct.Pass
-			# ServerCommand.module_cache: ServerModuleTransferRequest,
-			# ServerCommand.cheat_checks_request: CheatChecksRequest,
-			# ServerCommand.module_initialize: InitModuleRequest,
-			# ServerCommand.hash_request: ServerHashRequest
+			ClientCommand.module_missing: construct.Pass,
+			ClientCommand.hash_result: ClientHashResult,
 		}
 	)
 )
-
 
 class Warden:
 	def __init__(self, world):
@@ -109,48 +117,82 @@ class Warden:
 		self._server_rc4 = RC4(key=self._sha1.generate(16))
 		self._module_rc4: Optional[RC4] = None
 		self._module_length = 0
+		self._module_id = None
 		self._module = bytearray()
 
 		self._opcode_handlers = {
 			ServerCommand.module_use: self.handle_module_use,
+			ServerCommand.module_cache: self.handle_module_cache,
+			ServerCommand.hash_request: self.handle_hash_request,
+			ServerCommand.module_initialize: self.handle_module_init,
 		}
 
+		self.emulator = Emulator(world)
 		self.world.emitter.on(events.world.received_warden_data, self.handle)
+
+	@property
+	def module(self):
+		return self._module
+
+	@property
+	def module_id(self):
+		return self._module_id
 
 	def is_enabled(self):
 		return self._module_rc4 is not None
 
-	async def send_module_command(self, command):
-		packet = ClientWardenData.build(dict(command=command))
+	async def send(self, command: ClientCommand, data=None):
+		packet = ClientWardenData.build(dict(command=command, data=data))
 		encrypted = self._client_rc4.encrypt(packet)
 		await self.world.protocol.send_CMSG_WARDEN_DATA(encrypted=encrypted)
 
 	async def handle(self, packet):
-		logger.log('WARDEN', f'warden packet: {packet=}')
+		logger.log('PACKETS', f'warden packet: {packet=}')
 		decrypted = self._server_rc4.decrypt(packet.encrypted)
-		command = ServerCommand(decrypted[0])
-		logger.log('WARDEN', f'{command=}')
+		data = ServerWardenData().parse(decrypted)
+		logger.log('PACKETS', f'{data=}')
 
-		data = ServerWardenData.parse(decrypted)
-		logger.log('WARDEN', f'{data=}')
-
-		if data.command == ServerCommand.module_use:
-			await self.handle_module_use(data.data)
-		elif data.command == ServerCommand.module_cache:
-			await self.handle_module_cache(data.data)
+		handler = self._opcode_handlers[data.command]
+		if inspect.iscoroutinefunction(handler):
+			await handler(data.data)
+		else:
+			handler(data.data)
 
 	async def handle_module_use(self, data: ServerModuleInfoRequest):
+		logger.log('WARDEN', f'Warden module_use request')
 		key = int.to_bytes(data.key, 20, 'little')
 		if len(self._module) > 0:
-			self._module_rc4 = RC4(key=key)
-			self._module_length = data.size
 			command = ClientCommand.module_ok
 		else:
+			self._module_rc4 = RC4(key=key)
+			self._module_length = data.size
+			self._module_id = hex(data.id).replace('0x', '')
 			command = ClientCommand.module_missing
 
-		while True:
-			await self.send_module_command(command)
-			await trio.sleep(5)
+		await self.send(command)
 
 	async def handle_module_cache(self, data: ServerModuleTransfer):
+		if len(self.module) == 0:
+			logger.log('WARDEN', f'Receiving module {self.module_id} from server...')
+
 		self._module.extend(data.chunk)
+		if len(self.module) == self._module_length:
+			logger.log('WARDEN', f'Module received ({len(self.module)} bytes)')
+			self._module = self._module_rc4.decrypt(self.module)
+
+			async with await trio.open_file(f'{self.module_id}.bin', 'wb') as f:
+				await f.write(self.module)
+
+			await self.send(ClientCommand.module_ok)
+
+	async def handle_hash_request(self, data: ServerHashRequest):
+		logger.log('WARDEN', f'{data.seed=}')
+		hash, client_key, server_key = check.calculate_hash_result(data.seed)
+		logger.log('WARDEN', f'{hash=} {client_key=} {server_key=}')
+
+		self._client_rc4 = RC4(key=client_key)
+		self._server_rc4 = RC4(key=server_key)
+		await self.send(command=ClientCommand.hash_result, data=ClientHashResult.build(hash))
+
+	async def handle_module_init(self, data):
+		logger.log('WARDEN', f'module init: {data=}')

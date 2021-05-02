@@ -105,7 +105,7 @@ async def test_session():
 	(client_stream, server_stream) = trio.testing.memory_stream_pair()
 	session_key = 887638991071640811242800621506026194914017482863646559938463468713468253926173117812986327918380
 
-	with trio.fail_after(2):
+	with trio.fail_after(0.2):
 		async with trio.open_nursery() as nursery:
 			nursery.start_soon(client_login, client_stream, session_key, nursery)
 			nursery.start_soon(world_server, server_stream, session_key, nursery)

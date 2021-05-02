@@ -19,7 +19,7 @@ async def basic_example(server, proxy=None):
 		async with headless.open_client(auth_server=server['realmlist'], proxy=proxy) as client:
 			# Login to auth server
 			with trio.fail_after(5):
-				await client.login(account['username'], account['password'], os='Win')
+				await client.login(account['username'], account['password'], os='OSX')
 
 			# Find desired realm
 			for realm in await client.realms():
@@ -53,9 +53,9 @@ async def basic_example(server, proxy=None):
 
 async def main():
 	login_filename = os.environ.get('PONT_CREDS')
-	server = load_login('acore', login_filename)
-	# proxy = ('server', 9050)
-	proxy = None
+	server = load_login('warmane', login_filename)
+	proxy = ('server', 9050)
+	# proxy = None
 
 	while True:
 		await basic_example(server, proxy=proxy)

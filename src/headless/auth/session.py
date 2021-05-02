@@ -2,12 +2,12 @@ import construct
 import trio
 import wlink
 from trio_socks import socks5
-from wlink.auth import AuthProtocol
+from wlink.auth import AuthProtocol, Response
 from wlink import cryptography
 from wlink.log import logger
 from typing import Optional, Tuple
 
-from wlink.auth.errors import InvalidLogin
+from wlink.auth.errors import InvalidLogin, AuthError
 from wlink.utility.string import bytes_to_int
 
 from headless import events
@@ -103,13 +103,16 @@ class AuthSession:
 		challenge_response = await self.protocol.receive_challenge_response()
 		client_private = debug['client_private'] if debug is not None else None
 
+		if challenge_response.response != Response.success:
+			raise AuthError(f'Challenge response: {challenge_response.response}')
+
 		self._srp = cryptography.WoWSrpClient(username=username, password=password,
-			prime=challenge_response.prime,
-			generator=challenge_response.generator,
+			prime=challenge_response.rc4.prime,
+			generator=challenge_response.rc4.generator,
 			client_private=client_private
 		)
 
-		client_public, session_proof = self._srp.process(challenge_response.server_public, challenge_response.salt)
+		client_public, session_proof = self._srp.process(challenge_response.rc4.server_public, challenge_response.rc4.salt)
 		mac_binary_crc = bytes([0xB7, 0x06, 0xD1, 0x3F, 0xF2, 0xF4, 0x01, 0x88, 0x39, 0x72, 0x94, 0x61, 0xE3, 0xF8, 0xA0, 0xE2, 0xB5, 0xFD, 0xC0, 0x34])
 		checksum = int.from_bytes(wlink.cryptography.sha.sha1(
 			construct.BytesInteger(32, swapped=True).build(client_public) + mac_binary_crc
