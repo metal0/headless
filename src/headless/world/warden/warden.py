@@ -31,7 +31,7 @@ class ClientCommand(Enum):
 	module_failed = 5
 
 ServerModuleInfoRequest = construct.Struct(
-	'id' / construct.BytesInteger(length=16, swapped=False),
+	'id' / construct.BytesInteger(length=16, swapped=True),
 	'key' / construct.BytesInteger(length=16, swapped=True),
 	'size' / construct.Int32ul
 )
@@ -175,11 +175,9 @@ class Warden:
 		if len(self.module) == 0:
 			logger.log('WARDEN', f'Receiving module {self.module_id} from server...')
 
-		self._module.extend(data.chunk)
+		self._module.extend(self._module_rc4.decrypt(data.chunk))
 		if len(self.module) == self._module_length:
 			logger.log('WARDEN', f'Module received ({len(self.module)} bytes)')
-			self._module = self._module_rc4.decrypt(self.module)
-
 			async with await trio.open_file(f'{self.module_id}.bin', 'wb') as f:
 				await f.write(self.module)
 
@@ -187,7 +185,7 @@ class Warden:
 
 	async def handle_hash_request(self, data: ServerHashRequest):
 		logger.log('WARDEN', f'{data.seed=}')
-		hash, client_key, server_key = check.calculate_hash_result(data.seed)
+		hash, client_key, server_key = check.calculate_hash_result(data.seed, self.module_id)
 		logger.log('WARDEN', f'{hash=} {client_key=} {server_key=}')
 
 		self._client_rc4 = RC4(key=client_key)

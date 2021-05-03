@@ -14,10 +14,11 @@ class CheatCheckType(Enum):
 	driver_check = 0x71        # 113: uint Seed + byte[20] SHA1 + byte driverNameIndex (check to ensure driver isn't loaded)
 	timing_check = 0x57        #  87: empty (check to ensure GetTickCount() isn't detoured)
 	process_check = 0x7E       # 126: uint Seed + byte[20] SHA1 + byte moluleNameIndex + byte procNameIndex + uint Offset + byte Len (check to ensure proc isn't detoured)
+	unknown_check = 217
 
 CheatChecksRequest = construct.Struct(
 	'name' / construct.PascalString(construct.Byte, 'ascii'),
-	'oof' / construct.GreedyBytes,
+	'data' / construct.GreedyBytes,
 )
 
 def signed_xor(x, y, len, byteorder='little', x_signed=True, y_signed=True):
@@ -28,9 +29,8 @@ def signed_xor(x, y, len, byteorder='little', x_signed=True, y_signed=True):
 	return int.from_bytes(res, byteorder, signed=True)
 
 
-# TODO: More client reverse engineering needed
-def calculate_hash_result(key: Union[bytes, int]):
-	if key == 338176079955437417738073427705494077517:
+def calculate_hash_result(key: Union[bytes, int], id):
+	if key == 338176079955437417738073427705494077517 and id == '79c0768d657977d697e10bad956cced1':
 		known_client_key = bytes([0x7F, 0x96, 0xEE, 0xFD, 0xA5, 0xB6, 0x3D, 0x20, 0xA4, 0xDF, 0x8E, 0x00, 0xCB, 0xF4, 0x83, 0x04])
 		known_server_key = bytes([0xC2, 0xB7, 0xAD, 0xED, 0xFC, 0xCC, 0xA9, 0xC2, 0xBF, 0xB3, 0xF8, 0x56, 0x02, 0xBA, 0x80, 0x9B])
 		return hashlib.sha1(known_client_key).digest(), known_client_key, known_server_key
