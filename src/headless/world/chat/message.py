@@ -1,63 +1,12 @@
 import datetime
+import textwrap
+import trio
 
 from enum import Enum
 from typing import Optional
 
+from wlink.world.packets import MessageType
 
-class MessageType(Enum):
-	system = 0x00
-	say = 0x01
-	party = 0x02
-	raid = 0x03
-	guild = 0x04
-	officer = 0x05
-	yell = 0x06
-	whisper = 0x07
-	whisper_foreign = 0x08
-	whisper_inform = 0x09
-	emote = 0x0a
-	text_emote = 0x0b
-	monster_say = 0x0c
-	monster_party = 0x0d
-	monster_yell = 0x0e
-	monster_whisper = 0x0f
-	monster_emote = 0x10
-	channel = 0x11
-	channel_join = 0x12
-	channel_leave = 0x13
-	channel_list = 0x14
-	channel_notice = 0x15
-	channel_notice_user = 0x16
-	afk = 0x17
-	dnd = 0x18
-	ignored = 0x19
-	skill = 0x1a
-	loot = 0x1b
-	money = 0x1c
-	opening = 0x1d
-	tradeskills = 0x1e
-	pet_info = 0x1f
-	combat_misc_info = 0x20
-	combat_xp_gain = 0x21
-	combat_honor_gain = 0x22
-	combat_faction_change = 0x23
-	bg_system_neutral = 0x24
-	bg_system_alliance = 0x25
-	bg_system_horde = 0x26
-	raid_leader = 0x27
-	raid_warning = 0x28
-	raid_boss_emote = 0x29
-	raid_boss_whisper = 0x2a
-	filtered = 0x2b
-	battleground = 0x2c
-	battleground_leader = 0x2d
-	restricted = 0x2e
-	battlenet = 0x2f
-	achievement = 0x30
-	guild_achievement = 0x31
-	arena_points = 0x32
-	party_leader = 0x33
-	addon = 0xFFFFFFFF
 
 class ChatLinkColor(Enum):
 	trade       = 0xffffd000  # orange
@@ -68,12 +17,38 @@ class ChatLinkColor(Enum):
 	glyph       = 0xff66bbff  # teal blue
 
 class ChatMessage:
+	max_length = 255
+
 	@staticmethod
-	def is_whisper(packet):
-		return packet.message_type in (
+	def is_whisper(type):
+		return type in (
 	MessageType.whisper, MessageType.whisper_foreign, MessageType.whisper_inform,
 	MessageType.monster_whisper, MessageType.raid_boss_whisper
 )
+	@staticmethod
+	def is_nearby_chat(type):
+		return type in (
+			MessageType.say, MessageType.emote, MessageType.text_emote, MessageType.monster_emote,
+			MessageType.monster_say,
+		)
+
+	@staticmethod
+	def is_guild_chat(type):
+		return type in (MessageType.guild, MessageType.guild_achievement, MessageType.officer)
+
+	@staticmethod
+	def is_raid_message(type):
+		return type in (MessageType.raid_leader, MessageType.raid, MessageType.raid_warning,
+			MessageType.battleground_leader, MessageType.battleground, MessageType.bg_system_alliance,
+		)
+
+	@staticmethod
+	def is_party_message(type):
+		return type in (MessageType.party, MessageType.party_leader, MessageType.monster_party)
+
+	@staticmethod
+	def is_group_message(type):
+		return ChatMessage.is_raid_message(type) or type in (MessageType.party, MessageType.party_leader)
 
 	@staticmethod
 	def is_monster_message(packet):
@@ -145,3 +120,31 @@ class ChatMessage:
 			return f'[{sender}] [{type_string}]: {text}'
 
 		return f'[{sender} -> {receiver}] [{type_string}]: {text}'
+
+	async def reply(self, text: str):
+		if len(text) > ChatMessage.max_length:
+			for chunk in textwrap.wrap(text, ChatMessage.max_length, replace_whitespace=False):
+				await self.reply(chunk)
+			return
+
+		nursery: trio.Nursery = self._world.nursery
+		if self._world.chat is None:
+			return
+
+		try:
+			if ChatMessage.is_whisper(self.type):
+				await self._world.chat.whisper(text, self.sender, self.language)
+
+			elif ChatMessage.is_guild_chat(self.type):
+				await self._world.chat.guild(text, self.language)
+
+			elif ChatMessage.is_nearby_chat(self.type):
+				await self._world.chat.say(text, self.language)
+
+			elif ChatMessage.is_raid_message(self.type):
+				await self._world.chat.raid(text, self.language)
+
+			elif ChatMessage.is_party_message(type):
+				await self._world.chat.party(text, self.language)
+		except Exception as e:
+			print(e)

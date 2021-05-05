@@ -33,6 +33,9 @@ class WorldEvent(Enum):
 	received_contact_list = uuid.uuid4()
 	received_group_invite = uuid.uuid4()
 	received_group_list = uuid.uuid4()
+	received_group_kick = uuid.uuid4()
+	received_group_destroyed = uuid.uuid4()
+	received_group_joined_bg = uuid.uuid4()
 
 	received_guild_invite = uuid.uuid4()
 	received_guild_event = uuid.uuid4()
@@ -57,6 +60,7 @@ class WorldEvent(Enum):
 	received_notification = uuid.uuid4()
 	received_motd = uuid.uuid4()
 	received_pong = uuid.uuid4()
+	received_play_sound = uuid.uuid4()
 	received_login_world = uuid.uuid4()
 	received_warden_data = uuid.uuid4()
 	received_tutorial_flags = uuid.uuid4()
@@ -65,6 +69,11 @@ class WorldEvent(Enum):
 	received_character_rename = uuid.uuid4()
 	received_character_create = uuid.uuid4()
 	logout_cancelled = uuid.uuid4()
+
+	received_cancel_combat = uuid.uuid4()
+	received_pending_transfer = uuid.uuid4()
+	received_abort_transfer = uuid.uuid4()
+	received_health_update = uuid.uuid4()
 
 	sent_ping = uuid.uuid4()
 	sent_keep_alive = uuid.uuid4()

@@ -2,9 +2,8 @@ from typing import Optional
 
 from wlink.log import logger
 from wlink.world.errors import ProtocolError
-from wlink.world.packets import Language
+from wlink.world.packets import Language, MessageType
 
-from .message import MessageType, ChatMessage
 from ..state import WorldState
 from ... import events
 
@@ -52,6 +51,14 @@ class Chat:
 
 	async def say(self, message, language: Language = Language.common):
 		await self.message(message, MessageType.say, language)
+
+	async def raid(self, message, language: Language = Language.common):
+		# TODO: Figure out if we're leader or not
+		await self.message(message, MessageType.raid, language)
+
+	async def party(self, message, language: Language = Language.common):
+		# TODO: Figure out if we're leader or not
+		await self.message(message, MessageType.party, language)
 
 	async def yell(self, message, language: Language = Language.common):
 		await self.message(message, MessageType.yell, language)

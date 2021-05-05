@@ -1,8 +1,7 @@
 import time
-
-import pyee
 import trio
 import random
+
 # import esper as esper
 from contextlib import asynccontextmanager
 from typing import Optional, Tuple, Any, List
@@ -16,7 +15,6 @@ from wlink.world.packets import AuthResponse, CharacterInfo
 
 from .character import Character
 from .chat import ChatMessage, Chat
-from .guild.guild import Guild
 from .warden import Warden
 from .. import world, events
 from .handler import WorldHandler
@@ -122,7 +120,13 @@ class WorldSession:
 	#   ?????
 	# Wait for a packet to be received and return it.
 	async def wait_for_packet(self, opcode: Opcode) -> Any:
-		return await self.wait_packet_condition(lambda packet: packet.header.opcode == opcode)
+		def _condition(packet):
+			if packet is None:
+				return False
+			
+			return packet.header.opcode == opcode
+
+		return await self.wait_packet_condition(_condition)
 
 	# Wait for a packet to be received and return it.
 	async def wait_for_any_packet(self, *opcodes: List[Opcode]) -> Any:
@@ -293,10 +297,6 @@ class WorldSession:
 				# 	await self.logout()
 				self.nursery.cancel_scope.cancel()
 				self._enter_character_select()
-
-	# TODO: Temporary, move to local_player
-	async def accept_duel(self):
-		await self.protocol.send_CMSG_DUEL_ACCEPTED()
 
 	async def logout(self):
 		logger.info('Logging out...')

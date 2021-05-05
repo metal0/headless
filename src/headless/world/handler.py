@@ -32,6 +32,9 @@ class WorldHandler:
 			Opcode.SMSG_BIND_POINT_UPDATE: events.world.received_bind_point,
 			Opcode.SMSG_GROUP_INVITE: events.world.received_group_invite,
 			Opcode.SMSG_GROUP_LIST: events.world.received_group_list,
+			Opcode.SMSG_GROUP_UNINVITE: events.world.received_group_kick,
+			Opcode.SMSG_GROUP_DESTROYED: events.world.received_group_destroyed,
+			Opcode.SMSG_GROUP_JOINED_BATTLEGROUND: events.world.received_group_joined_bg,
 			Opcode.SMSG_GUILD_INVITE: events.world.received_guild_invite,
 			Opcode.SMSG_GUILD_EVENT: events.world.received_guild_event,
 			Opcode.SMSG_GUILD_INFO: events.world.received_guild_info,
@@ -47,7 +50,12 @@ class WorldHandler:
 			Opcode.SMSG_SERVER_MESSAGE: events.world.received_server_message,
 			Opcode.SMSG_CONTACT_LIST: events.world.received_contact_list,
 			Opcode.SMSG_TIME_SYNC_REQ: events.world.received_time_sync_request,
+			Opcode.SMSG_PLAY_SOUND: events.world.received_play_sound,
 			Opcode.SMSG_WARDEN_DATA: events.world.received_warden_data,
+			Opcode.SMSG_TRANSFER_PENDING: events.world.received_pending_transfer,
+			Opcode.SMSG_TRANSFER_ABORTED: events.world.received_abort_transfer,
+			Opcode.SMSG_CANCEL_COMBAT: events.world.received_cancel_combat,
+			Opcode.SMSG_HEALTH_UPDATE: events.world.received_health_update,
 		}
 
 		self._world = world
@@ -63,6 +71,9 @@ class WorldHandler:
 	async def handle(self, packet):
 		try:
 			logger.log('PACKETS', f'{packet=}')
+			if packet is None:
+				raise ValueError('Empty packet')
+
 			self._emitter.emit(events.world.received_packet, packet=packet)
 			fn = self._packet_map[packet.header.opcode]
 

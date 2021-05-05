@@ -9,8 +9,8 @@ from wlink.utility.construct import PackEnum
 
 from headless import events
 from headless.log import logger
+from headless.world.errors import WorldError
 from headless.world.warden import CheatChecksRequest, check
-# from headless.world.warden.check import calculate_hash_result
 from headless.world.warden.emulate import Emulator
 from headless.world.warden.sha1_randx import SHA1Randx
 
@@ -31,8 +31,8 @@ class ClientCommand(Enum):
 	module_failed = 5
 
 ServerModuleInfoRequest = construct.Struct(
-	'id' / construct.BytesInteger(length=16, swapped=True),
-	'key' / construct.BytesInteger(length=16, swapped=True),
+	'id' / construct.Bytes(16),
+	'key' / construct.Bytes(16),
 	'size' / construct.Int32ul
 )
 
@@ -73,7 +73,8 @@ InitModuleRequest = construct.Struct(
 )
 
 ServerHashRequest = construct.Struct(
-	'seed' / construct.BytesInteger(length=16, swapped=True)
+	# 'seed' / construct.BytesInteger(length=16, swapped=True)
+	'seed' / construct.Bytes(16)
 )
 
 ClientModule = construct.Struct(
@@ -160,13 +161,12 @@ class Warden:
 
 	async def handle_module_use(self, data: ServerModuleInfoRequest):
 		logger.log('WARDEN', f'Warden module_use request')
-		key = int.to_bytes(data.key, 20, 'little')
 		if len(self._module) > 0:
 			command = ClientCommand.module_ok
 		else:
-			self._module_rc4 = RC4(key=key)
+			self._module_rc4 = RC4(key=data.key)
 			self._module_length = data.size
-			self._module_id = hex(data.id).replace('0x', '')
+			self._module_id = data.id.hex().replace('0x', '')
 			command = ClientCommand.module_missing
 
 		await self.send(command)
@@ -185,11 +185,16 @@ class Warden:
 
 	async def handle_hash_request(self, data: ServerHashRequest):
 		logger.log('WARDEN', f'{data.seed=}')
+		# try:
 		hash, client_key, server_key = check.calculate_hash_result(data.seed, self.module_id)
 		logger.log('WARDEN', f'{hash=} {client_key=} {server_key=}')
 
 		self._client_rc4 = RC4(key=client_key)
 		self._server_rc4 = RC4(key=server_key)
+
+		# except WorldError:
+		# 	hash = data.seed
+
 		await self.send(command=ClientCommand.hash_result, data=ClientHashResult.build(hash))
 
 	async def handle_module_init(self, data):
