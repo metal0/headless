@@ -1,6 +1,6 @@
 import inspect
 from enum import Enum
-from typing import Optional
+from typing import Optional, Dict, Callable
 
 import construct
 import trio
@@ -12,6 +12,7 @@ from headless.log import logger
 from headless.world.errors import WorldError
 from headless.world.warden import CheatChecksRequest, check
 from headless.world.warden.emulate import Emulator
+from headless.world.warden.module import WardenModule
 from headless.world.warden.sha1_randx import SHA1Randx
 
 class ServerCommand(Enum):
@@ -116,12 +117,9 @@ class Warden:
 		self._sha1 = SHA1Randx(data=world.session_key)
 		self._client_rc4 = RC4(key=self._sha1.generate(16))
 		self._server_rc4 = RC4(key=self._sha1.generate(16))
-		self._module_rc4: Optional[RC4] = None
-		self._module_length = 0
-		self._module_id = None
-		self._module = bytearray()
+		self._module = None
 
-		self._opcode_handlers = {
+		self._opcode_handlers: Dict[ServerCommand, Callable] = {
 			ServerCommand.module_use: self.handle_module_use,
 			ServerCommand.module_cache: self.handle_module_cache,
 			ServerCommand.hash_request: self.handle_hash_request,
@@ -132,15 +130,15 @@ class Warden:
 		self.world.emitter.on(events.world.received_warden_data, self.handle)
 
 	@property
-	def module(self):
+	def module(self) -> Optional[WardenModule]:
 		return self._module
 
 	@property
 	def module_id(self):
-		return self._module_id
+		return self.module.id if self.module else None
 
-	def is_enabled(self):
-		return self._module_rc4 is not None
+	def enabled(self):
+		return self.module is not None and self.module.completed()
 
 	async def send(self, command: ClientCommand, data=None):
 		packet = ClientWardenData.build(dict(command=command, data=data))
@@ -150,43 +148,41 @@ class Warden:
 	async def handle(self, packet):
 		logger.log('PACKETS', f'warden packet: {packet=}')
 		decrypted = self._server_rc4.decrypt(packet.encrypted)
-		data = ServerWardenData().parse(decrypted)
-		logger.log('PACKETS', f'{data=}')
+		warden_data = ServerWardenData().parse(decrypted)
+		logger.log('PACKETS', f'{warden_data=}')
 
-		handler = self._opcode_handlers[data.command]
+		handler = self._opcode_handlers[warden_data.command]
 		if inspect.iscoroutinefunction(handler):
-			await handler(data.data)
+			await handler(warden_data.data)
 		else:
-			handler(data.data)
+			handler(warden_data.data)
 
-	async def handle_module_use(self, data: ServerModuleInfoRequest):
+	async def handle_module_use(self, request: ServerModuleInfoRequest):
 		logger.log('WARDEN', f'Warden module_use request')
-		if len(self._module) > 0:
+		if self.enabled():
 			command = ClientCommand.module_ok
 		else:
-			self._module_rc4 = RC4(key=data.key)
-			self._module_length = data.size
-			self._module_id = data.id.hex().replace('0x', '')
+			self._module = WardenModule(size=request.size, id=request.id, key=request.key)
 			command = ClientCommand.module_missing
 
 		await self.send(command)
 
-	async def handle_module_cache(self, data: ServerModuleTransfer):
+	async def handle_module_cache(self, request: ServerModuleTransfer):
 		if len(self.module) == 0:
-			logger.log('WARDEN', f'Receiving module {self.module_id} from server...')
+			logger.log('WARDEN', f'Receiving module {self.module.id} from server...')
 
-		self._module.extend(self._module_rc4.decrypt(data.chunk))
-		if len(self.module) == self._module_length:
+		self.module.new_chunk(request.chunk)
+		if self.module.completed():
 			logger.log('WARDEN', f'Module received ({len(self.module)} bytes)')
-			async with await trio.open_file(f'{self.module_id}.bin', 'wb') as f:
-				await f.write(self.module)
+			async with await trio.open_file(f'{self.module.id}.bin', 'wb') as f:
+				await f.write(self.module.data)
 
 			await self.send(ClientCommand.module_ok)
 
 	async def handle_hash_request(self, data: ServerHashRequest):
 		logger.log('WARDEN', f'{data.seed=}')
 		# try:
-		hash, client_key, server_key = check.calculate_hash_result(data.seed, self.module_id)
+		hash, client_key, server_key = check.calculate_hash_result(data.seed, self.module.id)
 		logger.log('WARDEN', f'{hash=} {client_key=} {server_key=}')
 
 		self._client_rc4 = RC4(key=client_key)

@@ -1,7 +1,6 @@
 import trio
 from wlink.world import WorldClientProtocol
 from wlink.world.packets import SMSG_MESSAGECHAT, Language
-from tests.mock.world import MockWorld
 
 async def test_chat():
 	client, server = trio.testing.memory_stream_pair()

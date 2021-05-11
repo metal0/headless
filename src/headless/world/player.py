@@ -1,5 +1,5 @@
 from headless import events
-from headless.world.chat import Chat
+from headless.world.chat import LocalChat
 from headless.world.group import Group
 from headless.log import logger
 
@@ -19,7 +19,7 @@ class LocalPlayer:
 
 		@world.emitter.on(events.world.received_group_list)
 		def _on_group_list(packet):
-			self._group = Group(world)
+			self._group = Group(world, packet)
 			if self._group.size > 0:
 				logger.info(f'Joined group')
 

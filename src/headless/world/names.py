@@ -1,6 +1,6 @@
 import trio
 from wlink.guid import GuidType
-from wlink.world import Opcode
+from wlink.world.packets import Opcode
 
 from headless.utility.cache import Cache
 

@@ -46,6 +46,8 @@ class WorldEvent(Enum):
 	received_chat_message = uuid.uuid4()
 	# received_gm_chat_message = uuid.uuid4()
 	received_duel_request = uuid.uuid4()
+	received_duel_winner = uuid.uuid4()
+	received_duel_complete = uuid.uuid4()
 	received_name_query_response = uuid.uuid4()
 	received_bind_point = uuid.uuid4()
 
@@ -73,7 +75,10 @@ class WorldEvent(Enum):
 	received_cancel_combat = uuid.uuid4()
 	received_pending_transfer = uuid.uuid4()
 	received_abort_transfer = uuid.uuid4()
+
 	received_health_update = uuid.uuid4()
+	received_destroy_object = uuid.uuid4()
+	received_update_object = uuid.uuid4()
 
 	sent_ping = uuid.uuid4()
 	sent_keep_alive = uuid.uuid4()

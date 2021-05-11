@@ -2,8 +2,7 @@ import inspect
 import time
 
 from wlink.log import logger
-from wlink.world import Opcode
-from wlink.world.packets import SMSG_TIME_SYNC_REQ, SMSG_MESSAGECHAT, SMSG_WARDEN_DATA
+from wlink.world.packets import Opcode
 
 from headless import events
 from headless.world.chat import ChatMessage
@@ -15,11 +14,13 @@ class WorldHandler:
 		self._packet_map = {
 			Opcode.SMSG_MESSAGECHAT: self.handle_received_chat_message,
 			Opcode.SMSG_GM_MESSAGECHAT: self.handle_received_chat_message,
-
 		}
 
-		self._dropcodes = [Opcode.SMSG_COMPRESSED_UPDATE_OBJECT, Opcode.SMSG_UPDATE_OBJECT]
+		self._dropcodes = []
 		self._opcode_event_map = {
+			Opcode.SMSG_UPDATE_OBJECT: events.world.received_update_object,
+			Opcode.SMSG_COMPRESSED_UPDATE_OBJECT: events.world.received_update_object,
+			Opcode.SMSG_DESTROY_OBJECT: events.world.received_destroy_object,
 			Opcode.SMSG_QUERY_TIME_RESPONSE: events.world.received_time_query_response,
 			Opcode.SMSG_MAIL_LIST_RESULT: events.world.received_mail_list,
 			Opcode.SMSG_RECEIVED_MAIL: events.world.received_new_mail,
@@ -40,7 +41,6 @@ class WorldHandler:
 			Opcode.SMSG_GUILD_INFO: events.world.received_guild_info,
 			Opcode.SMSG_GUILD_ROSTER: events.world.received_guild_roster,
 			Opcode.SMSG_GUILD_QUERY_RESPONSE: events.world.received_guild_query_response,
-			Opcode.SMSG_DUEL_REQUESTED: events.world.received_duel_request,
 			Opcode.SMSG_PONG: events.world.received_pong,
 			Opcode.SMSG_LOGIN_VERIFY_WORLD: events.world.entered_world,
 			Opcode.SMSG_CHAR_ENUM: events.world.received_char_enum,
@@ -56,6 +56,9 @@ class WorldHandler:
 			Opcode.SMSG_TRANSFER_ABORTED: events.world.received_abort_transfer,
 			Opcode.SMSG_CANCEL_COMBAT: events.world.received_cancel_combat,
 			Opcode.SMSG_HEALTH_UPDATE: events.world.received_health_update,
+			Opcode.SMSG_DUEL_REQUESTED: events.world.received_duel_request,
+			Opcode.SMSG_DUEL_WINNER: events.world.received_duel_winner,
+			Opcode.SMSG_DUEL_COMPLETE: events.world.received_duel_complete,
 		}
 
 		self._world = world
@@ -70,7 +73,6 @@ class WorldHandler:
 
 	async def handle(self, packet):
 		try:
-			logger.log('PACKETS', f'{packet=}')
 			if packet is None:
 				raise ValueError('Empty packet')
 
@@ -102,5 +104,5 @@ class WorldHandler:
 		self._emitter.emit(events.world.received_chat_message, message=message)
 		logger.log('PACKETS', f'packet={packet}')
 
-	async def handle_received_chat_message(self, packet: SMSG_MESSAGECHAT):
+	async def handle_received_chat_message(self, packet):
 		self._world.nursery.start_soon(self._handle_chat_message, packet)

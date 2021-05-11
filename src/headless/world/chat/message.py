@@ -1,12 +1,10 @@
 import datetime
 import textwrap
-import trio
-
 from enum import Enum
 from typing import Optional
 
+from wlink.log import logger
 from wlink.world.packets import MessageType
-
 
 class ChatLinkColor(Enum):
 	trade       = 0xffffd000  # orange
@@ -82,7 +80,7 @@ class ChatMessage:
 		self._sender = sender
 		self._receiver = receiver
 
-		self.time = datetime.time()
+		self.time = datetime.datetime.now()
 
 	@property
 	def text(self):
@@ -127,7 +125,6 @@ class ChatMessage:
 				await self.reply(chunk)
 			return
 
-		nursery: trio.Nursery = self._world.nursery
 		if self._world.chat is None:
 			return
 
@@ -146,5 +143,6 @@ class ChatMessage:
 
 			elif ChatMessage.is_party_message(type):
 				await self._world.chat.party(text, self.language)
+
 		except Exception as e:
-			print(e)
+			logger.exception(e)

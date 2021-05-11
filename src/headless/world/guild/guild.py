@@ -84,12 +84,11 @@ class Guild:
 	async def new(world, packet):
 		pass
 
-	def __init__(self, world, guid, name):
+	def __init__(self, world, guid=None, name=None):
 		self._info = None
 		self._world = world
 		self._guid = guid
 		self._name = name
-		self._access_token = None
 
 		if world.state < WorldState.in_game:
 			raise ProtocolError(f'Must be in-game to send a chat message; world state is {self._world.state} instead')
@@ -114,7 +113,22 @@ class Guild:
 		if self._info is not None:
 			return self._info.ranks
 
-class HomeGuild(Guild):
+class LocalGuild(Guild):
+	def __init__(self, world, guid=None, name=None):
+		super().__init__(world, guid, name)
+
+		@world.emitter.on(events.world.received_guild_event)
+		async def _on_guild_event(event):
+			pass
+
+		@world.emitter.on(events.world.received_guild_roster)
+		async def _on_guild_roster(roster):
+			pass
+
+		@world.emitter.on(events.world.received_guild_query_response)
+		async def _on_guild_query(roster):
+			pass
+
 	@staticmethod
 	async def new(world, packet):
 		pass

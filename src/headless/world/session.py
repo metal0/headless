@@ -1,4 +1,7 @@
+import datetime
 import time
+import uuid
+
 import trio
 import random
 
@@ -9,12 +12,13 @@ from loguru import logger
 from trio_socks import socks5
 from wlink.auth.realm import Realm
 from wlink.cryptography import sha
-from wlink.world import WorldClientProtocol, Opcode
+from wlink.utility.construct import int32
+from wlink.world import WorldClientProtocol
 from wlink.world.errors import ProtocolError
-from wlink.world.packets import AuthResponse, CharacterInfo
+from wlink.world.packets import AuthResponse, CharacterInfo, Opcode
 
 from .character import Character
-from .chat import ChatMessage, Chat
+from .chat import ChatMessage, LocalChat
 from .warden import Warden
 from .. import world, events
 from .handler import WorldHandler
@@ -52,7 +56,7 @@ class WorldSession:
 		self.warden: Optional[Warden] = None
 		self.nursery: Optional[trio.Nursery] = None
 		self.local_player: Optional[LocalPlayer] = None
-		self.chat: Optional[Chat] = None
+		self.chat: Optional[LocalChat] = None
 		self.protocol: Optional[WorldClientProtocol] = None
 
 		self._state = WorldState.not_connected
@@ -62,7 +66,6 @@ class WorldSession:
 		self._realm = None
 		self._username = None
 		self._handling_packets = False
-		self._average_rtt = None
 		self.names = NameCache(self)
 
 	@property
@@ -156,20 +159,18 @@ class WorldSession:
 			self._handling_packets = False
 			raise e
 
-	async def _measure_ping_latency(self):
-		start = time.time()
-		await self.protocol.send_CMSG_PING(id=int(random.random() * 1000))
+	async def latency(self) -> datetime.timedelta:
+		start = datetime.datetime.now()
+		id = int32(int(uuid.uuid4()))
+		await self.protocol.send_CMSG_PING(id=id)
 
 		pong = await self.wait_for_packet(Opcode.SMSG_PONG)
-		rtt = time.time() - start
+		if pong.ping != id:
+			logger.warning(f'Server pong id mismatch: {pong.ping} != {id}')
 
-		if self._average_rtt is None:
-			self._average_rtt = rtt
-		else:
-			self._average_rtt += rtt
-			self._average_rtt /= 2
 
-		return int(self._average_rtt * 1000)
+		rtt = datetime.datetime.now() - start
+		return int(rtt.total_seconds() * 1000)
 
 	async def _handle_time_sync_requests(self):
 		while True:
@@ -178,10 +179,6 @@ class WorldSession:
 			ticks = int(1000 * time.time())
 			await self.protocol.send_CMSG_TIME_SYNC_RES(id=request.id, client_ticks=ticks)
 			self.emitter.emit(events.world.sent_time_sync, id=request.id, ticks=ticks)
-
-	async def latency(self) -> int:
-		await self._measure_ping_latency()
-		return int(self._average_rtt * 1000)
 
 	async def display_statistics(self):
 		logger.info(f'Latency: {await self.latency()} ms, ')
@@ -278,7 +275,7 @@ class WorldSession:
 			try:
 				# Guild(self, )
 				self._state = WorldState.in_game
-				self.chat = Chat(self)
+				self.chat = LocalChat(self)
 				self.local_player = LocalPlayer(self, name=character.name, guid=character.guid, )
 
 				self.emitter.emit(events.world.entered_world)
