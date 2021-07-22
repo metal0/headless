@@ -103,7 +103,7 @@ async def wait_for_event(emitter, event, condition=None, result_transform=None):
 		condition = lambda *args, **kwargs: True
 
 	if result_transform is None:
-		result_transform = lambda *args, **kwargs: tuple(kwargs.values())
+		result_transform = lambda *args, **kwargs: dict(kwargs)
 
 	async def on_event(*args, **kwargs):
 		if condition(**kwargs):
