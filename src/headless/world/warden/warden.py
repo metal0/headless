@@ -162,7 +162,7 @@ class Warden:
 		if self.enabled():
 			command = ClientCommand.module_ok
 		else:
-			self._module = WardenModule(size=request.size, id=request.id, key=request.key)
+			self._module = WardenModule(size=request.size, mod_id=request.id, key=request.key)
 			command = ClientCommand.module_missing
 
 		await self.send(command)

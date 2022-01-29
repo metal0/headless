@@ -39,8 +39,8 @@ async def basic_example(server, proxy=None):
 				# Enter world with character
 				async with client.enter_world(character):
 					me = client.world.local_player
-					await me.chat.say('Welcome to garfields house of horror')
-					await me.chat.guild('I am garfield of 4')
+					# await me.chat.say('Welcome to garfields house of horror')
+					# await me.chat.guild('I am garfield of 4')
 					await trio.sleep_forever()
 
 				await trio.sleep(2)

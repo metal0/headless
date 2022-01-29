@@ -113,6 +113,7 @@ async def test_session():
 async def test_session_wait_for():
 	async with trio.open_nursery() as nursery:
 		emitter = MemoryEmitter(emitter=pyee.TrioEventEmitter(nursery=nursery))
+
 		async def emit_test():
 			emitter.emit('test', arg1='arg', arg2=1)
 

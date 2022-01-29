@@ -1,3 +1,4 @@
+import os
 from typing import Union
 
 import construct
@@ -19,13 +20,13 @@ ChallengeResponseFile = construct.Struct(
 )
 
 class WardenModule:
-    def __init__(self, size: int, id: Union[bytes, str, int], key: bytes):
-        if type(id) is int:
-            id = hex(id).replace('0x', '')
-        elif type(id) is bytes:
-            id = id.hex().replace('0x', '')
+    def __init__(self, size: int, mod_id: Union[bytes, str, int], key: bytes):
+        if type(mod_id) is int:
+            mod_id = hex(mod_id).replace('0x', '')
+        elif type(mod_id) is bytes:
+            mod_id = mod_id.hex().replace('0x', '')
 
-        self._id = id
+        self._mod_id = mod_id
         self._rc4 = RC4(key=key)
         self._target_size = size
         self._module_bytes = bytearray()
@@ -49,10 +50,13 @@ class WardenModule:
 
     @property
     def id(self):
-        return self._id
+        return self._mod_id
 
 def load_crs(path: str):
     with open(path, 'rb') as f:
+        cr_size = os.path.getsize(path) - 8
+        print(f'{cr_size=} {ChallengeResponse.sizeof()=}')
+        if cr_size % ChallengeResponse.sizeof() != 0:
+            print('file size is not a multiple of challenge response size')
         return ChallengeResponseFile.parse(f.read())
-
 
