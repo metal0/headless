@@ -2,8 +2,12 @@ import construct
 import trio
 import wlink
 from trio_socks import socks5
-from wlink.auth import AuthProtocol, Response
 from wlink import cryptography
+from wlink.auth import AuthStream
+from wlink.auth.packets import Response, ChallengeResponse, ChallengeRequest, ProofResponse, ProofRequest
+from wlink.auth.packets.b12340.challenge import make_challenge_request
+from wlink.auth.packets.b12340.proof import make_proof_request
+from wlink.auth.packets.b12340.realmlist import make_realmlist_request, RealmlistResponse, RealmlistRequest
 from wlink.log import logger
 from typing import Optional, Tuple
 
@@ -17,7 +21,7 @@ from headless.utility.enum import ComparableEnum
 class AuthSession:
 	def __init__(self, nursery, emitter, proxy: Optional[Tuple[str, int]] = None):
 		self.proxy = proxy
-		self.protocol: Optional[AuthProtocol] = None
+		self.stream: Optional[AuthStream] = None
 		self._nursery = nursery
 		self._emitter = emitter
 		self._stream: Optional[trio.abc.HalfCloseableStream] = None
@@ -64,7 +68,7 @@ class AuthSession:
 		else:
 			self._stream = stream
 
-		self.protocol = AuthProtocol(stream=self._stream)
+		self.stream = AuthStream(stream=self._stream)
 		self._state = AuthState.connected
 		self._emitter.emit(events.auth.connected)
 		logger.info('Connected!')
@@ -92,15 +96,15 @@ class AuthSession:
 		self._username = username
 		self._emitter.emit(events.auth.authenticating)
 
-		await self.protocol.send_challenge_request(
+		await self.stream.send_packet(ChallengeRequest, make_challenge_request(
 			username=username, country=country,
 			arch=arch, os=os,
 			build=build,
 			ip=public_ip,
 			version=version,
-		)
+		))
 
-		challenge_response = await self.protocol.receive_challenge_response()
+		challenge_response = await self.stream.receive_packet(ChallengeResponse)
 		client_private = debug['client_private'] if debug is not None else None
 
 		if challenge_response.response != Response.success:
@@ -119,12 +123,12 @@ class AuthSession:
 		), byteorder='little')
 
 		self._session_key = int.from_bytes(self._srp.session_key, byteorder='little')
-		await self.protocol.send_proof_request(
+		await self.stream.send_packet(ProofRequest, make_proof_request(
 			client_public=client_public, session_proof=session_proof,
 			checksum=checksum
-		)
+		))
 
-		proof_response = await self.protocol.receive_proof_response()
+		proof_response = await self.stream.receive_packet(ProofResponse)
 		if proof_response.session_proof_hash != self._srp.session_proof_hash:
 			self._state = AuthState.disconnected
 			self._emitter.emit(events.auth.invalid_login)
@@ -137,8 +141,8 @@ class AuthSession:
 		logger.info(f'Authenticated!')
 
 	async def realms(self):
-		await self.protocol.send_realmlist_request()
-		result = await self.protocol.receive_realmlist_response()
+		await self.stream.send_packet(RealmlistRequest, make_realmlist_request())
+		result = await self.stream.receive_packet(RealmlistResponse)
 		realmlist = list(result.realms)
 		logger.info(f'{realmlist=}')
 

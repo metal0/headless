@@ -1,6 +1,7 @@
 import datetime
 import time
 import uuid
+from pathlib import Path
 
 import trio
 import random
@@ -13,9 +14,11 @@ from trio_socks import socks5
 from wlink.auth.realm import Realm
 from wlink.cryptography import sha
 from wlink.utility.construct import int32
-from wlink.world import WorldClientProtocol
+from wlink.world import WorldClientStream
 from wlink.world.errors import ProtocolError
-from wlink.world.packets import AuthResponse, CharacterInfo, Opcode
+from wlink.world.packets import AuthResponse, CharacterInfo, Opcode, SMSG_AUTH_CHALLENGE, make_CMSG_AUTH_SESSION, \
+	make_CMSG_CHAR_ENUM, make_CMSG_PLAYER_LOGIN, make_CMSG_LOGOUT_REQUEST, CMSG_LOGOUT_REQUEST, CMSG_PLAYER_LOGIN, \
+	CMSG_CHAR_ENUM, CMSG_AUTH_SESSION, make_CMSG_PING, CMSG_PING, make_CMSG_TIME_SYNC_RESP, CMSG_TIME_SYNC_RESP
 
 from .character import Character
 from .chat import ChatMessage, LocalChat
@@ -28,7 +31,7 @@ from .state import WorldState
 from ..utility.emitter import BaseEmitter, wait_for_event
 
 
-class WorldCrypto:
+class SessionCrypto:
 	def __init__(self, session_key, server_seed, encryption_seed1, encryption_seed2):
 		self.session_key = session_key
 		self.server_seed = server_seed
@@ -57,12 +60,12 @@ class WorldSession:
 		self.nursery: Optional[trio.Nursery] = None
 		self.local_player: Optional[LocalPlayer] = None
 		self.chat: Optional[LocalChat] = None
-		self.protocol: Optional[WorldClientProtocol] = None
+		self.stream: Optional[WorldClientStream] = None
 
 		self._state = WorldState.not_connected
 		self._parent_nursery = nursery
 		self._stream: Optional[trio.abc.HalfCloseableStream] = None
-		self._crypto: Optional[WorldCrypto] = None
+		self._crypto: Optional[SessionCrypto] = None
 		self._realm = None
 		self._username = None
 		self._handling_packets = False
@@ -99,7 +102,7 @@ class WorldSession:
 	# Wait for a packet to be received under a certain condition and return it.
 	async def wait_packet_condition(self, condition):
 		if not self._handling_packets:
-			raise ProtocolError('Packet handler not yet started')
+			raise ProtocolError('Packet handler stopped')
 
 		def condition_mod(packet, **kwargs):
 			return condition(packet)
@@ -145,8 +148,11 @@ class WorldSession:
 		try:
 			self._handling_packets = True
 			# TODO: Some sort of packet queue to allow for late wait_for_packet usage
-			async for packet in self.protocol.decrypted_packets():
+			async for packet in self.stream.decrypted_packets():
 				await self.handler.handle(packet)
+
+		except trio.Cancelled:
+			raise
 
 		except KeyboardInterrupt as e:
 			raise e
@@ -155,19 +161,17 @@ class WorldSession:
 			logger.exception('exception')
 			self._state = WorldState.disconnected
 			self.emitter.emit(events.world.disconnected, reason=str(e))
-			await trio.lowlevel.checkpoint()
 			self._handling_packets = False
 			raise e
 
 	async def latency(self) -> datetime.timedelta:
 		start = datetime.datetime.now()
 		id = int32(int(uuid.uuid4()))
-		await self.protocol.send_CMSG_PING(id=id)
+		await self.stream.send_encrypted_packet(CMSG_PING, make_CMSG_PING(id=id))
 
 		pong = await self.wait_for_packet(Opcode.SMSG_PONG)
 		if pong.ping != id:
 			logger.warning(f'Server pong id mismatch: {pong.ping} != {id}')
-
 
 		rtt = datetime.datetime.now() - start
 		return int(rtt.total_seconds() * 1000)
@@ -177,7 +181,7 @@ class WorldSession:
 			request = await self.wait_for_packet(Opcode.SMSG_TIME_SYNC_REQ)
 
 			ticks = int(1000 * time.time())
-			await self.protocol.send_CMSG_TIME_SYNC_RES(id=request.id, client_ticks=ticks)
+			await self.stream.send_encrypted_packet(CMSG_TIME_SYNC_RESP, make_CMSG_TIME_SYNC_RESP(id=request.id, client_ticks=ticks))
 			self.emitter.emit(events.world.sent_time_sync, id=request.id, ticks=ticks)
 
 	async def display_statistics(self):
@@ -217,28 +221,28 @@ class WorldSession:
 		self._state = WorldState.logging_in
 		self.emitter.emit(events.world.logging_in)
 
-		self.protocol = WorldClientProtocol(stream=self._stream, session_key=session_key)
+		self.stream = WorldClientStream(stream=self._stream, session_key=session_key)
 		self._username = username.upper()
 
-		auth_challenge = await self.protocol.receive_SMSG_AUTH_CHALLENGE()
+		auth_challenge = await self.stream.receive_unencrypted_packet(SMSG_AUTH_CHALLENGE)
 		if auth_challenge.header.opcode != Opcode.SMSG_AUTH_CHALLENGE:
 			raise ProtocolError(f'Expected Opcode.SMSG_AUTH_CHALLENGE, but got {auth_challenge.header.opcode}')
 
-		self._crypto = WorldCrypto(
+		self._crypto = SessionCrypto(
 			session_key,
 			auth_challenge.server_seed,
 			auth_challenge.encryption_seed1,
 			auth_challenge.encryption_seed2
 		)
 
-		await self.protocol.send_CMSG_AUTH_SESSION(
+		await self.stream.send_unencrypted_packet(CMSG_AUTH_SESSION, make_CMSG_AUTH_SESSION(
 			account_name=self._username,
 			client_seed=self._crypto.client_seed,
 			account_hash=self._crypto.account_hash(self._username),
 			realm_id=self._realm.id
-		)
+		))
 
-		self.warden = Warden(self)
+		self.warden = Warden(self, cr_files_path=Path('/home/fure/repos/warden_modules'))
 		await self._parent_nursery.start(self._packet_handler)
 		auth_response = await self.wait_for_packet(Opcode.SMSG_AUTH_RESPONSE)
 
@@ -250,11 +254,11 @@ class WorldSession:
 		elif auth_response.response == AuthResponse.wait_queue:
 			self._state = WorldState.in_queue
 			self.emitter.emit(events.world.in_queue, auth_response.queue_position)
-			logger.info('Transfer complete')
+			logger.info('Transfer waiting')
 			logger.info(f'In queue: {auth_response.queue_position}')
 
 	async def characters(self) -> List[Character]:
-		await self.protocol.send_CMSG_CHAR_ENUM()
+		await self.stream.send_encrypted_packet(CMSG_CHAR_ENUM, make_CMSG_CHAR_ENUM())
 		self.emitter.emit(events.world.sent_char_enum)
 
 		char_enum = await self.wait_for_packet(Opcode.SMSG_CHAR_ENUM)
@@ -263,7 +267,7 @@ class WorldSession:
 	@asynccontextmanager
 	async def enter_world(self, character: CharacterInfo):
 		logger.info(f'Entering world as {character.name}...')
-		await self.protocol.send_CMSG_PLAYER_LOGIN(character.guid)
+		await self.stream.send_encrypted_packet(CMSG_PLAYER_LOGIN, make_CMSG_PLAYER_LOGIN(character.guid))
 		self._state = WorldState.loading
 
 		self.emitter.emit(events.world.sent_player_login)
@@ -280,7 +284,6 @@ class WorldSession:
 
 				self.emitter.emit(events.world.entered_world)
 				n.start_soon(self._handle_time_sync_requests)
-				await self.display_statistics()
 				yield self.nursery
 
 			except KeyboardInterrupt as e:
@@ -298,7 +301,7 @@ class WorldSession:
 	async def logout(self):
 		logger.info('Logging out...')
 		self.emitter.emit(events.world.sent_logout_request)
-		await self.protocol.send_CMSG_LOGOUT_REQUEST()
+		await self.stream.send_encrypted_packet(CMSG_LOGOUT_REQUEST, make_CMSG_LOGOUT_REQUEST())
 
 		logout_response = await self.wait_for_packet(Opcode.SMSG_LOGOUT_RESPONSE)
 		await self.wait_for_packet(Opcode.SMSG_LOGOUT_COMPLETE)
@@ -312,4 +315,4 @@ class WorldSession:
 		self._state = WorldState.logged_in
 		self._handling_packets = False
 
-__all__ = ['WorldSession', 'WorldState', 'WorldCrypto']
+__all__ = ['WorldSession', 'WorldState', 'SessionCrypto']

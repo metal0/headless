@@ -105,8 +105,6 @@ class Client(AsyncScopedEmitter):
 		if self.world is not None:
 			await self.world.aclose()
 
-		await trio.lowlevel.checkpoint()
-
 		self._reset()
 		await super().aclose()
 

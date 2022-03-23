@@ -146,3 +146,6 @@ class ChatMessage:
 
 		except Exception as e:
 			logger.exception(e)
+
+	async def flush(self):
+		pass

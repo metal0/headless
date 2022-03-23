@@ -4,12 +4,17 @@ import os
 
 import construct
 import pyee
+import pytest
 import trio
 from typing import Optional
 
 from wlink import Guid
-from wlink.world import WorldServerProtocol
-from wlink.world.packets import AuthResponse, Expansion
+from wlink.auth.realm import Realm
+from wlink.world import WorldServerStream
+from wlink.world.errors import ProtocolError
+from wlink.world.packets import AuthResponse, Expansion, make_SMSG_AUTH_RESPONSE, make_CMSG_PLAYER_LOGIN, \
+	CMSG_PLAYER_LOGIN, make_SMSG_LOGIN_VERIFY_WORLD, CMSG_AUTH_SESSION, make_SMSG_AUTH_CHALLENGE, SMSG_AUTH_CHALLENGE, \
+	SMSG_AUTH_RESPONSE, SMSG_LOGIN_VERIFY_WORLD
 
 from headless.events import WorldEvent
 from headless.world import WorldSession
@@ -67,20 +72,20 @@ async def client_login(stream, session_key, nursery):
 		assert packet.map == 571
 		assert packet.position == construct.Container(x=0, y=0, z=0)
 		assert packet.rotation == 1.7999999523162842
+		nursery.cancel_scope.cancel()
 
-	nursery.cancel_scope.cancel()
 
 async def world_server(stream, session_key, nursery):
-	protocol = WorldServerProtocol(stream, session_key=session_key)
-	await protocol.send_SMSG_AUTH_CHALLENGE(
+	stream = WorldServerStream(stream, session_key=session_key)
+	await stream.send_unencrypted_packet(SMSG_AUTH_CHALLENGE, make_SMSG_AUTH_CHALLENGE(
 		server_seed=7,
 		encryption_seed1=31,
 		encryption_seed2=71
-	)
+	))
 
 	# Sanity check that this is the same as how we sent it
-	auth_session = await protocol.receive_CMSG_AUTH_SESSION()
-	assert auth_session.header.size == 309
+	auth_session = await stream.receive_unencrypted_packet(CMSG_AUTH_SESSION)
+	# assert auth_session.header.size == 309
 	assert auth_session.build == 12340
 	assert auth_session.login_server_id == 0
 
@@ -92,23 +97,23 @@ async def world_server(stream, session_key, nursery):
 	assert auth_session.account_name == 'DINNERTABLE'
 	assert auth_session.realm_id == 1
 
-	await protocol.send_SMSG_AUTH_RESPONSE(
-		AuthResponse.ok, Expansion.wotlk
-	)
+	await stream.send_encrypted_packet(SMSG_AUTH_RESPONSE, make_SMSG_AUTH_RESPONSE(AuthResponse.ok, Expansion.wotlk))
 
-	login = await protocol.receive_CMSG_PLAYER_LOGIN()
+	login = await stream.receive_encrypted_packet(CMSG_PLAYER_LOGIN)
 	assert login.guid == Guid(2)
 
-	await protocol.send_SMSG_LOGIN_VERIFY_WORLD(map=571, position=dict(x=0, y=0, z=0), rotation=1.8)
+	await stream.send_encrypted_packet(SMSG_LOGIN_VERIFY_WORLD, make_SMSG_LOGIN_VERIFY_WORLD(map=571, position=dict(x=0, y=0, z=0), rotation=1.8))
 
 async def test_session():
 	(client_stream, server_stream) = trio.testing.memory_stream_pair()
 	session_key = 887638991071640811242800621506026194914017482863646559938463468713468253926173117812986327918380
 
-	with trio.fail_after(0.2):
-		async with trio.open_nursery() as nursery:
-			nursery.start_soon(client_login, client_stream, session_key, nursery)
-			nursery.start_soon(world_server, server_stream, session_key, nursery)
+	with trio.fail_after(0.5):
+		with pytest.raises(ProtocolError) as e:
+			async with trio.open_nursery() as nursery:
+				nursery.start_soon(client_login, client_stream, session_key, nursery)
+				nursery.start_soon(world_server, server_stream, session_key, nursery)
+		assert 'Packet handler stopped' in str(e)
 
 async def test_session_wait_for():
 	async with trio.open_nursery() as nursery:
@@ -143,5 +148,5 @@ async def test_session_wait_for():
 # 		world = WorldSession(nursery=nursery, emitter=emitter)
 #
 # 		await world.connect(stream=client_stream, realm=realm)
-# 		async with world.enter_world(MockCharacter(name='Pont')):
+# 		async with world.enter_world(MockCharacter(name='Pont', guid=Guid(2))):
 # 			await world.logout()

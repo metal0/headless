@@ -2,7 +2,9 @@ import datetime
 from typing import Optional
 from wlink.log import logger
 from wlink.world.errors import ProtocolError
-from wlink.world.packets import Language, MessageType
+from wlink.world.packets import Language, MessageType, CMSG_MESSAGECHAT
+from wlink.world.packets.b12340.chat_packets import make_CMSG_MESSAGECHAT
+
 from ..state import WorldState
 from ... import events
 
@@ -64,7 +66,10 @@ class LocalChat:
 		if self._world.state < WorldState.in_game:
 			raise ProtocolError(f'Must be in-game to send a chat message; world state is {self._world.state} instead')
 
-		await self._world.protocol.send_CMSG_MESSAGECHAT(text, message_type, language, recipient=recipient)
+		await self._world.stream.send_encrypted_packet(CMSG_MESSAGECHAT, make_CMSG_MESSAGECHAT(
+			text, message_type, language, recipient=recipient
+		))
+
 		self._world.emitter.emit(events.world.sent_chat_message, text=text, type=message_type, language=language, recipient=recipient)
 
 	async def say(self, message, language: Language = Language.common):

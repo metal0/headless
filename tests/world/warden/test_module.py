@@ -1,49 +1,46 @@
-import glob
 import os
+import trio
 
-from headless.world.warden.module import load_crs, ChallengeResponseFile, ChallengeResponse
+from headless.world.warden.cr import ChallengeResponseFile
 
-# cr_file_pattern = re.compile('([A-F0-9]+)\.cr')
-
-def find_keys(path: str):
-    with open(path, 'rb') as f:
+async def find_cr(data: bytes):
+    for i in range(len(data)):
         try:
-            for i in range(30):
-                cr_size = os.path.getsize(path) - i
-                print(f'{cr_size=} {ChallengeResponse.sizeof()=}')
-                if cr_size % ChallengeResponse.sizeof() != 0:
-                    print('file size is not a multiple of challenge response size')
-                data = f.read()[i:]
-                response = ChallengeResponseFile.parse(data)
-                crs_file = load_crs(path)
-                print(f'found it! {i=} {path=}')
-                print(response)
+            crf = ChallengeResponseFile.parse(data[i:])
+            await trio.lowlevel.checkpoint()
+            for cr in crf.crs:
+                if hex(cr.seed) in ['0x9a263596f26b84528146147ddbfdde14', '0x4d808d2c77d905c41a6380ec08586afe'] \
+                        or hex(cr.reply) == '0x568c054c781a972a6037a2290c22b52571a06f4e':
+                    print(f'Found {i=} {cr=}')
+                    return i
+            assert False
+        except Exception as e:
+            pass
+            # print(f'{e=}')
+
+async def find_keys(path: str):
+    with open(path, 'rb') as f:
+        data = f.read()
+        print(f'{len(data)=}')
+        try:
+            # i = await find_cr(data)
+            response = ChallengeResponseFile.parse(data)
+            print(f'found it! {path=}')
+            print(response)
         except Exception as e:
             print(e)
 
-    seed = 338176079955437417738073427705494077517
-    reply = int.from_bytes(b'V\x8c\x05Lx\x1a\x97*`7\xa2)\x0c"\xb5%q\xa0oN', 'little')
-    client_key = int.from_bytes(bytes.fromhex('7f96eefda5b63d20a4df8e00cbf48304'), 'little')
-    server_key = int.from_bytes(bytes.fromhex('c2b7adedfccca9c2bfb3f85602ba809b'), 'little')
-
-    # for cr in crs_file.crs:
-    #     print(cr)
-    #     if cr.seed == seed:
-    #         print(f'Found seed in {cr}')
-    #     if cr.reply == reply:
-    #         print(f'Found reply in {cr}')
-    #     if cr.client_key == client_key:
-    #         print(f'Found client_key in {cr}')
-    #     if cr.server_key == server_key:
-    #         print(f'Found server_key in {cr}')
-
-def test_all_modules():
+async def test_all_modules():
     mods_path = os.environ.get('PONT_WARDEN_MODS')
-    for path in glob.glob(f'{mods_path}/*.cr'):
-        try:
-            print(f'\nTrying {path}')
-            find_keys(path)
-        except:
-            pass
+    # for path in glob.glob(f'{mods_path}/*.cr'):
+    with trio.fail_after(2):
+        for path in [
+            '0DBBF209A27B1E279A9FEC5C168A15F7.cr',
+        ]:
+            try:
+                print(f'\nCheck: {path}')
+                await find_keys(f'{mods_path}/{path}')
+            except:
+                pass
 
 # def test_module():ca9c2bfb3f85602ba809b'), 'little')

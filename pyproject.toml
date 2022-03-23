@@ -7,12 +7,12 @@ authors = ["Shaun Ostoic <ostoic@uwindsor.ca>"]
 [tool.poetry.dependencies]
 python = "^3.8"
 construct  = "^2" # MIT (I think)
-trio  = "^0.19" # MIT
+trio  = "^0.20" # MIT
 pyee = "^9.0" # MIT
 cryptography  = "^36" # Apache
 loguru = "^0.6" # MIT
-trio-socks = { git = "https://github.com/Ostoic/trio-socks" }
-wlink = { git = "git@github.com:Ostoic/wlink.git", branch = "0.0.2" }
+trio-socks = { git = "https://github.com/Ostoic/trio-socks", branch = "0.1.1" }
+wlink = { path = "../wlink" }
 
 [tool.poetry.dev-dependencies]
 pytest = "*"

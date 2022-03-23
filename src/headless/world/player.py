@@ -1,3 +1,6 @@
+from wlink.world.packets import make_CMSG_DUEL_ACCEPTED, CMSG_DUEL_ACCEPTED, make_CMSG_GROUP_DISBAND, \
+	CMSG_GROUP_DISBAND, make_CMSG_GROUP_INVITE, CMSG_GROUP_INVITE
+
 from headless import events
 from headless.world.chat import LocalChat
 from headless.world.group import Group
@@ -56,10 +59,10 @@ class LocalPlayer:
 		return self._name
 
 	async def accept_duel(self):
-		await self.world.protocol.send_CMSG_DUEL_ACCEPTED()
+		await self.world.stream.send_encrypted_packet(CMSG_DUEL_ACCEPTED, make_CMSG_DUEL_ACCEPTED())
 
 	async def leave_group(self):
-		await self.world.protocol.send_CMSG_GROUP_DISBAND()
+		await self.world.stream.send_encrypted_packet(CMSG_GROUP_DISBAND, make_CMSG_GROUP_DISBAND())
 
 	async def send_group_invite(self, name: str):
-		await self.world.protocol.send_CMSG_GROUP_INVITE(name)
+		await self.world.stream.send_encrypted_packet(CMSG_GROUP_INVITE, make_CMSG_GROUP_INVITE(name))

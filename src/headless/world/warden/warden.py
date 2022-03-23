@@ -1,17 +1,21 @@
 import inspect
+from contextlib import asynccontextmanager
 from enum import Enum
-from typing import Optional, Dict, Callable
+from pathlib import Path
+from typing import Optional, Dict, Callable, NamedTuple
 
 import construct
 import trio
 from wlink.cryptography import RC4
 from wlink.utility.construct import PackEnum
+from wlink.world.packets import make_CMSG_WARDEN_DATA, CMSG_WARDEN_DATA
 
 from headless import events
 from headless.log import logger
-from headless.world.errors import WorldError
 from headless.world.warden import CheatChecksRequest, check
+from headless.world.warden.cr import ChallengeResponseCache
 from headless.world.warden.emulate import Emulator
+from headless.world.warden.error import ChallengeResponseNotFound
 from headless.world.warden.module import WardenModule
 from headless.world.warden.sha1_randx import SHA1Randx
 
@@ -73,10 +77,7 @@ InitModuleRequest = construct.Struct(
 	'function3_set' / construct.Byte,
 )
 
-ServerHashRequest = construct.Struct(
-	# 'seed' / construct.BytesInteger(length=16, swapped=True)
-	'seed' / construct.Bytes(16)
-)
+ServerHashRequest = construct.Bytes(16)
 
 ClientModule = construct.Struct(
 	'id' / construct.BytesInteger(length=16, swapped=True),
@@ -86,7 +87,7 @@ ClientModule = construct.Struct(
 
 ClientHashResult = construct.Bytes(20)
 
-def ServerWardenData():
+def ServerWardenAction():
 	return construct.Struct(
 		'command' / PackEnum(ServerCommand),
 		'data' / construct.Switch(
@@ -107,13 +108,22 @@ ClientWardenData = construct.Struct(
 			ClientCommand.module_ok: construct.Pass,
 			ClientCommand.module_missing: construct.Pass,
 			ClientCommand.hash_result: ClientHashResult,
+			# ClientCommand.cheat_check_result:
+			# ClientCommand.memory_check_result:
 		}
 	)
 )
 
+# module_missing = 0
+# module_ok = 1
+# cheat_check_result = 2
+# memory_check_result = 3
+# hash_result = 4
+
 class Warden:
-	def __init__(self, world):
+	def __init__(self, world, cr_files_path: Path):
 		self.world = world
+		self.cr_cache = ChallengeResponseCache(crs_path=cr_files_path)
 		self._sha1 = SHA1Randx(data=world.session_key)
 		self._client_rc4 = RC4(key=self._sha1.generate(16))
 		self._server_rc4 = RC4(key=self._sha1.generate(16))
@@ -127,7 +137,10 @@ class Warden:
 		}
 
 		self.emulator = Emulator(world)
-		self.world.emitter.on(events.world.received_warden_data, self.handle)
+		self._handler_task = self.world.emitter.on(events.world.received_warden_data, self.handle)
+
+	def __del__(self):
+		self.world.emitter.remove_listener(events.world.received_warden_data, self.handle)
 
 	@property
 	def module(self) -> Optional[WardenModule]:
@@ -142,13 +155,15 @@ class Warden:
 
 	async def send(self, command: ClientCommand, data=None):
 		packet = ClientWardenData.build(dict(command=command, data=data))
+		logger.log('PACKETS', f'send warden packet: {packet=}')
 		encrypted = self._client_rc4.encrypt(packet)
-		await self.world.protocol.send_CMSG_WARDEN_DATA(encrypted=encrypted)
+		await self.world.stream.send_encrypted_packet(CMSG_WARDEN_DATA, make_CMSG_WARDEN_DATA(encrypted=encrypted))
 
 	async def handle(self, packet):
 		logger.log('PACKETS', f'warden packet: {packet=}')
 		decrypted = self._server_rc4.decrypt(packet.encrypted)
-		warden_data = ServerWardenData().parse(decrypted)
+		logger.log('PACKETS', f'warden packet: {decrypted=}')
+		warden_data = ServerWardenAction().parse(decrypted)
 		logger.log('PACKETS', f'{warden_data=}')
 
 		handler = self._opcode_handlers[warden_data.command]
@@ -158,7 +173,7 @@ class Warden:
 			handler(warden_data.data)
 
 	async def handle_module_use(self, request: ServerModuleInfoRequest):
-		logger.log('WARDEN', f'Warden module_use request')
+		logger.log('WARDEN', f'Downloading module: {request.size=} {request.id.hex()=} {request.key.hex()=}')
 		if self.enabled():
 			command = ClientCommand.module_ok
 		else:
@@ -179,19 +194,23 @@ class Warden:
 
 			await self.send(ClientCommand.module_ok)
 
-	async def handle_hash_request(self, data: ServerHashRequest):
-		logger.log('WARDEN', f'{data.seed=}')
-		# try:
-		hash, client_key, server_key = check.calculate_hash_result(data.seed, self.module.id)
-		logger.log('WARDEN', f'{hash=} {client_key=} {server_key=}')
+	async def handle_hash_request(self, seed: int):
+		logger.debug(f'{self.module.id=} {seed=}')
+		cr = await self.cr_cache.lookup((self.module.id, seed))
+		if cr is None:
+			raise ChallengeResponseNotFound(f'CR not found for ({self.module.id}, {seed})')
 
-		self._client_rc4 = RC4(key=client_key)
-		self._server_rc4 = RC4(key=server_key)
+		self._client_rc4 = RC4(key=cr.client_key)
+		self._server_rc4 = RC4(key=cr.server_key)
 
-		# except WorldError:
-		# 	hash = data.seed
+		hash_result = ClientHashResult.parse(ClientHashResult.build(cr.reply))
+		await self.send(
+			command=ClientCommand.hash_result,
+			data=hash_result
+		)
 
-		await self.send(command=ClientCommand.hash_result, data=ClientHashResult.build(hash))
+		logger.log('WARDEN', f'Responded with: {cr=}')
+		return cr
 
 	async def handle_module_init(self, data):
 		logger.log('WARDEN', f'module init: {data=}')

@@ -1,11 +1,11 @@
 import trio
 from wlink.guid import GuidType
-from wlink.world.packets import Opcode
+from wlink.world.packets import Opcode, make_CMSG_NAME_QUERY, CMSG_NAME_QUERY
 
 from headless.utility.cache import Cache
 
 class NameCache(Cache):
-	def __init__(self, world, fail_after=10):
+	def __init__(self, world, fail_after=60):
 		super().__init__()
 		self._world = world
 		self._fail_after = fail_after
@@ -15,7 +15,7 @@ class NameCache(Cache):
 			if guid.value == 0:
 				return None
 
-			await self._world.protocol.send_CMSG_NAME_QUERY(guid=guid)
+			await self._world.stream.send_encrypted_packet(CMSG_NAME_QUERY, make_CMSG_NAME_QUERY(guid=guid))
 		elif guid.type == GuidType.guild:
 			pass
 

@@ -91,8 +91,6 @@ class ScopedEmitter(BaseEmitter):
 	def __exit__(self, exc_type, exc_val, exc_tb):
 		self.close()
 
-# def default_transform():
-	
 
 # Wait for the given event under an optional condition to occur (once) and return a transform of the event keyword
 # arguments.

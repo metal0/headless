@@ -1,7 +1,7 @@
 import datetime
 import trio
 from wlink import Guid
-from wlink.world import WorldClientProtocol
+from wlink.world import WorldClientStream
 
 from headless.utility.cache import Cache, TimedCache
 from headless.world.names import NameCache
@@ -74,8 +74,8 @@ async def mock_wait_for_packet(opcode):
 
 async def test_name_cache():
 	(client, server) = trio.testing.memory_stream_pair()
-	protocol = WorldClientProtocol(client, session_key=7)
-	world = MockWorld(protocol=protocol, wait_for_packet=mock_wait_for_packet, emitter=None)
+	stream = WorldClientStream(client, session_key=7)
+	world = MockWorld(stream=stream, wait_for_packet=mock_wait_for_packet, emitter=None, session_key=None)
 	cache = NameCache(world)
 	assert (await cache.lookup(Guid(0x1))).name == 'Pont'
 	assert Guid(0x1) in cache

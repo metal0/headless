@@ -2,7 +2,8 @@ from typing import Optional
 
 from wlink import Guid
 from wlink.utility.construct import Coordinates
-from wlink.world.packets import Race, CombatClass
+from wlink.world.packets import Race, CombatClass, make_CMSG_CHAR_RENAME, CMSG_CHAR_RENAME, make_CMSG_CHAR_CREATE, \
+	CMSG_CHAR_CREATE
 
 from headless import events
 
@@ -13,11 +14,11 @@ class Character:
 		self._world = world
 
 	async def rename(self, new_name: str):
-		await self._world.protocol.send_CMSG_CHAR_RENAME(new_name=new_name, guid=self.guid)
+		await self._world.stream.send_encrypted_packet(CMSG_CHAR_RENAME, make_CMSG_CHAR_RENAME(new_name=new_name, guid=self.guid))
 		self._world.emitter.emit(events.world.sent_character_rename)
 
 	async def create(self, name: str):
-		await self._world.protocol.send_CMSG_CHAR_CREATE(name=name)
+		await self._world.stream.send_encrypted_packet(CMSG_CHAR_CREATE, make_CMSG_CHAR_CREATE(name=name))
 		self._world.emitter.emit(events.world.sent_character_create)
 
 	@property

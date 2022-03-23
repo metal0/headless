@@ -1,6 +1,7 @@
 from enum import Enum
 
 from wlink.world import Opcode
+from wlink.world.packets import make_CMSG_GUILD_QUERY, CMSG_GUILD_QUERY, make_CMSG_GUILD_ROSTER, CMSG_GUILD_ROSTER
 
 from headless import events
 from headless.world import ProtocolError
@@ -95,7 +96,7 @@ class Guild:
 
 	async def query(self, guild_id=None, name=None, guid=None):
 		if guild_id is not None:
-			await self._world.protocol.send_CMSG_GUILD_QUERY(guild_id=guild_id)
+			await self._world.stream.send_encrypted_packet(CMSG_GUILD_QUERY, make_CMSG_GUILD_QUERY(guild_id=guild_id))
 			self._world.emitter.emit(events.world.sent_guild_query)
 			return await self._world.wait_for_packet(Opcode.SMSG_GUILD_QUERY_RESPONSE)
 
@@ -134,7 +135,7 @@ class LocalGuild(Guild):
 		pass
 
 	async def roster(self):
-		await self._world.protocol.send_CMSG_GUILD_ROSTER()
+		await self._world.stream.send_encrypted_packet(CMSG_GUILD_ROSTER, make_CMSG_GUILD_ROSTER())
 		return await self._world.wait_for_packet(Opcode.SMSG_GUILD_ROSTER)
 
 	async def ginvite(self, name: str):
