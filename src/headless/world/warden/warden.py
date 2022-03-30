@@ -114,12 +114,6 @@ ClientWardenData = construct.Struct(
 	)
 )
 
-# module_missing = 0
-# module_ok = 1
-# cheat_check_result = 2
-# memory_check_result = 3
-# hash_result = 4
-
 class Warden:
 	def __init__(self, world, cr_files_path: Path):
 		self.world = world
@@ -127,13 +121,15 @@ class Warden:
 		self._sha1 = SHA1Randx(data=world.session_key)
 		self._client_rc4 = RC4(key=self._sha1.generate(16))
 		self._server_rc4 = RC4(key=self._sha1.generate(16))
-		self._module = None
 
+		self._module = None
 		self._opcode_handlers: Dict[ServerCommand, Callable] = {
 			ServerCommand.module_use: self.handle_module_use,
 			ServerCommand.module_cache: self.handle_module_cache,
 			ServerCommand.hash_request: self.handle_hash_request,
 			ServerCommand.module_initialize: self.handle_module_init,
+			ServerCommand.cheat_checks_request: self.handle_check_checks_request,
+			ServerCommand.memory_check_request: self.handle_memory_checks_request
 		}
 
 		self.emulator = Emulator(world)
@@ -195,7 +191,7 @@ class Warden:
 			await self.send(ClientCommand.module_ok)
 
 	async def handle_hash_request(self, seed: int):
-		logger.debug(f'{self.module.id=} {seed=}')
+		logger.log('WARDEN', f'{self.module.id=} {seed=}')
 		cr = await self.cr_cache.lookup((self.module.id, seed))
 		if cr is None:
 			raise ChallengeResponseNotFound(f'CR not found for ({self.module.id}, {seed})')
@@ -214,3 +210,9 @@ class Warden:
 
 	async def handle_module_init(self, data):
 		logger.log('WARDEN', f'module init: {data=}')
+
+	async def handle_check_checks_request(self, data):
+		logger.log('WARDEN', f'{data=}')
+
+	async def handle_memory_checks_request(self, data):
+		logger.log('WARDEN', f'{data=}')

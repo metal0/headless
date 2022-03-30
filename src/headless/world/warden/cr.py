@@ -21,6 +21,19 @@ ChallengeResponseFile = construct.Struct(
     'crs' / construct.GreedyRange(ChallengeResponse)
 )
 
+async def search_cr_directory(seed, path):
+    async with await trio.open_file(path, mode='rb') as f:
+        data = await f.read()
+        try:
+            cr_file = ChallengeResponseFile.parse(data)
+            for cr in cr_file.crs:
+                if cr.seed == seed:
+                    logger.trace(f'{cr=}')
+                    return cr
+        except Exception as e:
+            print(e)
+    return None
+
 class ChallengeResponseCache(Cache):
     def __init__(self, crs_path: Path):
         super().__init__()
@@ -30,7 +43,7 @@ class ChallengeResponseCache(Cache):
         (id, seed) = key
         logger.trace(f'{id=} {seed=}')
         path = self.crs_path.joinpath(f'{id}.cr')
-        logger.debug(f'{path=}')
+        logger.trace(f'{path=}')
 
         if (id, seed) == ('79C0768D657977D697E10BAD956CCED1', b'M\x80\x8d,w\xd9\x05\xc4\x1ac\x80\xec\x08Xj\xfe'):
             return ChallengeResponse.parse(ChallengeResponse.build(dict(
@@ -40,18 +53,7 @@ class ChallengeResponseCache(Cache):
                 server_key=b'\xc2\xb7\xad\xed\xfc\xcc\xa9\xc2\xbf\xb3\xf8V\x02\xba\x80\x9b'
             )))
 
-        async with await trio.open_file(path, mode='rb') as f:
-            data = await f.read()
-            try:
-                cr_file = ChallengeResponseFile.parse(data)
-                for cr in cr_file.crs:
-                    if cr.seed == seed:
-                        logger.trace(f'{cr=}')
-                        return cr
-            except Exception as e:
-                print(e)
-        return None
-
+        return await search_cr_directory(seed, path)
 
 __all__ = [
     'ChallengeResponseFile', 'ChallengeResponseCache', 'ChallengeResponse'

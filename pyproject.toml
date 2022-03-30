@@ -12,7 +12,7 @@ pyee = "^9.0" # MIT
 cryptography  = "^36" # Apache
 loguru = "^0.6" # MIT
 trio-socks = { git = "https://github.com/Ostoic/trio-socks", branch = "0.1.1" }
-wlink = { path = "../wlink" }
+#wlink = { path = "../wlink" }
 
 [tool.poetry.dev-dependencies]
 pytest = "*"

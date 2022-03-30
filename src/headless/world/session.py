@@ -18,7 +18,8 @@ from wlink.world import WorldClientStream
 from wlink.world.errors import ProtocolError
 from wlink.world.packets import AuthResponse, CharacterInfo, Opcode, SMSG_AUTH_CHALLENGE, make_CMSG_AUTH_SESSION, \
 	make_CMSG_CHAR_ENUM, make_CMSG_PLAYER_LOGIN, make_CMSG_LOGOUT_REQUEST, CMSG_LOGOUT_REQUEST, CMSG_PLAYER_LOGIN, \
-	CMSG_CHAR_ENUM, CMSG_AUTH_SESSION, make_CMSG_PING, CMSG_PING, make_CMSG_TIME_SYNC_RESP, CMSG_TIME_SYNC_RESP
+	CMSG_CHAR_ENUM, CMSG_AUTH_SESSION, make_CMSG_PING, CMSG_PING, make_CMSG_TIME_SYNC_RESP, CMSG_TIME_SYNC_RESP, \
+	CMSG_KEEP_ALIVE, make_CMSG_KEEP_ALIVE
 
 from .character import Character
 from .chat import ChatMessage, LocalChat
@@ -29,7 +30,9 @@ from .names import NameCache
 from .player import LocalPlayer
 from .state import WorldState
 from ..utility.emitter import BaseEmitter, wait_for_event
+from ..utility.history import History
 
+MAX_PACKET_QUEUE = 100
 
 class SessionCrypto:
 	def __init__(self, session_key, server_seed, encryption_seed1, encryption_seed2):
@@ -61,6 +64,10 @@ class WorldSession:
 		self.local_player: Optional[LocalPlayer] = None
 		self.chat: Optional[LocalChat] = None
 		self.stream: Optional[WorldClientStream] = None
+		self.history = History()
+
+		# self.packets: Optional[trio.MemoryReceiveChannel] = None
+		# self._store_packet: Optional[trio.MemorySendChannel] = None
 
 		self._state = WorldState.not_connected
 		self._parent_nursery = nursery
@@ -149,6 +156,7 @@ class WorldSession:
 			self._handling_packets = True
 			# TODO: Some sort of packet queue to allow for late wait_for_packet usage
 			async for packet in self.stream.decrypted_packets():
+				self.history.add(packet)
 				await self.handler.handle(packet)
 
 		except trio.Cancelled:
@@ -176,12 +184,23 @@ class WorldSession:
 		rtt = datetime.datetime.now() - start
 		return int(rtt.total_seconds() * 1000)
 
+	async def _loop_keepalive(self):
+		assert self.state >= WorldState.in_game
+		while True:
+			await trio.sleep(5)
+			await self.stream.send_encrypted_packet(CMSG_KEEP_ALIVE, make_CMSG_KEEP_ALIVE())
+			await trio.sleep(25)
+
 	async def _handle_time_sync_requests(self):
+		assert self.state >= WorldState.in_game
 		while True:
 			request = await self.wait_for_packet(Opcode.SMSG_TIME_SYNC_REQ)
-
 			ticks = int(1000 * time.time())
-			await self.stream.send_encrypted_packet(CMSG_TIME_SYNC_RESP, make_CMSG_TIME_SYNC_RESP(id=request.id, client_ticks=ticks))
+			await self.stream.send_encrypted_packet(CMSG_TIME_SYNC_RESP, make_CMSG_TIME_SYNC_RESP(
+				id=request.id,
+				client_ticks=ticks
+			))
+
 			self.emitter.emit(events.world.sent_time_sync, id=request.id, ticks=ticks)
 
 	async def display_statistics(self):
@@ -243,6 +262,8 @@ class WorldSession:
 		))
 
 		self.warden = Warden(self, cr_files_path=Path('/home/fure/repos/warden_modules'))
+
+		# self._store_packet, self.packets = trio.open_memory_channel(MAX_PACKET_QUEUE)
 		await self._parent_nursery.start(self._packet_handler)
 		auth_response = await self.wait_for_packet(Opcode.SMSG_AUTH_RESPONSE)
 
@@ -277,13 +298,13 @@ class WorldSession:
 		async with trio.open_nursery() as n:
 			self.nursery = n
 			try:
-				# Guild(self, )
 				self._state = WorldState.in_game
 				self.chat = LocalChat(self)
-				self.local_player = LocalPlayer(self, name=character.name, guid=character.guid, )
 
+				self.local_player = LocalPlayer(self, name=character.name, guid=character.guid, )
 				self.emitter.emit(events.world.entered_world)
 				n.start_soon(self._handle_time_sync_requests)
+				n.start_soon(self._loop_keepalive)
 				yield self.nursery
 
 			except KeyboardInterrupt as e:

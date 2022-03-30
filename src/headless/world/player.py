@@ -2,7 +2,6 @@ from wlink.world.packets import make_CMSG_DUEL_ACCEPTED, CMSG_DUEL_ACCEPTED, mak
 	CMSG_GROUP_DISBAND, make_CMSG_GROUP_INVITE, CMSG_GROUP_INVITE
 
 from headless import events
-from headless.world.chat import LocalChat
 from headless.world.group import Group
 from headless.log import logger
 
@@ -35,6 +34,9 @@ class LocalPlayer:
 		def _on_group_kick(packet):
 			self._group = None
 			logger.info(f'Kicked from group')
+
+		# @world.emitter.on(events.world.entered_world)
+		# def _on_entered_world(packet):
 
 	# languages known? default language?
 

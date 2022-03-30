@@ -69,7 +69,7 @@ async def auth_server(stream):
 		population=0, num_characters=2
 	)]
 
-	await auth.send_packet(RealmlistResponse, make_realmlist_response(realms=realms))
+	await auth.send_packet(RealmlistResponse, make_realmlist_response(realms))
 
 async def client_login(auth_address, stream):
 	auth_debug = dict(

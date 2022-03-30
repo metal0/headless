@@ -7,11 +7,13 @@ from wlink.world.packets import Race, CombatClass, make_CMSG_CHAR_RENAME, CMSG_C
 
 from headless import events
 
-
 class Character:
 	def __init__(self, world, info):
 		self._info = info
 		self._world = world
+
+	def __str__(self):
+		return f'{self.name} ({self.guid}) Level {self.level} {self.race} {self.combat_class}'
 
 	async def rename(self, new_name: str):
 		await self._world.stream.send_encrypted_packet(CMSG_CHAR_RENAME, make_CMSG_CHAR_RENAME(new_name=new_name, guid=self.guid))

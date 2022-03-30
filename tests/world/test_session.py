@@ -63,7 +63,9 @@ async def client_login(stream, session_key, nursery):
 	assert WorldEvent.received_auth_response in emitter.memory
 	assert WorldEvent.logged_in in emitter.memory
 
+	# world._loop_keepalive = lambda: None
 	async with world.enter_world(MockCharacter(name='Pont', guid=Guid(2))):
+		print('big enter')
 		assert WorldEvent.sent_player_login in world.emitter.memory
 		assert WorldEvent.entered_world in world.emitter.memory
 		packet = world.emitter.memory[WorldEvent.entered_world][0].kwargs['packet']
@@ -72,8 +74,9 @@ async def client_login(stream, session_key, nursery):
 		assert packet.map == 571
 		assert packet.position == construct.Container(x=0, y=0, z=0)
 		assert packet.rotation == 1.7999999523162842
+		print('time to cancel')
+		await trio.sleep(0.5)
 		nursery.cancel_scope.cancel()
-
 
 async def world_server(stream, session_key, nursery):
 	stream = WorldServerStream(stream, session_key=session_key)
@@ -108,12 +111,12 @@ async def test_session():
 	(client_stream, server_stream) = trio.testing.memory_stream_pair()
 	session_key = 887638991071640811242800621506026194914017482863646559938463468713468253926173117812986327918380
 
-	with trio.fail_after(0.5):
-		with pytest.raises(ProtocolError) as e:
-			async with trio.open_nursery() as nursery:
-				nursery.start_soon(client_login, client_stream, session_key, nursery)
-				nursery.start_soon(world_server, server_stream, session_key, nursery)
-		assert 'Packet handler stopped' in str(e)
+	with trio.fail_after(5):
+		# with pytest.raises(ProtocolError) as e:
+		async with trio.open_nursery() as nursery:
+			nursery.start_soon(client_login, client_stream, session_key, nursery)
+			nursery.start_soon(world_server, server_stream, session_key, nursery)
+		# assert 'Packet handler stopped' in str(e)
 
 async def test_session_wait_for():
 	async with trio.open_nursery() as nursery:

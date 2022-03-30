@@ -7,13 +7,14 @@ from wlink.world.packets.b12340.chat_packets import make_CMSG_MESSAGECHAT
 
 from ..state import WorldState
 from ... import events
+from ...events import WorldEvent
+
 
 class LocalChat:
 	def __init__(self, world):
 		self._world = world
 		self._messages = []
-		if world.state < WorldState.in_game:
-			raise ProtocolError(f'Must be in-game to send a chat message; world state is {self._world.state} instead')
+		assert world.state >= WorldState.in_game
 
 		@world.emitter.on(events.world.received_duel_winner)
 		async def _on_duel_winner(packet):
@@ -33,15 +34,15 @@ class LocalChat:
 			else:
 				self.add_message(f'{packet.inviter} invited you to a group, but you could not accept because you are already in a group.')
 
-		self._world.emitter.on(events.world.received_chat_message, self.add_message)
-		self._world.emitter.on(events.world.received_motd, lambda packet: self.add_message(packet))
+		self._world.emitter.on(WorldEvent.received_chat_message, self.add_message)
+		self._world.emitter.on(WorldEvent.received_motd, lambda packet: self.add_message(packet))
 
 	@property
 	def messages(self):
 		return [message[0] for message in self._messages]
 
 	def messages_since(self, timepoint: datetime.datetime):
-		return [ message[0] for message in self.messages if timepoint > message[1]]
+		return [message[0] for message in self.messages if timepoint > message[1]]
 
 	@staticmethod
 	def format_chat_event(message):
@@ -55,6 +56,7 @@ class LocalChat:
 		return str(message)
 
 	def add_message(self, message):
+		logger.debug(f'{message=}')
 		if getattr(message, 'language', None) is not None:
 			if message.language in (Language.addon, ):
 				return

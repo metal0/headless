@@ -24,6 +24,11 @@ CheatChecksRequest = construct.Struct(
 	'data' / construct.GreedyBytes,
 )
 
+class WardenCheckManager:
+	def __init__(self):
+		pass
+
+
 def signed_xor(x, y, len, byteorder='little', x_signed=True, y_signed=True):
 	x_bs = int.to_bytes(x, len, byteorder, signed=x_signed)
 	y_bs = int.to_bytes(y, len, byteorder, signed=y_signed)
