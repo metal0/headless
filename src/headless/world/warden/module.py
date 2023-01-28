@@ -2,19 +2,20 @@ from typing import Union
 
 from wlink.cryptography import RC4
 
+
 class WardenModule:
     # signature_size = 260
     # key_size = 16
     # scan_type_count = 9
 
     def __init__(self, size: int, mod_id: Union[bytes, str, int], key: bytes):
-        print(f'{mod_id=}')
+        print(f"{mod_id=}")
         if type(mod_id) is int:
-            self._mod_id = hex(mod_id).replace('0x', '').upper()
+            self._mod_id = hex(mod_id).replace("0x", "").upper()
         elif type(mod_id) is bytes:
-            self._mod_id = mod_id.hex().replace('0x', '').upper()
+            self._mod_id = mod_id.hex().replace("0x", "").upper()
         else:
-            self._mod_id = mod_id.replace('0x', '').upper()
+            self._mod_id = mod_id.replace("0x", "").upper()
 
         self._rc4 = RC4(key=key)
         self._target_size = size
@@ -40,4 +41,3 @@ class WardenModule:
     @property
     def id(self):
         return self._mod_id
-

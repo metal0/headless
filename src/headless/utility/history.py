@@ -1,16 +1,17 @@
 import datetime
 from typing import Optional
 
+
 class HistoryItem:
     def __init__(self, item, timestamp=datetime.datetime.now()):
         self.item = item
         self.timestamp = timestamp
 
     def __repr__(self):
-        return f'[{self.timestamp}]: {self.item}'
+        return f"[{self.timestamp}]: {self.item}"
 
     def __str__(self):
-        return f'[{self.timestamp}]: {self.item}'
+        return f"[{self.timestamp}]: {self.item}"
 
     def __lt__(self, other):
         if type(other) is datetime.datetime:
@@ -22,6 +23,7 @@ class HistoryItem:
 
     def __le__(self, other):
         return self.timestamp <= other.timestamp
+
 
 class History:
     def __init__(self, capacity=400):
@@ -52,5 +54,3 @@ class History:
         if before is not None:
             return _lookup(self[before])
         return _lookup(self._history)
-
-

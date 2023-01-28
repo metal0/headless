@@ -5,18 +5,21 @@ description = ""
 authors = ["Shaun Ostoic <ostoic@uwindsor.ca>"]
 
 [tool.poetry.dependencies]
-python = "^3.8"
+python = "^3.8.1"
 construct  = "^2" # MIT (I think)
 trio  = "^0.20" # MIT
 pyee = "^9.0" # MIT
 cryptography  = "^36" # Apache
 loguru = "^0.6" # MIT
 trio-socks = { git = "https://github.com/Ostoic/trio-socks", branch = "0.1.1" }
-#wlink = { path = "../wlink" }
+wlink = { path = "../wlink" }
 
 [tool.poetry.dev-dependencies]
 pytest = "*"
 pytest-trio = "*"
+
+[tool.poetry.group.dev.dependencies]
+flake8 = "^6.0.0"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

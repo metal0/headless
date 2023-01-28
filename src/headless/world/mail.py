@@ -1,7 +1,6 @@
-
 class Mailbox:
-	pass
+    pass
+
 
 class Mail:
-	pass
-
+    pass

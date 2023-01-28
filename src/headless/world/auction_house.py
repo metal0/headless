@@ -1,5 +1,6 @@
 class AuctionHouse:
-	pass
+    pass
+
 
 class Auction:
-	pass
+    pass

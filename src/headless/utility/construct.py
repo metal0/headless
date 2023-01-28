@@ -1,5 +1,6 @@
 import construct
 
+
 class EncryptedConstruct(construct.Adapter):
     def __init__(self, subcon=construct.GreedyBytes, encrypt=None, decrypt=None):
         super().__init__(subcon)

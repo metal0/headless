@@ -1,9 +1,10 @@
 import hashlib
 
+
 class SHA1Randx:
     def __init__(self, data):
         if type(data) is int:
-            data = int.to_bytes(data, 40, 'little')
+            data = int.to_bytes(data, 40, "little")
 
         size = int(len(data) / 2)
         first_half, last_half = (data[:size], data[size:])

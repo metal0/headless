@@ -1,5 +1,6 @@
 from enum import Enum
 
+
 class WindowsScanType(Enum):
     read_memory = 0
     find_module_by_name = 1
