@@ -1,7 +1,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 # headless
-A headless World of Warcraft 3.5.5 1235a Python client library.
+A headless World of Warcraft 3.5.5 1235a client library written in Python.
 
 # Example
 ```python
