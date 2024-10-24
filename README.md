@@ -5,12 +5,11 @@ A headless World of Warcraft 3.5.5 1235a Python client library.
 
 # Example
 ```python
-async def basic_example(server):
+async def basic_example(user: str, password: str):
     account = "MyAccount"
     character_name = "Demora"
-    username, password = "my-user", "secretpasword123"
+    realm_name = "RealmOfHorse"
 
-    client: headless.Client
     auth_server = ("127.0.0.1", 3724)
     async with headless.open_client(auth_server) as client:
         # Login to auth server
@@ -19,7 +18,7 @@ async def basic_example(server):
 
         # Find desired realm
         for realm in await client.realms():
-            if realm.name == server["realm"]:
+            if realm.name == realm_name:
                 break
 
         # Connect to the world server
