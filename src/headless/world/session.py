@@ -307,7 +307,7 @@ class WorldSession:
         )
 
         self.warden = Warden(
-            self, cr_files_path=Path("/tmp/warden_modules")
+            self, cr_files_path=Path("/tmp/warden_modules/")
         )
 
         # self._store_packet, self.packets = trio.open_memory_channel(MAX_PACKET_QUEUE)
