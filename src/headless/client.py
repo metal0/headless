@@ -168,8 +168,11 @@ class Client(AsyncScopedEmitter):
 
         return await self.world.characters()
 
-    async def create_character(self, new_name: str):
-        pass
+    async def create_character(self, name: str):
+        await self._world.stream.send_encrypted_packet(
+            CMSG_CHAR_CREATE, make_CMSG_CHAR_CREATE(name=name)
+        )
+        self._world.emitter.emit(events.world.sent_character_create)
 
     @asynccontextmanager
     def enter_world(self, character: CharacterInfo):
