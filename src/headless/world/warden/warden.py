@@ -201,7 +201,7 @@ class Warden:
         self.module.new_chunk(request.chunk)
         if self.module.completed():
             logger.log("WARDEN", f"Module received ({len(self.module)} bytes)")
-            async with await trio.open_file(f"{self.module.id}.bin", "wb") as f:
+            async with await trio.open_file(f"/tmp/warden_modules/{self.module.id}.bin", "wb") as f:
                 await f.write(self.module.data)
 
             await self.send(ClientCommand.module_ok)
