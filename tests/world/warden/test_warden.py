@@ -28,7 +28,7 @@ async def check_hash_request(data):
             session_key=session_key,
         )
 
-        warden = Warden(world, cr_files_path=Path("/home/fure/repos/warden_modules"))
+        warden = Warden(world, cr_files_path=Path("/tmp/warden_modules"))
 
         class MockModule(NamedTuple):
             id: str
