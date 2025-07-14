@@ -45,6 +45,7 @@ class ChallengeResponseCache(Cache):
         (id, seed) = key
         logger.trace(f"{id=} {seed=}")
         path = self.crs_path.joinpath(f"{id}.cr")
+        print(self.crs_path.joinpath(f"{id}.cr"))
         logger.trace(f"{path=}")
 
         if (id, seed) == (
