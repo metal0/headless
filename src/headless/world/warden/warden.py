@@ -208,7 +208,7 @@ class Warden:
 
     async def handle_hash_request(self, seed: int):
         logger.log("WARDEN", f"{self.module.id=} {seed=}")
-        cr = await self.cr_cache.lookup((self.module.id, seed))
+        cr = await self.cr_cache.fetch((self.module.id, seed))
         if cr is None:
             raise ChallengeResponseNotFound(
                 f"CR not found for ({self.module.id}, {seed})"
