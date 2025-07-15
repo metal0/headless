@@ -25,11 +25,9 @@ ChallengeResponseFile = construct.Struct(
 async def search_cr_directory(seed, path):
     async with await trio.open_file(path, mode="rb") as f:
         data = await f.read()
-        print(path)
         try:
             cr_file = ChallengeResponseFile.parse(data)
             for cr in cr_file.crs:
-                print(cr.seed)
                 if cr.seed == seed:
                     logger.trace(f"{cr=}")
                     return cr
