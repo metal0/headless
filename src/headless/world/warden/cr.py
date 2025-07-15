@@ -29,6 +29,7 @@ async def search_cr_directory(seed, path):
         try:
             cr_file = ChallengeResponseFile.parse(data)
             for cr in cr_file.crs:
+                print(cr.seed)
                 if cr.seed == seed:
                     logger.trace(f"{cr=}")
                     return cr
